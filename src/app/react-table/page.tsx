@@ -73,24 +73,24 @@ export default function ReactTable() {
   //   onChange: onPaginationChange,
   // });
 
-  const sort = useSort(
-    filteredData,
-    {
-      onChange: onSortChange,
-    },
-    {
-      sortFns: {
-        NAME: (array) => array.sort((a, b) => a.name.localeCompare(b.name)),
-        AGE: (array) => array.sort((a, b) => a.age - b.age),
-        EMAIL: (array) => array.sort((a, b) => a.email.localeCompare(b.email)),
-        ROLE: (array) => array.sort((a, b) => a.role.localeCompare(b.role)),
-      },
-    }
-  );
+  // const sort = useSort(
+  //   filteredData,
+  //   {
+  //     onChange: onSortChange,
+  //   },
+  //   {
+  //     sortFns: {
+  //       NAME: (array) => array.sort((a, b) => a.name.localeCompare(b.name)),
+  //       AGE: (array) => array.sort((a, b) => a.age - b.age),
+  //       EMAIL: (array) => array.sort((a, b) => a.email.localeCompare(b.email)),
+  //       ROLE: (array) => array.sort((a, b) => a.role.localeCompare(b.role)),
+  //     },
+  //   }
+  // );
   
-  function onSortChange(action, state) {
-    console.log("Sort changed:", action, state);
-  }
+  // function onSortChange(action, state) {
+  //   console.log("Sort changed:", action, state);
+  // }
   
 
   function onPaginationChange(action: any, state: any) {

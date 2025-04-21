@@ -176,8 +176,8 @@ export default function page() {
               padAngle={0.7}
               cornerRadius={3}
               colors={{ scheme: "nivo" }}
-              enableRadialLabels={false}
-              enableSliceLabels={true}
+              // enableRadialLabels={false}
+              // enableSliceLabels={true}
             />
           </div>
         </ChartContainer>

@@ -8,21 +8,21 @@ interface BarChartExampleProps {
   financialData: FinancialRow[];
 }
 
-interface OptionSchema {
-  title: {
-    text: string;
-  };
-  subtitle: {
-    text: string;
-  };
-  data: FinancialRow[];
-  series: {
-    type: string;
-    xKey: string;
-    yKey: string;
-    yName?: string;
-  }[];
-}
+// interface OptionSchema {
+//   title: {
+//     text: string;
+//   };
+//   subtitle: {
+//     text: string;
+//   };
+//   data: FinancialRow[];
+//   series: {
+//     type: string;
+//     xKey: string;
+//     yKey: string;
+//     yName?: string;
+//   }[];
+// }
 
 export const BarChartExample: React.FC<BarChartExampleProps> = ({
   financialData,
