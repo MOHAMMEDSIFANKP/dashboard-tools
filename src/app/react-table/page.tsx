@@ -5,11 +5,15 @@ import { CompactTable } from "@table-library/react-table-library/compact";
 import { useTheme } from "@table-library/react-table-library/theme";
 import { getTheme } from "@table-library/react-table-library/baseline";
 import { useSort } from "@table-library/react-table-library/sort";
+import { TableNode } from "@table-library/react-table-library/types/table";
 import { usePagination } from "@table-library/react-table-library/pagination";
 import {
   useFinancialData,
   FinancialRow,
 } from "../_providers/financial-data-provider";
+
+// Import the correct types from the library
+import { Action, State} from "@table-library/react-table-library/types/common";
 
 export default function ReactTable() {
   const { financialData = [] } = useFinancialData();
@@ -58,13 +62,13 @@ export default function ReactTable() {
   }, [search, filterRole, financialData]);
 
   const onSortChange = (
-    action: { type: string; payload?: any },
+    action: Action,
     state: { sortKey?: string }
   ) => {
     console.log("Sort changed:", action, state);
   };
 
-  const sort = useSort<FinancialRow>(
+  const sort = useSort<TableNode>(
     filteredData,
     {
       onChange: onSortChange,
@@ -82,14 +86,25 @@ export default function ReactTable() {
     }
   );
 
+  // Using the library's State type
   const onPaginationChange = (
-    action: { type: string; payload?: any },
-    state: { page: number; size: number }
+    action: Action,
+    state: State
   ) => {
-    console.log("Pagination:", action, state);
+    switch (action.type) {
+      case "SET_PAGE":
+        console.log("Setting page to:", action.payload);
+        break;
+      case "SET_SIZE":
+        console.log("Setting page size to:", action.payload);
+        break;
+      default:
+        break;
+    }
+    console.log("Pagination state:", state);
   };
 
-  const pagination = usePagination<FinancialRow>(filteredData, {
+  const pagination = usePagination<TableNode>(filteredData, {
     state: {
       page: 0,
       size: 10,
