@@ -1,131 +1,159 @@
-'use client';
+"use client";
 
-import React, { useMemo, useState } from 'react';
-import { CompactTable} from '@table-library/react-table-library/compact';
-import {
-  useTheme,
-} from '@table-library/react-table-library/theme';
-import { getTheme } from '@table-library/react-table-library/baseline';
+import React, { useMemo, useState } from "react";
+import { CompactTable } from "@table-library/react-table-library/compact";
+import { useTheme } from "@table-library/react-table-library/theme";
+import { getTheme } from "@table-library/react-table-library/baseline";
 import { useSort } from "@table-library/react-table-library/sort";
-
-export interface User {
-  id: number;
-  name: string;
-  age: number;
-  email: string;
-  role: string;
-}
-
-const users: User[] = [
-  { id: 1, name: 'Alice', age: 25, email: 'alice@example.com', role: 'Admin' },
-  { id: 2, name: 'Bob', age: 30, email: 'bob@example.com', role: 'User' },
-  { id: 3, name: 'Charlie', age: 28, email: 'charlie@example.com', role: 'Manager' },
-  { id: 4, name: 'Diana', age: 35, email: 'diana@example.com', role: 'Admin' },
-  { id: 5, name: 'Ethan', age: 40, email: 'ethan@example.com', role: 'User' },
-  { id: 6, name: 'Frank', age: 45, email: 'frank@example.com', role: 'Manager' },
-  { id: 7, name: 'Grace', age: 29, email: 'grace@example.com', role: 'User' },
-];
+import { usePagination } from "@table-library/react-table-library/pagination";
+import {
+  useFinancialData,
+  FinancialRow,
+} from "../_providers/financial-data-provider";
 
 export default function ReactTable() {
-  const [search, setSearch] = useState('');
-  const [filterRole, setFilterRole] = useState('All');
+  const { financialData = [] } = useFinancialData();
+  const [search, setSearch] = useState<string>("");
+  const [filterRole, setFilterRole] = useState<string>("All");
+
+  const filterRollData = useMemo(() => {
+    return Array.from(
+      new Set(financialData.map((item) => item.catFinancialView))
+    );
+  }, [financialData]);
 
   const theme = useTheme([
     getTheme(),
     {
       Table: `
-        --data-table-library_grid-template-columns: 20% 20% 20% 20% 20%;
+        --data-table-library_grid-template-columns: 10% 20% 10% 30% 20%;
       `,
     },
   ]);
 
   const filteredData = useMemo(() => {
-    let result = users;
-
-    if (search) {
-      result = result.filter(
+    const applySearch = (data: FinancialRow[]) => {
+      if (!search) return data;
+      return data.filter(
         (item) =>
-          item.name.toLowerCase().includes(search.toLowerCase()) ||
-          item.email.toLowerCase().includes(search.toLowerCase())
+          item.catFinancialView.toLowerCase().includes(search.toLowerCase()) ||
+          item.revenue.toString().toLowerCase().includes(search.toLowerCase())
       );
+    };
+
+    const applyFilter = (data: FinancialRow[]) => {
+      if (filterRole === "All") return data;
+      return data.filter((item) => item.catFinancialView === filterRole);
+    };
+
+    const addIds = (data: FinancialRow[]) =>
+      data.map((item, index) => ({
+        ...item,
+        id: `row-${index}`,
+      }));
+
+    const resultWithId = addIds(applyFilter(applySearch(financialData)));
+
+    return { nodes: resultWithId };
+  }, [search, filterRole, financialData]);
+
+  const onSortChange = (
+    action: { type: string; payload?: any },
+    state: { sortKey?: string }
+  ) => {
+    console.log("Sort changed:", action, state);
+  };
+
+  const sort = useSort<FinancialRow>(
+    filteredData,
+    {
+      onChange: onSortChange,
+    },
+    {
+      sortFns: {
+        "Category View": (array) =>
+          array.sort((a, b) =>
+            a.catFinancialView.localeCompare(b.catFinancialView)
+          ),
+        Period: (array) => array.sort((a, b) => a.period - b.period),
+        Revenue: (array) => array.sort((a, b) => a.revenue - b.revenue),
+        "Net Profit": (array) => array.sort((a, b) => a.netProfit - b.netProfit),
+      },
     }
+  );
 
-    if (filterRole !== 'All') {
-      result = result.filter((item) => item.role === filterRole);
-    }
+  const onPaginationChange = (
+    action: { type: string; payload?: any },
+    state: { page: number; size: number }
+  ) => {
+    console.log("Pagination:", action, state);
+  };
 
-    return { nodes: result };
-  }, [search, filterRole]);
-
-  // const sort = useSort(filteredData, {
-  //   onChange: onSortChange,
-  // });
-
-  // function onSortChange(action: any, state: any) {
-  //   console.log('Sorting:', action, state);
-  // }
-
-  // const pagination = usePagination(filteredData, {
-  //   state: {
-  //     page: 0,
-  //     size: 5,
-  //   },
-  //   onChange: onPaginationChange,
-  // });
-
-  // const sort = useSort(
-  //   filteredData,
-  //   {
-  //     onChange: onSortChange,
-  //   },
-  //   {
-  //     sortFns: {
-  //       NAME: (array) => array.sort((a, b) => a.name.localeCompare(b.name)),
-  //       AGE: (array) => array.sort((a, b) => a.age - b.age),
-  //       EMAIL: (array) => array.sort((a, b) => a.email.localeCompare(b.email)),
-  //       ROLE: (array) => array.sort((a, b) => a.role.localeCompare(b.role)),
-  //     },
-  //   }
-  // );
-  
-  // function onSortChange(action, state) {
-  //   console.log("Sort changed:", action, state);
-  // }
-  
-
-  function onPaginationChange(action: any, state: any) {
-    console.log('Pagination:', action, state);
-  }
+  const pagination = usePagination<FinancialRow>(filteredData, {
+    state: {
+      page: 0,
+      size: 10,
+    },
+    onChange: onPaginationChange,
+  });
 
   const COLUMNS = [
-    { label: 'ID', renderCell: (item: User) => item.id },
-    { label: 'Name', renderCell: (item: User) => item.name, sort: { sortKey: 'NAME' } },
-    { label: 'Age', renderCell: (item: User) => item.age, sort: { sortKey: 'AGE' } },
-    { label: 'Email', renderCell: (item: User) => item.email },
-    { label: 'Role', renderCell: (item: User) => item.role },
+    {
+      label: "Fiscal Year",
+      renderCell: (item: FinancialRow) => item.fiscalYear,
+    },
+    {
+      label: "Category View",
+      renderCell: (item: FinancialRow) => item.catFinancialView,
+      sort: { sortKey: "Category View" },
+    },
+    {
+      label: "Period",
+      renderCell: (item: FinancialRow) => item.period,
+      sort: { sortKey: "Period" },
+    },
+    {
+      label: "Revenue",
+      renderCell: (item: FinancialRow) => item.revenue,
+      sort: { sortKey: "Revenue" },
+    },
+    {
+      label: "Net Profit",
+      renderCell: (item: FinancialRow) => item.netProfit,
+      sort: { sortKey: "Net Profit" },
+    },
   ];
 
   return (
     <section className="p-8">
-      <h1 className="text-2xl font-bold mb-4">User Table</h1>
+      <h1 className="text-2xl font-bold mb-4">
+        Financial Data Table
+      </h1>
 
       <div className="flex items-center gap-4 mb-4">
         <input
           type="text"
-          placeholder="Search by name or email"
+          placeholder="Search..."
           className="border px-3 py-2 rounded"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
+
+        <label htmlFor="role-filter" className="sr-only">
+          Filter by role
+        </label>
         <select
+          id="role-filter"
           className="border px-3 py-2 rounded"
           value={filterRole}
           onChange={(e) => setFilterRole(e.target.value)}
         >
-          <option value="All">All Roles</option>
-          <option value="Admin">Admin</option>
-          <option value="User">User</option>
-          <option value="Manager">Manager</option>
+          <option value="All">All Categories</option>
+          {filterRollData.map((role) => (
+            <option key={role} value={role}>
+              {role}
+            </option>
+          ))}
         </select>
       </div>
 
@@ -133,11 +161,11 @@ export default function ReactTable() {
         columns={COLUMNS}
         data={filteredData}
         theme={theme}
-        // sort={sort}
-        // pagination={pagination}
+        sort={sort}
+        pagination={pagination}
       />
 
-      {/* <div className="flex items-center justify-between mt-4">
+      <div className="flex items-center justify-between mt-4">
         <button
           className="px-4 py-2 border rounded"
           disabled={pagination.state.page === 0}
@@ -146,20 +174,21 @@ export default function ReactTable() {
           Previous
         </button>
         <span>
-          Page {pagination.state.page + 1} of{' '}
+          Page {pagination.state.page + 1} of{" "}
           {Math.ceil(filteredData.nodes.length / pagination.state.size)}
         </span>
         <button
           className="px-4 py-2 border rounded"
           disabled={
+            filteredData.nodes.length === 0 ||
             (pagination.state.page + 1) * pagination.state.size >=
-            filteredData.nodes.length
+              filteredData.nodes.length
           }
           onClick={() => pagination.fns.onSetPage(pagination.state.page + 1)}
         >
           Next
         </button>
-      </div> */}
+      </div>
     </section>
   );
 }
