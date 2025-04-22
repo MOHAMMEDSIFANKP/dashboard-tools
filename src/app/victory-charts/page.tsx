@@ -54,13 +54,13 @@ const page = () => {
         <ChartContainer title="Line Charts">
           <LineChartComponent data={filteredData} />
         </ChartContainer>
-        <ChartContainer title="Line Charts">
+        <ChartContainer title="Bar Charts">
           <BarChartComponent data={filteredData} />
         </ChartContainer>
-        <ChartContainer title="Line Charts">
+        <ChartContainer title="Pie Charts">
           <PieChartComponent data={filteredData} />
         </ChartContainer>
-        <ChartContainer title="Line Charts">
+        <ChartContainer title="Donut Charts">
           <DonutChartComponent data={filteredData} />
         </ChartContainer>
       </div>
