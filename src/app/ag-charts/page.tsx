@@ -56,14 +56,16 @@ const ChartContainer: React.FC<ChartContainerProps> = ({
           ))}
         </select>
       </div>
-      {filteredData.length > 0 && <ChartComponent financialData={filteredData} />}
+      {filteredData.length > 0 && (
+        <ChartComponent financialData={filteredData} />
+      )}
     </div>
   );
 };
 
 export default function AgChartsPage() {
   const { financialData } = useFinancialData();
-  
+
   // Handle loading or empty data state
   if (!financialData || financialData.length === 0) {
     return (
@@ -78,23 +80,23 @@ export default function AgChartsPage() {
     <section className="p-5">
       <h1 className="text-2xl font-bold text-center mb-4">Ag Charts</h1>
       <div className="grid grid-cols-2 gap-4">
-        <ChartContainer 
-          title="Bar Series" 
+        <ChartContainer
+          title="Bar Series"
           financialData={financialData}
           ChartComponent={BarChartExample}
         />
-        <ChartContainer 
-          title="Line Series" 
+        <ChartContainer
+          title="Line Series"
           financialData={financialData}
           ChartComponent={LineChartExample}
         />
-        <ChartContainer 
-          title="Pie Series" 
+        <ChartContainer
+          title="Pie Series"
           financialData={financialData}
           ChartComponent={PieChartExample}
         />
-        <ChartContainer 
-          title="Donut Series" 
+        <ChartContainer
+          title="Donut Series"
           financialData={financialData}
           ChartComponent={DonutExample}
         />
