@@ -31,7 +31,7 @@ export const FinancialDataProvider: React.FC<{ children: React.ReactNode }> = ({
     const loadCSV = async () => {
       try {
         const res = await fetch(
-          "/files/dataset_eventscop_financier_YYYYMM.csv"
+          "/files/dataset_elphi_finance_YYYYMM.csv"
         );
         const text = await res.text();
         const parsed = Papa.parse<FinancialRow>(text, {
