@@ -44,6 +44,10 @@ export default function Home() {
     {
       name: "Victory Charts",
       href: "/victory-charts",
+    },
+    {
+      name: "ECharts",
+      href: "/echarts",
     }
     
     
