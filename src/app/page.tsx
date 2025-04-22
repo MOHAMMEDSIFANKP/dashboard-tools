@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { name } from "plotly.js/lib/scatter";
 
 interface Navigation {
   name: string;
@@ -40,6 +41,10 @@ export default function Home() {
       name: "React Table",
       href: "/react-table",
     },
+    {
+      name: "Victory Charts",
+      href: "/victory-charts",
+    }
     
     
   ];
