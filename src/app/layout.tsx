@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ReduxProvider } from "./_providers/redux-provider";
-import { FinancialDataProvider } from "./_providers/financial-data-provider";
+import { DuckDBProvider } from "./_providers/DuckDBContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -30,9 +30,9 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
          <ReduxProvider>
-          <FinancialDataProvider>
+          <DuckDBProvider>
             {children}
-          </FinancialDataProvider>
+          </DuckDBProvider>
         </ReduxProvider>
       </body>
     </html>

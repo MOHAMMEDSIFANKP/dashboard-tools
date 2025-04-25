@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@duckdb/duckdb-wasm": "^1.29.1-dev132.0",
     "@emotion/react": "^11.14.0",
     "@nivo/bar": "^0.88.0",
     "@nivo/core": "^0.88.0",

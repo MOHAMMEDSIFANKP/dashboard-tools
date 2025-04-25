@@ -1,5 +1,5 @@
 'use client'
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   useReactTable,
   getCoreRowModel,
@@ -10,7 +10,8 @@ import {
   ColumnDef,
 } from "@tanstack/react-table";
 
-import { useFinancialData, FinancialRow } from "../_providers/financial-data-provider";
+import { useDuckDBContext } from "../_providers/DuckDBContext";
+import { FinancialSchema } from "@/types/Schemas";
 
 type DataTableProps<TData> = {
   data: TData[];
@@ -19,9 +20,40 @@ type DataTableProps<TData> = {
 
 
 export default function TanstackTable() {
-  const { financialData } = useFinancialData();
+  const { executeQuery, isDataLoaded } = useDuckDBContext();
+  const [financialData, setFinancialData] = useState<FinancialSchema[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
-  const columns: ColumnDef<FinancialRow>[] = [
+  const fetchData = useCallback(async () => {
+    if (!isDataLoaded) return;
+
+    try {
+      const result = await executeQuery("SELECT * FROM financial_data");
+      if (result.success && result.data) {
+        setFinancialData(result.data);
+      } else {
+        setError(result.error || "Failed to fetch data");
+      }
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("An unknown error occurred");
+      }
+    }
+  }, [isDataLoaded, executeQuery]);
+
+  useEffect(() => {
+    if (isDataLoaded) {
+      fetchData();
+    }
+  }, [isDataLoaded, fetchData]);
+
+  if (error) {
+    return <div className="p-4 text-red-600">Error: {error}</div>;
+  }
+
+  const columns: ColumnDef<FinancialSchema>[] = [
     {
       accessorKey: "fiscalYear",
       header: "Fiscal Year",
@@ -79,9 +111,9 @@ function DataTable<TData>({ data, columns }: DataTableProps<TData>) {
     getFilteredRowModel: getFilteredRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
-    
+
   });
-  
+
 
   return (
     <div className="p-4">

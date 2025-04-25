@@ -7,6 +7,12 @@
 // export default nextConfig;
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  webpack: (config:any) => {
+    // This is needed for WebAssembly
+    config.experiments = { ...config.experiments, asyncWebAssembly: true };
+    return config;
+  },
+
   eslint: {
     ignoreDuringBuilds: true,
   },

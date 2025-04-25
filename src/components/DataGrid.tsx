@@ -6,10 +6,11 @@ import { ColDef, CellValueChangedEvent } from 'ag-grid-community';
 import { AllCommunityModule, ModuleRegistry } from 'ag-grid-community';
 ModuleRegistry.registerModules([AllCommunityModule]);
 
-import { FinancialRow } from '@/app/_providers/financial-data-provider';
+import { FinancialSchema } from "@/types/Schemas";
+
 
 interface DataGridProps {
-  financialData: FinancialRow[];
+  financialData: FinancialSchema[];
 }
 
 const DataGrid: React.FC<DataGridProps> = ({ financialData })  => {

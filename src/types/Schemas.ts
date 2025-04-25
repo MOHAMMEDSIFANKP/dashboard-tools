@@ -20,3 +20,12 @@ export type UserSchema = {
     name: string;
     email: string;
   };
+
+export interface FinancialSchema {
+  fiscalYear: string;
+  period: string;
+  revenue: string;
+  operatingExpenses: string;
+  netProfit: string;
+  [key: string]: string; // Allow for additional fields
+}
