@@ -13,65 +13,100 @@ interface DataGridProps {
   financialData: FinancialSchema[];
 }
 
-const DataGrid: React.FC<DataGridProps> = ({ financialData })  => {
-  // const [rowData, setRowData] = useState<Person[]>(financialData || []);
+const DataGrid: React.FC<DataGridProps> = ({ financialData }) => {
   // Column Definitions with editable cells and filters
   const columnDefs: ColDef[] = [
-    { 
-      field: 'fiscalYear', 
+    {
+      field: 'fiscalYear',
       headerName: 'Fiscal Year',
-      // filter: 'agTextColumnFilter',
       sortable: true,
       editable: false,
       floatingFilter: true
     },
-    { 
-      field: 'catFinancialView', 
-      headerName: 'Cat Financial View',
-      // filter: 'agTextColumnFilter',
-      sortable: true,
-      editable: true,
-      floatingFilter: true
-    },
-    { 
-      field: 'period', 
+    {
+      field: 'period',
       headerName: 'Period',
-      // filter: 'agTextColumnFilter',
       sortable: true,
       editable: true,
       floatingFilter: true
     },
-    { 
-      field: 'revenue', 
+    {
+      field: 'catAccountingView',
+      headerName: 'Cat Accounting View',
+      sortable: true,
+      editable: true,
+      floatingFilter: true
+    },
+    {
+      field: 'catFinancialView',
+      headerName: 'Cat Financial View',
+      sortable: true,
+      editable: true,
+      floatingFilter: true
+    },
+    {
+      field: 'revenue',
       headerName: 'Revenue',
-      // filter: 'agTextColumnFilter',
       sortable: true,
       editable: true,
       floatingFilter: true
     },
-    { 
+    {
+      field: 'otherIncome',
+      headerName: 'Other Income',
+      sortable: true,
+      editable: true,
+      floatingFilter: true
+    },
+    {
+      field: 'grossMargin',
+      headerName: 'Gross Margin',
+      sortable: true,
+      editable: true,
+      floatingFilter: true
+    },
+    {
       field: 'operatingExpenses',
-      headerName: 'Operating Expenses', 
-      // filter: 'agTextColumnFilter',
+      headerName: 'Operating Expenses',
       sortable: true,
       editable: true,
       floatingFilter: true
     },
-    { 
-      field: 'netProfit', 
+    {
+      field: 'operatingProfit',
+      headerName: 'Operating Profit',
+      sortable: true,
+      editable: true,
+      floatingFilter: true
+    },
+    {
+      field: 'FinancialResult',
+      headerName: 'Financial Result',
+      sortable: true,
+      editable: true,
+      floatingFilter: true
+    },
+    {
+      field: 'EarningsBeforeTax',
+      headerName: 'Earnings Before Tax',
+      sortable: true,
+      editable: true,
+      floatingFilter: true
+    },
+    {
+      field: 'nonRecurringResult',
+      headerName: 'Non-Recurring Result',
+      sortable: true,
+      editable: true,
+      floatingFilter: true
+    },
+    {
+      field: 'netProfit',
       headerName: 'Net Profit',
-      // filter: 'agNumberColumnFilter',
       sortable: true,
       editable: true,
       floatingFilter: true
     },
-    // { 
-    //   field: 'city', 
-    //   filter: 'agTextColumnFilter',
-    //   sortable: true,
-    //   editable: true,
-    //   floatingFilter: true
-    // },
   ];
 
   // Default Column Definition
@@ -109,6 +144,9 @@ const DataGrid: React.FC<DataGridProps> = ({ financialData })  => {
           rowSelection="multiple"
           animateRows={true}
         //   enableCellChangeFlash={true}
+        //rowHeight={45}                      
+        // headerHeight={55}                   
+        // domLayout="autoHeight" 
         />
       </div>
     </div>
