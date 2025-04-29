@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, forwardRef } from "react";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -12,12 +12,11 @@ import {
   Tooltip,
   Legend,
   ChartOptions,
-  ChartData
+  ChartData,
 } from "chart.js";
 import { Line, Bar, Pie, Doughnut } from "react-chartjs-2";
 import { useDuckDBContext } from "../_providers/DuckDBContext";
 
-// Register Chart.js components
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -30,54 +29,107 @@ ChartJS.register(
   Legend
 );
 
-// Define TypeScript interfaces for chart data
+// Interface for drill-down state
+interface DrillDownState {
+  active: boolean;
+  chartType: string;
+  category: string;
+  title: string;
+  dataType?: string;
+}
+
 interface ChartContainerProps {
   title: string;
+  chartRef: React.RefObject<any>;
+  data: any;
+  onChartClick?: (event: any) => void;
   children: React.ReactNode;
+  isDrilled?: boolean;
+  onBack?: () => void;
 }
+
+const ChartContainer = forwardRef<HTMLDivElement, ChartContainerProps>(
+  ({ title, chartRef, data, onChartClick, children, isDrilled, onBack }, ref) => {
+    const handleDownloadImage = () => {
+      if (chartRef.current) {
+        const url = chartRef.current.toBase64Image();
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `${title.replace(/\s+/g, "_").toLowerCase()}.png`;
+        link.click();
+      }
+    };
+
+    const handleDownloadCSV = () => {
+      if (!data) return;
+      let csvContent = "data:text/csv;charset=utf-8,";
+      const labels = data.labels;
+      const datasets = data.datasets;
+
+      if (labels && datasets) {
+        csvContent += ["Label", ...labels].join(",") + "\n";
+
+        datasets.forEach((dataset: any) => {
+          csvContent += [dataset.label, ...dataset.data].join(",") + "\n";
+        });
+      }
+
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `${title.replace(/\s+/g, "_").toLowerCase()}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    };
+
+    return (
+      <div className="bg-white p-6 rounded-lg shadow-md">
+        <div className="flex flex-row justify-between items-center">
+          <div className="flex items-center">
+            <h2 className="text-xl font-semibold mb-4">{title}</h2>
+            {isDrilled && (
+              <button
+                onClick={onBack}
+                className="ml-3 px-2 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-sm mb-4"
+              >
+                ↩ Back
+              </button>
+            )}
+          </div>
+          <div className="flex gap-2 mb-4">
+            <button onClick={handleDownloadImage} className="px-4 py-2 bg-blue-500 text-white rounded">
+              Download Image
+            </button>
+            <button onClick={handleDownloadCSV} className="px-4 py-2 bg-green-500 text-white rounded">
+              Download CSV
+            </button>
+          </div>
+        </div>
+        <div className="h-64">{children}</div>
+      </div>
+    );
+  }
+);
+
+ChartContainer.displayName = "ChartContainer";
 
 interface FilterBarProps {
   years: string[];
   selectedYear: string;
   onYearChange: (year: string) => void;
+  isDrilled: boolean;
+  onResetDrillDown?: () => void;
 }
 
-interface LineChartDataPoint {
-  period: string;
-  revenue: number;
-  grossMargin: number;
-  netProfit: number;
-}
-
-interface BarChartDataPoint {
-  period: string;
-  revenue: number;
-  expenses: number;
-}
-
-interface PieChartDataPoint {
-  grossMargin: number;
-  opEx: number;
-  netProfit: number;
-  revenue: number;
-}
-
-interface DonutChartDataPoint {
-  catAccountingView: string;
-  revenue: number;
-}
-
-// Chart container component
-const ChartContainer: React.FC<ChartContainerProps> = ({ title, children }) => (
-  <div className="bg-white p-6 rounded-lg shadow-md">
-    <h2 className="text-xl font-semibold mb-4">{title}</h2>
-    <div className="h-64">{children}</div>
-  </div>
-);
-
-// Filter component
-const FilterBar: React.FC<FilterBarProps> = ({ years, selectedYear, onYearChange }) => (
-  <div className="mb-6">
+const FilterBar: React.FC<FilterBarProps> = ({ 
+  years, 
+  selectedYear, 
+  onYearChange, 
+  isDrilled, 
+  onResetDrillDown 
+}) => (
+  <div className="mb-6 flex items-center">
     <label className="mr-2 font-medium">Year:</label>
     <select
       value={selectedYear}
@@ -91,160 +143,200 @@ const FilterBar: React.FC<FilterBarProps> = ({ years, selectedYear, onYearChange
         </option>
       ))}
     </select>
+    
+    {isDrilled && (
+      <button
+        onClick={onResetDrillDown}
+        className="ml-4 px-3 py-2 bg-blue-100 text-blue-600 rounded hover:bg-blue-200"
+      >
+        Reset Drill Down
+      </button>
+    )}
   </div>
 );
 
-// Main dashboard component
+// Drill Down Chart Component
+const DrillDownChart: React.FC<{
+  drillDownState: DrillDownState;
+  drillDownData: ChartData<'bar' | 'line' | 'pie' | 'doughnut'>;
+  onBack: () => void;
+}> = ({ drillDownState, drillDownData, onBack }) => {
+  const drillChartRef = useRef<any>(null);
+
+  const chartOptions: ChartOptions<'line' | 'bar' | 'pie' | 'doughnut'> = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { 
+      legend: { position: "top" },
+      title: {
+        display: true,
+        text: drillDownState.title
+      }
+    }
+  };
+
+  // Render appropriate chart type based on drill-down data
+  const renderDrillDownChart = () => {
+    switch (drillDownState.chartType) {
+      case 'line':
+         // @ts-ignore
+        return <Line ref={drillChartRef} options={chartOptions} data={drillDownData} />;
+      case 'bar':
+         // @ts-ignore
+        return <Bar ref={drillChartRef} options={chartOptions} data={drillDownData} />;
+      case 'pie':
+         // @ts-ignore
+        return <Pie ref={drillChartRef} options={chartOptions} data={drillDownData} />;
+      case 'donut':
+         // @ts-ignore
+        return <Doughnut ref={drillChartRef} options={{...chartOptions, cutout: '50%'}} data={drillDownData} />;
+      default:
+         // @ts-ignore
+        return <Bar ref={drillChartRef} options={chartOptions} data={drillDownData} />;
+    }
+  };
+
+  return (
+    <ChartContainer 
+      title={drillDownState.title} 
+      chartRef={drillChartRef} 
+      data={drillDownData}
+      isDrilled={true}
+      onBack={onBack}
+    >
+      {renderDrillDownChart()}
+    </ChartContainer>
+  );
+};
+
 export default function ChartJsPage() {
   const { executeQuery, isDataLoaded } = useDuckDBContext();
   const [selectedYear, setSelectedYear] = useState<string>("all");
   const [years, setYears] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  
-  // Chart data states
+
   const [lineChartData, setLineChartData] = useState<ChartData<'line'> | null>(null);
   const [barChartData, setBarChartData] = useState<ChartData<'bar'> | null>(null);
   const [pieChartData, setPieChartData] = useState<ChartData<'pie'> | null>(null);
   const [donutChartData, setDonutChartData] = useState<ChartData<'doughnut'> | null>(null);
 
-  // Fetch available years (small query)
+  // Drill down state
+  const [drillDown, setDrillDown] = useState<DrillDownState>({
+    active: false,
+    chartType: "",
+    category: "",
+    title: ""
+  });
+  const [drillDownData, setDrillDownData] = useState<ChartData<'bar' | 'line' | 'pie' | 'doughnut'> | null>(null);
+
+  const lineChartRef = useRef<any>(null);
+  const barChartRef = useRef<any>(null);
+  const pieChartRef = useRef<any>(null);
+  const donutChartRef = useRef<any>(null);
+
+  // Reset drill down state
+  const resetDrillDown = () => {
+    setDrillDown({
+      active: false,
+      chartType: "",
+      category: "",
+      title: ""
+    });
+    setDrillDownData(null);
+  };
+
   useEffect(() => {
     if (!isDataLoaded) return;
-    
-    const fetchYears = async (): Promise<void> => {
+    const fetchYears = async () => {
       try {
         const result = await executeQuery("SELECT DISTINCT fiscalYear FROM financial_data ORDER BY fiscalYear");
         if (result.success && result.data) {
           setYears(result.data.map((row: { fiscalYear: string }) => row.fiscalYear));
         }
-      } catch (err: unknown) {
-        console.error("Failed to fetch years:", err);
+      } catch (err) {
+        console.error(err);
       }
     };
-    
     fetchYears();
   }, [isDataLoaded, executeQuery]);
 
-  // Fetch chart data based on selected year
   useEffect(() => {
     if (!isDataLoaded) return;
-    
-    const fetchChartData = async (): Promise<void> => {
+    const fetchChartData = async () => {
       setIsLoading(true);
       try {
-        // Build WHERE clause for year filter
         const whereClause = selectedYear !== "all" ? `WHERE fiscalYear = '${selectedYear}'` : "";
-        
-        // Line chart data - monthly performance trends
-        const lineQuery = `
-          SELECT period, AVG(revenue) as revenue, AVG(grossMargin) as grossMargin, AVG(netProfit) as netProfit 
-          FROM financial_data 
-          ${whereClause}
-          GROUP BY period 
-          ORDER BY period
-          
-        `;
-        
-        // Bar chart data - revenue vs expenses
-        const barQuery = `
-          SELECT period, SUM(revenue) as revenue, SUM(operatingExpenses) as expenses
-          FROM financial_data
-          ${whereClause}
-          GROUP BY period
-          ORDER BY period
-          
-        `;
-        
-        // Pie chart data - financial distribution
-        const pieQuery = `
-          SELECT 
-            SUM(grossMargin) as grossMargin,
-            SUM(operatingExpenses) as opEx,
-            SUM(netProfit) as netProfit,
-            SUM(revenue) as revenue
-          FROM financial_data
-          ${whereClause}
-        `;
-        
-        // Donut chart data - distribution by category
-        const donutQuery = `
-          SELECT catAccountingView, SUM(revenue) as revenue
-          FROM financial_data
-          ${whereClause}
-          GROUP BY catAccountingView
-          ORDER BY revenue DESC
-          
-        `;
-        
-        // Execute all queries in parallel
+
         const [lineResult, barResult, pieResult, donutResult] = await Promise.all([
-          executeQuery(lineQuery),
-          executeQuery(barQuery),
-          executeQuery(pieQuery),
-          executeQuery(donutQuery)
+          executeQuery(`
+            SELECT period, AVG(revenue) as revenue, AVG(grossMargin) as grossMargin, AVG(netProfit) as netProfit 
+            FROM financial_data ${whereClause} GROUP BY period ORDER BY period
+          `),
+          executeQuery(`
+            SELECT period, SUM(revenue) as revenue, SUM(operatingExpenses) as expenses 
+            FROM financial_data ${whereClause} GROUP BY period ORDER BY period
+          `),
+          executeQuery(`
+            SELECT SUM(grossMargin) as grossMargin, SUM(operatingExpenses) as opEx, SUM(netProfit) as netProfit, SUM(revenue) as revenue 
+            FROM financial_data ${whereClause}
+          `),
+          executeQuery(`
+            SELECT catAccountingView, SUM(revenue) as revenue 
+            FROM financial_data ${whereClause} GROUP BY catAccountingView ORDER BY revenue DESC
+          `)
         ]);
-        
-        // Process line chart data
+
         if (lineResult.success && lineResult.data) {
-          const data = lineResult.data as LineChartDataPoint[];
           setLineChartData({
-            labels: data.map(item => item.period),
+            labels: lineResult.data.map((item: any) => item.period),
             datasets: [
               {
                 label: "Revenue",
-                data: data.map(item => item.revenue),
+                data: lineResult.data.map((item: any) => item.revenue),
                 borderColor: "rgb(75, 192, 192)",
                 backgroundColor: "rgba(75, 192, 192, 0.5)",
               },
               {
                 label: "Gross Margin",
-                data: data.map(item => item.grossMargin),
+                data: lineResult.data.map((item: any) => item.grossMargin),
                 borderColor: "rgb(53, 162, 235)",
                 backgroundColor: "rgba(53, 162, 235, 0.5)",
               },
               {
                 label: "Net Profit",
-                data: data.map(item => item.netProfit),
+                data: lineResult.data.map((item: any) => item.netProfit),
                 borderColor: "rgb(255, 99, 132)",
                 backgroundColor: "rgba(255, 99, 132, 0.5)",
               }
             ]
           });
         }
-        
-        // Process bar chart data
+
         if (barResult.success && barResult.data) {
-          const data = barResult.data as BarChartDataPoint[];
           setBarChartData({
-            labels: data.map(item => item.period),
+            labels: barResult.data.map((item: any) => item.period),
             datasets: [
               {
                 label: "Revenue",
-                data: data.map(item => item.revenue),
+                data: barResult.data.map((item: any) => item.revenue),
                 backgroundColor: "rgba(75, 192, 192, 0.6)",
               },
               {
                 label: "Expenses",
-                data: data.map(item => item.expenses),
+                data: barResult.data.map((item: any) => item.expenses),
                 backgroundColor: "rgba(255, 99, 132, 0.6)",
               }
             ]
           });
         }
-        
-        // Process pie chart data
+
         if (pieResult.success && pieResult.data && pieResult.data[0]) {
-          const data = pieResult.data[0] as PieChartDataPoint;
+          const d = pieResult.data[0];
           setPieChartData({
             labels: ["Gross Margin", "Operating Expenses", "Net Profit", "Other"],
             datasets: [{
-              data: [
-                data.grossMargin,
-                data.opEx,
-                data.netProfit,
-                data.revenue - data.grossMargin - data.opEx - data.netProfit
-              ],
+              data: [d.grossMargin, d.opEx, d.netProfit, d.revenue - d.grossMargin - d.opEx - d.netProfit],
               backgroundColor: [
                 "rgba(75, 192, 192, 0.6)",
                 "rgba(255, 99, 132, 0.6)",
@@ -254,14 +346,12 @@ export default function ChartJsPage() {
             }]
           });
         }
-        
-        // Process donut chart data
+
         if (donutResult.success && donutResult.data) {
-          const data = donutResult.data as DonutChartDataPoint[];
           setDonutChartData({
-            labels: data.map(item => item.catAccountingView),
+            labels: donutResult.data.map((item: any) => item.catAccountingView),
             datasets: [{
-              data: data.map(item => item.revenue),
+              data: donutResult.data.map((item: any) => item.revenue),
               backgroundColor: [
                 "rgba(255, 206, 86, 0.6)",
                 "rgba(75, 192, 192, 0.6)",
@@ -273,76 +363,396 @@ export default function ChartJsPage() {
             }]
           });
         }
-      } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : "An unknown error occurred");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Unknown error");
       } finally {
         setIsLoading(false);
       }
     };
-    
     fetchChartData();
-  }, [isDataLoaded, executeQuery, selectedYear]);
+  }, [isDataLoaded, selectedYear, executeQuery]);
+
+  // Handle drill down for line chart
+  const handleLineChartClick = async (event: any) => {
+    if (!lineChartRef.current) return;
+    
+    try {
+      const points = lineChartRef.current.getElementsAtEventForMode(
+        event,
+        'nearest',
+        { intersect: true },
+        false
+      );
+
+      if (points.length === 0) return;
+      
+      const clickedPoint = points[0];
+      const { datasetIndex, index } = clickedPoint;
+      const period = lineChartData?.labels?.[index] as string;
+      const dataType = lineChartData?.datasets?.[datasetIndex]?.label?.toLowerCase() || '';
+      
+      await handleDrillDown('line', period, dataType);
+    } catch (error) {
+      console.error("Error in line chart click handler:", error);
+    }
+  };
+
+  // Handle drill down for bar chart
+  const handleBarChartClick = async (event: any) => {
+    if (!barChartRef.current) return;
+    
+    try {
+      const points = barChartRef.current.getElementsAtEventForMode(
+        event,
+        'nearest',
+        { intersect: true },
+        false
+      );
+
+      if (points.length === 0) return;
+      
+      const clickedPoint = points[0];
+      const { datasetIndex, index } = clickedPoint;
+      const period = barChartData?.labels?.[index] as string;
+      const dataType = barChartData?.datasets?.[datasetIndex]?.label?.toLowerCase() || '';
+      
+      await handleDrillDown('bar', period, dataType);
+    } catch (error) {
+      console.error("Error in bar chart click handler:", error);
+    }
+  };
+
+  // Handle drill down for pie chart
+  const handlePieChartClick = async (event: any) => {
+    if (!pieChartRef.current) return;
+    
+    try {
+      const points = pieChartRef.current.getElementsAtEventForMode(
+        event,
+        'nearest',
+        { intersect: true },
+        false
+      );
+
+      if (points.length === 0) return;
+      
+      const clickedPoint = points[0];
+      const { index } = clickedPoint;
+      const dataType = pieChartData?.labels?.[index] as string;
+      
+      await handleDrillDown('pie', dataType, 'financialDistribution');
+    } catch (error) {
+      console.error("Error in pie chart click handler:", error);
+    }
+  };
+
+  // Handle drill down for donut chart
+  const handleDonutChartClick = async (event: any) => {
+    if (!donutChartRef.current) return;
+    
+    try {
+      const points = donutChartRef.current.getElementsAtEventForMode(
+        event,
+        'nearest',
+        { intersect: true },
+        false
+      );
+
+      if (points.length === 0) return;
+      
+      const clickedPoint = points[0];
+      const { index } = clickedPoint;
+      const category = donutChartData?.labels?.[index] as string;
+      
+      await handleDrillDown('donut', category, 'categoryRevenue');
+    } catch (error) {
+      console.error("Error in donut chart click handler:", error);
+    }
+  };
+
+  // Generic drill down function
+  const handleDrillDown = async (chartType: string, category: string, dataType: string) => {
+    if (!isDataLoaded) return;
+    
+    setIsLoading(true);
+    const whereClause = selectedYear !== "all" ? `AND fiscalYear = '${selectedYear}'` : "";
+    
+    try {
+      let query = "";
+      let title = "";
+      let drillChartType: 'bar' | 'line' | 'pie' = 'bar';
+      
+      switch (chartType) {
+        case 'bar':
+          if (dataType === 'revenue') {
+            query = `SELECT fiscalYear, catFinancialView, SUM(revenue) as value 
+                     FROM financial_data 
+                     WHERE period = '${category}' ${whereClause}
+                     GROUP BY fiscalYear, catFinancialView
+                     ORDER BY fiscalYear, value DESC`;
+            title = `Revenue Breakdown for Period: ${category}`;
+            drillChartType = 'bar';
+          } else if (dataType === 'expenses') {
+            query = `SELECT fiscalYear, catFinancialView, SUM(operatingExpenses) as value 
+                     FROM financial_data 
+                     WHERE period = '${category}' ${whereClause}
+                     GROUP BY fiscalYear, catFinancialView
+                     ORDER BY fiscalYear, value DESC`;
+            title = `Expenses Breakdown for Period: ${category}`;
+            drillChartType = 'bar';
+          }
+          break;
+          
+        case 'line':
+          let columnName = dataType.toLowerCase().replace(/\s+/g, '');
+          query = `SELECT fiscalYear, catFinancialView, SUM(${columnName}) as value 
+                   FROM financial_data 
+                   WHERE period = '${category}' ${whereClause}
+                   GROUP BY fiscalYear, catFinancialView
+                   ORDER BY value DESC`;
+          title = `${dataType} Breakdown for Period: ${category}`;
+          drillChartType = 'bar';
+          break;
+          
+        case 'donut':
+          query = `SELECT fiscalYear, period, SUM(revenue) as value 
+                   FROM financial_data 
+                   WHERE catAccountingView = '${category}' ${whereClause}
+                   GROUP BY fiscalYear, period
+                   ORDER BY fiscalYear, period`;
+          title = `Revenue Breakdown for Category: ${category}`;
+          drillChartType = 'line';
+          break;
+          
+        case 'pie':
+          const metricColumn = category.toLowerCase().replace(/\s+/g, '');
+          query = `SELECT catFinancialView, SUM(${metricColumn === 'other' ? 'revenue' : metricColumn}) as value 
+                   FROM financial_data 
+                   WHERE 1=1 ${whereClause}
+                   GROUP BY catFinancialView
+                   ORDER BY value DESC`;
+          title = `${category} Breakdown by Financial Category`;
+          drillChartType = 'pie';
+          break;
+      }
+      
+      if (query) {
+        const result = await executeQuery(query);
+        if (result.success && result.data && result.data.length > 0) {
+          const drillData = result.data;
+          
+          // Create appropriate chart data based on drill-down type
+          let formattedData: ChartData<'bar' | 'line' | 'pie'> = {
+            labels: [],
+            datasets: []
+          };
+          
+          if (drillChartType === 'bar') {
+            // Group by fiscal year if present
+            if (drillData[0].fiscalYear) {
+              // Create a lookup of all unique categories and fiscal years
+              const categories = Array.from(new Set(drillData.map((d: any) => d.catFinancialView)));
+              const fiscalYears = Array.from(new Set(drillData.map((d: any) => d.fiscalYear)));
+              
+              formattedData = {
+                labels: categories,
+                datasets: fiscalYears.map((year: string, idx: number) => {
+                  const yearData = drillData.filter((d: any) => d.fiscalYear === year);
+                  const colorIdx = idx % 6;
+                  const colors = [
+                    "rgba(75, 192, 192, 0.6)",
+                    "rgba(255, 99, 132, 0.6)", 
+                    "rgba(53, 162, 235, 0.6)",
+                    "rgba(255, 206, 86, 0.6)",
+                    "rgba(153, 102, 255, 0.6)",
+                    "rgba(255, 159, 64, 0.6)"
+                  ];
+                  
+                  return {
+                    label: `Year ${year}`,
+                    data: categories.map(cat => {
+                      const match = yearData.find((d: any) => d.catFinancialView === cat);
+                      return match ? match.value : 0;
+                    }),
+                    backgroundColor: colors[colorIdx]
+                  };
+                })
+              };
+            } else {
+              formattedData = {
+                labels: drillData.map((d: any) => d.catFinancialView || d.period),
+                datasets: [{
+                  label: 'Value',
+                  data: drillData.map((d: any) => d.value),
+                  backgroundColor: "rgba(75, 192, 192, 0.6)"
+                }]
+              };
+            }
+          } else if (drillChartType === 'line') {
+            // Group by period if present
+            if (drillData[0].period) {
+              // Create a lookup of all unique fiscal years
+              const fiscalYears = Array.from(new Set(drillData.map((d: any) => d.fiscalYear)));
+              const periods = Array.from(new Set(drillData.map((d: any) => d.period)));
+              
+              formattedData = {
+                labels: periods,
+                datasets: fiscalYears.map((year: string, idx: number) => {
+                  const yearData = drillData.filter((d: any) => d.fiscalYear === year);
+                  const colorIdx = idx % 6;
+                  const colors = [
+                    "rgb(75, 192, 192)",
+                    "rgb(255, 99, 132)", 
+                    "rgb(53, 162, 235)",
+                    "rgb(255, 206, 86)",
+                    "rgb(153, 102, 255)",
+                    "rgb(255, 159, 64)"
+                  ];
+                  
+                  return {
+                    label: `Year ${year}`,
+                    data: periods.map(period => {
+                      const match = yearData.find((d: any) => d.period === period);
+                      return match ? match.value : 0;
+                    }),
+                    borderColor: colors[colorIdx],
+                    backgroundColor: colors[colorIdx].replace('rgb', 'rgba').replace(')', ', 0.5)')
+                  };
+                })
+              };
+            } else {
+              formattedData = {
+                labels: drillData.map((d: any) => d.period || d.fiscalYear),
+                datasets: [{
+                  label: 'Value',
+                  data: drillData.map((d: any) => d.value),
+                  borderColor: "rgb(75, 192, 192)",
+                  backgroundColor: "rgba(75, 192, 192, 0.5)"
+                }]
+              };
+            }
+          } else if (drillChartType === 'pie') {
+            formattedData = {
+              labels: drillData.map((d: any) => d.catFinancialView),
+              datasets: [{
+                data: drillData.map((d: any) => d.value),
+                backgroundColor: [
+                  "rgba(75, 192, 192, 0.6)",
+                  "rgba(255, 99, 132, 0.6)",
+                  "rgba(53, 162, 235, 0.6)",
+                  "rgba(255, 206, 86, 0.6)",
+                  "rgba(153, 102, 255, 0.6)",
+                  "rgba(255, 159, 64, 0.6)",
+                ]
+              }]
+            };
+          }
+          
+          // Set drill-down data and state
+          setDrillDownData(formattedData);
+          setDrillDown({
+            active: true,
+            chartType: drillChartType,
+            category,
+            title,
+            dataType
+          });
+        } else {
+          setError("No data available for this selection");
+        }
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error occurred");
+      console.error("Error in drill-down:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const chartOptions: ChartOptions<'line' | 'bar' | 'pie' | 'doughnut'> = {
     responsive: true,
     maintainAspectRatio: false,
-    plugins: {
-      legend: { position: "top" as const }
-    }
+    plugins: { legend: { position: "top" } }
   };
 
-  if (error) {
-    return <div className="p-4 text-red-600">Error: {error}</div>;
-  }
-
-  if (isLoading && (!lineChartData || !barChartData)) {
-    return (
-      <div className="p-8 text-center">
-        <div className="animate-pulse">Loading financial data...</div>
-      </div>
-    );
-  }
+  if (error) return <div className="text-red-500">{error}</div>;
+  if (isLoading) return <div className="text-center p-8">Loading...</div>;
 
   return (
     <section className="p-8 bg-gray-50">
-      <h1 className="text-3xl font-bold text-center mb-8">
-        Financial Dashboard Chart Js
-      </h1>
-
+      <h1 className="text-3xl font-bold text-center mb-8">Financial Dashboard</h1>
       <FilterBar 
-        years={years}
-        selectedYear={selectedYear}
-        onYearChange={setSelectedYear}
+        years={years} 
+        selectedYear={selectedYear} 
+        onYearChange={setSelectedYear} 
+        isDrilled={drillDown.active} 
+        onResetDrillDown={resetDrillDown}
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {lineChartData && (
-          <ChartContainer title="Revenue Trends">
-            <Line options={chartOptions as ChartOptions<'line'>} data={lineChartData} />
-          </ChartContainer>
-        )}
-
-        {barChartData && (
-          <ChartContainer title="Revenue vs Expenses">
-            <Bar options={chartOptions as ChartOptions<'bar'>} data={barChartData} />
-          </ChartContainer>
-        )}
-
-        {pieChartData && (
-          <ChartContainer title="Financial Distribution">
-            <Pie options={chartOptions as ChartOptions<'pie'>} data={pieChartData} />
-          </ChartContainer>
-        )}
-
-        {donutChartData && (
-          <ChartContainer title="Revenue by Category">
-            <Doughnut 
-              options={{...chartOptions, cutout: "50%"} as ChartOptions<'doughnut'>} 
-              data={donutChartData} 
-            />
-          </ChartContainer>
-        )}
-      </div>
+      {drillDown.active && drillDownData ? (
+        <DrillDownChart 
+          drillDownState={drillDown} 
+          drillDownData={drillDownData} 
+          onBack={resetDrillDown} 
+        />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {lineChartData && (
+            <ChartContainer title="Revenue Trends" chartRef={lineChartRef} data={lineChartData}>
+              <Line
+                ref={lineChartRef}
+                 // @ts-ignore
+                options={{
+                  ...chartOptions,
+                  onClick: handleLineChartClick
+                }}
+                data={lineChartData}
+              />
+            </ChartContainer>
+          )}
+          {barChartData && (
+            <ChartContainer title="Revenue vs Expenses" chartRef={barChartRef} data={barChartData}>
+              <Bar
+                ref={barChartRef}
+                 // @ts-ignore
+                options={{
+                  ...chartOptions,
+                  onClick: handleBarChartClick
+                }}
+                data={barChartData}
+              />
+            </ChartContainer>
+          )}
+          {pieChartData && (
+            <ChartContainer title="Financial Distribution" chartRef={pieChartRef} data={pieChartData}>
+              <Pie
+                ref={pieChartRef}
+                options={{
+                  ...chartOptions,
+                  onClick: handlePieChartClick
+                }}
+                data={pieChartData}
+              />
+            </ChartContainer>
+          )}
+          {donutChartData && (
+            <ChartContainer title="Revenue by Category" chartRef={donutChartRef} data={donutChartData}>
+              <Doughnut
+                ref={donutChartRef}
+                options={{
+                  ...chartOptions,
+                  cutout: "50%",
+                  onClick: handleDonutChartClick
+                }}
+                data={donutChartData}
+              />
+            </ChartContainer>
+          )}
+          <p className="col-span-1 md:col-span-2 text-sm text-gray-500">
+            <i>Click on any chart element to drill down into more detailed data</i>
+          </p>
+        </div>
+      )}
     </section>
   );
 }
