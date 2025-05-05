@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { AgCharts } from "ag-charts-react";
 import { useDuckDBContext } from "../_providers/DuckDBContext";
 import { AgChartOptions } from "ag-charts-community";
+import { GroupModal } from "./GroupManagement";
 
 // Core data types
 interface ChartDataPoint {
@@ -32,6 +33,16 @@ interface DrillDownState {
   title: string;
 }
 
+type DimensionSelection = {
+  dimension: string;
+  members: string[];
+};
+
+type Dimensions = {
+  groupName: string;
+  filteredSelections: DimensionSelection[];
+};
+
 // Chart container component
 const ChartContainer: React.FC<CommonProps & {
   children: React.ReactNode;
@@ -43,11 +54,11 @@ const ChartContainer: React.FC<CommonProps & {
   // Export to CSV function
   const exportToCSV = () => {
     if (!data || !data.length) return;
-    
+
     const headers = Object.keys(data[0]).join(',');
     const rows = data.map(row => Object.values(row).join(',')).join('\n');
     const csv = `${headers}\n${rows}`;
-    
+
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -62,9 +73,9 @@ const ChartContainer: React.FC<CommonProps & {
   const exportToPNG = () => {
     const chartElement = chartRef.current;
     if (!chartElement) return;
-    
+
     const canvas = chartElement.querySelector('canvas');
-    
+
     if (canvas) {
       try {
         const image = canvas.toDataURL('image/png');
@@ -98,13 +109,13 @@ const ChartContainer: React.FC<CommonProps & {
           )}
         </div>
         <div className="flex space-x-2">
-          <button 
+          <button
             onClick={exportToPNG}
             className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
           >
             PNG
           </button>
-          <button 
+          <button
             onClick={exportToCSV}
             className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
           >
@@ -141,7 +152,7 @@ const FilterBar: React.FC<{
         </option>
       ))}
     </select>
-    
+
     {isDrilled && (
       <button
         onClick={onResetDrillDown}
@@ -162,8 +173,8 @@ const DrillDownChart: React.FC<{
 }> = ({ drillDownState, drillDownData, drillDownOptions, onBack }) => {
   return (
     <div className="mb-4">
-      <ChartContainer 
-        title={drillDownState.title} 
+      <ChartContainer
+        title={drillDownState.title}
         data={drillDownData}
         onBack={onBack}
         isDrilled={true}
@@ -177,14 +188,16 @@ const DrillDownChart: React.FC<{
   );
 };
 
+
 // Main AG Charts Page Component
 const AgChartsPage: React.FC = () => {
   const { executeQuery, isDataLoaded } = useDuckDBContext();
   const [selectedYear, setSelectedYear] = useState<string>("all");
-  const [years, setYears] = useState<string[]>([]);
+  const [years, setYears] = useState<string[]>([]); //remve this
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-
+  const [isGroupModalOpen, setIsGroupModalOpen] = useState<boolean>(false);
+  const [dimensions, setDimensions] = useState<Dimensions | null>(null);
   // Drill down state
   const [drillDown, setDrillDown] = useState<DrillDownState>({
     active: false,
@@ -232,8 +245,9 @@ const AgChartsPage: React.FC = () => {
       title: ""
     });
   };
+  console.log(dimensions, 'dimensions');
 
-  useEffect(() => {
+  useEffect(() => { // remove this
     if (!isDataLoaded) return;
 
     const fetchYears = async () => {
@@ -251,13 +265,62 @@ const AgChartsPage: React.FC = () => {
     fetchYears();
   }, [isDataLoaded, executeQuery]);
 
+  const handleCreateGroup = (datas: any) => {
+    setDimensions(datas);
+  }
+
   useEffect(() => {
     if (!isDataLoaded) return;
 
     const fetchChartData = async () => {
       setIsLoading(true);
       setError(null);
-      const whereClause = selectedYear !== "all" ? `WHERE fiscalYear = '${selectedYear}'` : "";
+      const months: { [key: string]: string } = {
+        "January": "01",
+        "February": "02",
+        "March": "03",
+        "April": "04",
+        "May": "05",
+        "June": "06",
+        "July": "07",
+        "August": "08",
+        "September": "09",
+        "October": "10",
+        "November": "11",
+        "December": "12"
+      };
+
+      // @ts-ignore
+      const whereClause = dimensions?.filteredSelections?.length > 0
+        ? `WHERE ${dimensions?.filteredSelections?.map((dim) => {
+          if (dim.dimension.toLowerCase() === "period") {
+            // Convert month names like "January" to "01"
+            const selectedMonths = dim.members.map(month => months[month]);
+
+            const yearSelection = dimensions.filteredSelections.find(
+              d => d.dimension.toLowerCase() === "fiscalyear"
+            );
+            const selectedYears = yearSelection ? yearSelection.members : [];
+
+            if (selectedYears.length === 0) {
+              // No year selected, filter by month part only
+              return `(${selectedMonths.map(month =>
+                `SUBSTR(CAST(period AS TEXT), 5, 2) = '${month}'`
+              ).join(" OR ")})`;
+            }
+
+            const fullPeriods = selectedYears.flatMap(year =>
+              selectedMonths.map(month => `'${year}${month}'`)
+            );
+
+            return `period IN (${fullPeriods.join(", ")})`;
+          } else {
+            const members = dim.members.map((member: string) => `'${member}'`).join(", ");
+            return `${dim.dimension.toLowerCase()} IN (${members})`;
+          }
+        }).join(" AND ")}`
+        : "";
+
 
       try {
         const [lineResult, barResult, pieResult, donutResult] = await Promise.all([
@@ -301,7 +364,7 @@ const AgChartsPage: React.FC = () => {
             { type: "number", position: "left", title: { text: "Amount ($)" } },
           ],
           listeners: {
-              // @ts-ignore
+            // @ts-ignore
             seriesNodeClick: ({ datum, yKey }) => {
               if (datum && datum.period) {
                 handleDrillDown("line", datum.period, datum[yKey], yKey);
@@ -316,17 +379,17 @@ const AgChartsPage: React.FC = () => {
           title: { text: "Revenue vs Expenses" },
           data: barData,
           series: [
-            { 
-              type: "bar", 
-              xKey: "period", 
-              yKey: "revenue", 
+            {
+              type: "bar",
+              xKey: "period",
+              yKey: "revenue",
               yName: "Revenue",
               tooltip: { enabled: true }
             },
-            { 
-              type: "bar", 
-              xKey: "period", 
-              yKey: "expenses", 
+            {
+              type: "bar",
+              xKey: "period",
+              yKey: "expenses",
               yName: "Expenses",
               tooltip: { enabled: true }
             },
@@ -354,14 +417,14 @@ const AgChartsPage: React.FC = () => {
         const pieOpts = pieData.length ? {
           title: { text: "Financial Distribution" },
           data: pieData,
-          series: [{ 
-            type: "pie", 
-            angleKey: "value", 
+          series: [{
+            type: "pie",
+            angleKey: "value",
             labelKey: "label",
             tooltip: { enabled: true },
             calloutLabel: { enabled: true },
             listeners: {
-                // @ts-ignore
+              // @ts-ignore
               nodeClick: (event) => {
                 const { datum } = event;
                 if (datum) {
@@ -377,9 +440,9 @@ const AgChartsPage: React.FC = () => {
         const donutOpts = donutData.length ? {
           title: { text: "Revenue by Category" },
           data: donutData,
-          series: [{ 
-            type: "donut", 
-            angleKey: "revenue", 
+          series: [{
+            type: "donut",
+            angleKey: "revenue",
             labelKey: "catAccountingView",
             tooltip: { enabled: true },
             calloutLabel: { enabled: true },
@@ -403,7 +466,7 @@ const AgChartsPage: React.FC = () => {
           donut: donutData,
           drillDown: []
         });
-        
+
         setChartOptions({
           line: lineOpts as any,
           bar: barOpts as any,
@@ -421,20 +484,20 @@ const AgChartsPage: React.FC = () => {
     };
 
     fetchChartData();
-  }, [selectedYear, isDataLoaded, executeQuery]);
+  }, [dimensions, isDataLoaded, executeQuery]);
 
   // Handle drill down - moved to a separate function
   const handleDrillDown = async (chartType: string, category: string, value: any, dataType: string) => {
     if (!isDataLoaded) return;
-    
+
     setIsLoading(true);
     setError(null);
     const whereClause = selectedYear !== "all" ? `AND fiscalYear = '${selectedYear}'` : "";
-    
+
     try {
       let query = "";
       let title = "";
-      
+
       switch (chartType) {
         case 'bar':
           if (dataType === 'revenue') {
@@ -453,7 +516,7 @@ const AgChartsPage: React.FC = () => {
             title = `Expenses Breakdown for Period: ${category}`;
           }
           break;
-          
+
         case 'line':
           query = `SELECT fiscalYear, catFinancialView, SUM(${dataType}) as value 
                    FROM financial_data 
@@ -462,7 +525,7 @@ const AgChartsPage: React.FC = () => {
                    ORDER BY value DESC`;
           title = `${dataType.charAt(0).toUpperCase() + dataType.slice(1)} Breakdown for Period: ${category}`;
           break;
-          
+
         case 'donut':
           query = `SELECT fiscalYear, period, SUM(revenue) as value 
                    FROM financial_data 
@@ -471,7 +534,7 @@ const AgChartsPage: React.FC = () => {
                    ORDER BY fiscalYear, period`;
           title = `Revenue Breakdown for Category: ${category}`;
           break;
-          
+
         case 'pie':
           if (dataType === 'financialDistribution') {
             query = `SELECT catFinancialView, SUM(${category}) as value 
@@ -483,24 +546,24 @@ const AgChartsPage: React.FC = () => {
           }
           break;
       }
-      
+
       if (query) {
         const result = await executeQuery(query);
         if (result.success && result.data && result.data.length > 0) {
           const drillData = result.data;
-          
+
           // Create appropriate chart options based on data structure
           const firstDataPoint = drillData[0];
           const dataKeys = firstDataPoint ? Object.keys(firstDataPoint) : [];
           let options: AgChartOptions;
-          
+
           if (dataKeys.includes('catFinancialView')) {
             options = {
               title: { text: title },
               data: drillData,
-              series: [{ 
-                type: 'bar', 
-                xKey: 'catFinancialView', 
+              series: [{
+                type: 'bar',
+                xKey: 'catFinancialView',
                 yKey: 'value',
                 yName: 'Value',
                 tooltip: { enabled: true }
@@ -514,9 +577,9 @@ const AgChartsPage: React.FC = () => {
             options = {
               title: { text: title },
               data: drillData,
-              series: [{ 
-                type: 'line', 
-                xKey: 'period', 
+              series: [{
+                type: 'line',
+                xKey: 'period',
                 yKey: 'value',
                 yName: 'Value',
                 tooltip: { enabled: true }
@@ -531,28 +594,28 @@ const AgChartsPage: React.FC = () => {
             options = {
               title: { text: title },
               data: drillData,
-              series: [{ 
-                  // @ts-ignore
-                type: 'pie', 
-                angleKey: 'value', 
+              series: [{
+                // @ts-ignore
+                type: 'pie',
+                angleKey: 'value',
                 labelKey: labelKey,
                 tooltip: { enabled: true },
                 calloutLabel: { enabled: true }
               }],
             };
           }
-          
+
           // Update drill-down data and options
           setChartData(prev => ({
             ...prev,
             drillDown: drillData
           }));
-          
+
           setChartOptions(prev => ({
             ...prev,
             drillDown: options
           }));
-          
+
           setDrillDown({
             active: true,
             chartType,
@@ -574,17 +637,29 @@ const AgChartsPage: React.FC = () => {
   return (
     <section className="p-5">
       <h1 className="text-2xl font-bold text-center mb-4">Financial Dashboard - Ag Charts</h1>
-      <FilterBar 
+      {/* <FilterBar 
         years={years} 
         selectedYear={selectedYear} 
         onYearChange={setSelectedYear} 
         onResetDrillDown={resetDrillDown}
         isDrilled={drillDown.active}
+      /> */}
+      <GroupModal
+        isOpen={isGroupModalOpen}
+        onClose={() => setIsGroupModalOpen(false)}
+        onCreateGroup={handleCreateGroup}
       />
-      
+      <div className="flex flex-col mb-4">
+        {dimensions?.groupName && <p className="text-sm text-gray-500">Current Group Name: <span className="capitalize font-bold">{dimensions.groupName}</span></p>}
+        <div>
+          <button onClick={() => setDimensions(null)} className="shadow-xl border bg-red-400 p-2 rounded text-white">Reset Group</button>
+          <button onClick={() => setIsGroupModalOpen(true)} className="shadow-xl border bg-blue-400 p-2 rounded text-white">Create Group</button>
+        </div>
+      </div>
+
       {error && <p className="text-red-500 mb-2">{error}</p>}
       {isLoading && <p className="text-gray-500 mb-2">Loading...</p>}
-      
+
       {drillDown.active ? (
         // Use the separated drill-down component
         <DrillDownChart
