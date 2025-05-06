@@ -131,38 +131,38 @@ const ChartContainer: React.FC<CommonProps & {
 };
 
 // Filter bar component
-const FilterBar: React.FC<{
-  years: string[];
-  selectedYear: string;
-  onYearChange: (year: string) => void;
-  onResetDrillDown?: () => void;
-  isDrilled: boolean;
-}> = ({ years, selectedYear, onYearChange, onResetDrillDown, isDrilled }) => (
-  <div className="mb-6 flex items-center">
-    <label className="mr-2 font-medium">Year:</label>
-    <select
-      value={selectedYear}
-      onChange={(e) => onYearChange(e.target.value)}
-      className="border border-gray-300 rounded px-3 py-2"
-    >
-      <option value="all">All Years</option>
-      {years.map((year) => (
-        <option key={year} value={year}>
-          {year}
-        </option>
-      ))}
-    </select>
+// const FilterBar: React.FC<{
+//   years: string[];
+//   selectedYear: string;
+//   onYearChange: (year: string) => void;
+//   onResetDrillDown?: () => void;
+//   isDrilled: boolean;
+// }> = ({ years, selectedYear, onYearChange, onResetDrillDown, isDrilled }) => (
+//   <div className="mb-6 flex items-center">
+//     <label className="mr-2 font-medium">Year:</label>
+//     <select
+//       value={selectedYear}
+//       onChange={(e) => onYearChange(e.target.value)}
+//       className="border border-gray-300 rounded px-3 py-2"
+//     >
+//       <option value="all">All Years</option>
+//       {years.map((year) => (
+//         <option key={year} value={year}>
+//           {year}
+//         </option>
+//       ))}
+//     </select>
 
-    {isDrilled && (
-      <button
-        onClick={onResetDrillDown}
-        className="ml-4 px-3 py-2 bg-blue-100 text-blue-600 rounded hover:bg-blue-200"
-      >
-        Reset Drill Down
-      </button>
-    )}
-  </div>
-);
+//     {isDrilled && (
+//       <button
+//         onClick={onResetDrillDown}
+//         className="ml-4 px-3 py-2 bg-blue-100 text-blue-600 rounded hover:bg-blue-200"
+//       >
+//         Reset Drill Down
+//       </button>
+//     )}
+//   </div>
+// );
 
 // Separated Drill Down Component
 const DrillDownChart: React.FC<{
@@ -245,25 +245,24 @@ const AgChartsPage: React.FC = () => {
       title: ""
     });
   };
-  console.log(dimensions, 'dimensions');
 
-  useEffect(() => { // remove this
-    if (!isDataLoaded) return;
+  // useEffect(() => { // remove this
+  //   if (!isDataLoaded) return;
 
-    const fetchYears = async () => {
-      try {
-        const result = await executeQuery("SELECT DISTINCT fiscalYear FROM financial_data ORDER BY fiscalYear");
-        if (result.success && result.data) {
-          setYears(result.data.map((row: { fiscalYear: string }) => row.fiscalYear));
-        }
-      } catch (err) {
-        console.error("Failed to fetch years:", err);
-        setError("Failed to load year data");
-      }
-    };
+  //   const fetchYears = async () => {
+  //     try {
+  //       const result = await executeQuery("SELECT DISTINCT fiscalYear FROM financial_data ORDER BY fiscalYear");
+  //       if (result.success && result.data) {
+  //         setYears(result.data.map((row: { fiscalYear: string }) => row.fiscalYear));
+  //       }
+  //     } catch (err) {
+  //       console.error("Failed to fetch years:", err);
+  //       setError("Failed to load year data");
+  //     }
+  //   };
 
-    fetchYears();
-  }, [isDataLoaded, executeQuery]);
+  //   fetchYears();
+  // }, [isDataLoaded, executeQuery]);
 
   const handleCreateGroup = (datas: any) => {
     setDimensions(datas);
