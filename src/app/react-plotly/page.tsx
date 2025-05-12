@@ -361,6 +361,7 @@ const DrillDownChart: React.FC<{
   const handleDownloadImage = () => {
     if (plotRef.current) {
       const plotElement = plotRef.current.el;
+      // @ts-ignore
       Plotly.downloadImage(plotElement, {
         format: 'png',
         filename: `${drillDownState.title.replace(/\s+/g, "_").toLowerCase()}`
@@ -817,6 +818,7 @@ export default function ReactPlotly() {
   // Handle image download functions
   const handleDownloadImage = (plotRef: React.RefObject<any>, title: string) => {
     if (plotRef.current && plotRef.current.el) {
+      // @ts-ignore
       Plotly.downloadImage(plotRef.current.el, {
         format: 'png',
         filename: title.replace(/\s+/g, "_").toLowerCase()
