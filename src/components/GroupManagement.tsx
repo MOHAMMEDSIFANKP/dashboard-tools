@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from "react";
-import { useDuckDBContext } from "../_providers/DuckDBContext";
+import { useDuckDBContext } from "../app/_providers/DuckDBContext";
 
 interface Selection {
   dimension: string;

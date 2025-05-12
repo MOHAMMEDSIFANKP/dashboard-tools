@@ -16,6 +16,10 @@ import {
 } from "chart.js";
 import { Line, Bar, Pie, Doughnut } from "react-chartjs-2";
 import { useDuckDBContext } from "../_providers/DuckDBContext";
+import { GroupModal } from "@/components/GroupManagement";
+import { buildWhereClause } from "@/lib/services/buildWhereClause";
+// Types
+import { Dimensions } from "@/types/Schemas";
 
 ChartJS.register(
   CategoryScale,
@@ -114,46 +118,6 @@ const ChartContainer = forwardRef<HTMLDivElement, ChartContainerProps>(
 
 ChartContainer.displayName = "ChartContainer";
 
-interface FilterBarProps {
-  years: string[];
-  selectedYear: string;
-  onYearChange: (year: string) => void;
-  isDrilled: boolean;
-  onResetDrillDown?: () => void;
-}
-
-const FilterBar: React.FC<FilterBarProps> = ({ 
-  years, 
-  selectedYear, 
-  onYearChange, 
-  isDrilled, 
-  onResetDrillDown 
-}) => (
-  <div className="mb-6 flex items-center">
-    <label className="mr-2 font-medium">Year:</label>
-    <select
-      value={selectedYear}
-      onChange={(e) => onYearChange(e.target.value)}
-      className="border border-gray-300 rounded px-3 py-2"
-    >
-      <option value="all">All Years</option>
-      {years.map((year) => (
-        <option key={year} value={year}>
-          {year}
-        </option>
-      ))}
-    </select>
-    
-    {isDrilled && (
-      <button
-        onClick={onResetDrillDown}
-        className="ml-4 px-3 py-2 bg-blue-100 text-blue-600 rounded hover:bg-blue-200"
-      >
-        Reset Drill Down
-      </button>
-    )}
-  </div>
-);
 
 // Drill Down Chart Component
 const DrillDownChart: React.FC<{
@@ -210,9 +174,7 @@ const DrillDownChart: React.FC<{
 };
 
 export default function ChartJsPage() {
-  const { executeQuery, isDataLoaded } = useDuckDBContext();
-  const [selectedYear, setSelectedYear] = useState<string>("all");
-  const [years, setYears] = useState<string[]>([]);
+  const { executeQuery, isDataLoaded } = useDuckDBContext();  
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
@@ -220,6 +182,9 @@ export default function ChartJsPage() {
   const [barChartData, setBarChartData] = useState<ChartData<'bar'> | null>(null);
   const [pieChartData, setPieChartData] = useState<ChartData<'pie'> | null>(null);
   const [donutChartData, setDonutChartData] = useState<ChartData<'doughnut'> | null>(null);
+
+  const [isGroupModalOpen, setIsGroupModalOpen] = useState<boolean>(false);
+  const [dimensions, setDimensions] = useState<Dimensions | null>(null);
 
   // Drill down state
   const [drillDown, setDrillDown] = useState<DrillDownState>({
@@ -246,28 +211,19 @@ export default function ChartJsPage() {
     setDrillDownData(null);
   };
 
-  useEffect(() => {
-    if (!isDataLoaded) return;
-    const fetchYears = async () => {
-      try {
-        const result = await executeQuery("SELECT DISTINCT fiscalYear FROM financial_data ORDER BY fiscalYear");
-        if (result.success && result.data) {
-          setYears(result.data.map((row: { fiscalYear: string }) => row.fiscalYear));
-        }
-      } catch (err) {
-        console.error(err);
-      }
-    };
-    fetchYears();
-  }, [isDataLoaded, executeQuery]);
+  const handleCreateGroup = (datas: any) => {
+    setDimensions(datas);
+  }
 
   useEffect(() => {
     if (!isDataLoaded) return;
     const fetchChartData = async () => {
       setIsLoading(true);
-      try {
-        const whereClause = selectedYear !== "all" ? `WHERE fiscalYear = '${selectedYear}'` : "";
 
+      const whereClause = buildWhereClause(dimensions);
+
+      try {
+       
         const [lineResult, barResult, pieResult, donutResult] = await Promise.all([
           executeQuery(`
             SELECT period, AVG(revenue) as revenue, AVG(grossMargin) as grossMargin, AVG(netProfit) as netProfit 
@@ -370,7 +326,7 @@ export default function ChartJsPage() {
       }
     };
     fetchChartData();
-  }, [isDataLoaded, selectedYear, executeQuery]);
+  }, [dimensions, isDataLoaded, executeQuery]);
 
   // Handle drill down for line chart
   const handleLineChartClick = async (event: any) => {
@@ -475,7 +431,8 @@ export default function ChartJsPage() {
     if (!isDataLoaded) return;
     
     setIsLoading(true);
-    const whereClause = selectedYear !== "all" ? `AND fiscalYear = '${selectedYear}'` : "";
+    // const whereClause = selectedYear !== "all" ? `AND fiscalYear = '${selectedYear}'` : "";
+    const whereClause = ""
     
     try {
       let query = "";
@@ -680,14 +637,19 @@ export default function ChartJsPage() {
 
   return (
     <section className="p-8 bg-gray-50">
-      <h1 className="text-3xl font-bold text-center mb-8">Financial Dashboard</h1>
-      <FilterBar 
-        years={years} 
-        selectedYear={selectedYear} 
-        onYearChange={setSelectedYear} 
-        isDrilled={drillDown.active} 
-        onResetDrillDown={resetDrillDown}
-      />
+      <h1 className="text-3xl font-bold text-center mb-8">Financial Dashboard - Chart Js</h1>
+    <GroupModal
+           isOpen={isGroupModalOpen}
+           onClose={() => setIsGroupModalOpen(false)}
+           onCreateGroup={handleCreateGroup}
+         />
+         <div className="flex flex-col mb-4">
+           {dimensions?.groupName && <p className="text-sm text-gray-500">Current Group Name: <span className="capitalize font-bold">{dimensions.groupName}</span></p>}
+           <div>
+             <button onClick={() => setDimensions(null)} className="shadow-xl border bg-red-400 p-2 rounded text-white">Reset Group</button>
+             <button onClick={() => setIsGroupModalOpen(true)} className="shadow-xl border bg-blue-400 p-2 rounded text-white">Create Group</button>
+           </div>
+         </div>
 
       {drillDown.active && drillDownData ? (
         <DrillDownChart 

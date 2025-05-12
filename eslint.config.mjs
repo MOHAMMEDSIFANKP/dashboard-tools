@@ -15,4 +15,18 @@ const eslintConfig = [
 
 export default eslintConfig;
 
+// /** @type {import("eslint").Linter.FlatConfig[]} */
+// const eslintConfig = [
+//   {
+//     ignores: ["**/*.js", "**/*.ts", "**/*.tsx"], // Ignore all files from linting
+//   },
+//   {
+//     rules: {
+//       // Disable specific rules globally
+//       "no-unused-vars": "off",
+//       "no-undef": "off",
+//     },
+//   },
+// ];
 
+// export default eslintConfig;

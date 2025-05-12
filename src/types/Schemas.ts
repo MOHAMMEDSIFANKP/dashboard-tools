@@ -1,26 +1,3 @@
-export interface Post {
-    id: number;
-    userId : number;
-    title : string;
-    body: string;
-}
-
-export interface Person {
-    id: number;
-    firstName: string;
-    lastName: string;
-    email: string;
-    age: number;
-    city: string;
-    country: string;
-  }
-
-export type UserSchema = {
-    id: number;
-    name: string;
-    email: string;
-  };
-
 export interface FinancialSchema {
   fiscalYear: string;
   period: string;
@@ -54,3 +31,13 @@ export interface QueryResult {
   data?: any[]
   error?: string
 }
+
+type DimensionSelection = {
+  dimension: string;
+  members: string[];
+};
+
+export type Dimensions = {
+  groupName: string;
+  filteredSelections: DimensionSelection[];
+};

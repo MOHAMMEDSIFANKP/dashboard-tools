@@ -13,7 +13,6 @@ export default function Home() {
     { name: "TanStack Table", href: "/tanStack-table", type: "table" },
     { name: "React Table", href: "/react-table", type: "table" },
 
-    { name: "Dashboard", href: "/dashboard", type: "chart" },
     { name: "AG Charts", href: "/ag-charts", type: "chart" },
     { name: "Chart JS", href: "/chart-js", type: "chart" },
     { name: "React Plotly", href: "/react-plotly", type: "chart" },
