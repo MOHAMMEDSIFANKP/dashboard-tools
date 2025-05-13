@@ -1,11 +1,27 @@
 "use client";
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import Plot from "react-plotly.js";
 import { useDuckDBContext } from "../_providers/DuckDBContext";
 import { GroupModal } from "@/components/GroupManagement";
 import { buildWhereClause } from "@/lib/services/buildWhereClause";
 
+// Constants
+const DEFAULT_CONFIGURATION = {
+  responsive: true,
+  displayModeBar: false,
+  modeBarButtonsToRemove: ['editInChartStudio', 'zoom2d', 'select2d', 'lasso2d', 'autoScale2d', 'resetScale2d']
+};
 
+const CHART_COLORS = [
+  'rgb(75, 192, 192)',
+  'rgb(255, 99, 132)',
+  'rgb(53, 162, 235)',
+  'rgb(255, 206, 86)',
+  'rgb(153, 102, 255)',
+  'rgb(255, 159, 64)'
+];
+
+// Interfaces
 interface ChartContainerProps {
   title: string;
   children: React.ReactNode;
@@ -14,6 +30,24 @@ interface ChartContainerProps {
   isDrilled?: boolean;
   onBack?: () => void;
 }
+
+interface DrillDownState {
+  active: boolean;
+  chartType: 'line' | 'bar' | 'pie' | 'donut';
+  category: string;
+  title: string;
+  dataType?: string;
+}
+
+type DimensionSelection = {
+  dimension: string;
+  members: string[];
+};
+
+type Dimensions = {
+  groupName: string;
+  filteredSelections: DimensionSelection[];
+};
 
 interface LineChartDataPoint {
   period: string;
@@ -30,7 +64,7 @@ interface BarChartDataPoint {
 
 interface PieChartData {
   grossMargin: number;
-  opEx: number;
+  operatingExpenses: number;
   netProfit: number;
   revenue: number;
 }
@@ -40,33 +74,16 @@ interface DonutChartData {
   revenue: number;
 }
 
-// Drill-down state interface
-interface DrillDownState {
-  active: boolean;
-  chartType: string;
-  category: string;
-  title: string;
-  dataType?: string;
-}
 
-type DimensionSelection = {
-  dimension: string;
-  members: string[];
-};
-
-type Dimensions = {
-  groupName: string;
-  filteredSelections: DimensionSelection[];
-};
-
-const ChartContainer: React.FC<ChartContainerProps> = ({
+// Memoized Chart Container Component
+const ChartContainer = React.memo(({
   title,
   children,
   onDownloadCSV,
   onDownloadImage,
   isDrilled,
   onBack
-}) => (
+}: ChartContainerProps) => (
   <div className="bg-white p-6 rounded-lg shadow-md">
     <div className="flex flex-row justify-between items-center">
       <div className="flex items-center">
@@ -97,41 +114,38 @@ const ChartContainer: React.FC<ChartContainerProps> = ({
     </div>
     <div className="">{children}</div>
   </div>
-);
+));
 
 // Drill Down Chart Component
-const DrillDownChart: React.FC<{
+const DrillDownChart = React.memo(({
+  drillDownState,
+  drillDownData,
+  onBack
+}: {
   drillDownState: DrillDownState;
   drillDownData: any;
   onBack: () => void;
-}> = ({ drillDownState, drillDownData, onBack }) => {
+}) => {
   const plotRef = useRef<any>(null);
 
-  // Function to handle image download
-  const handleDownloadImage = () => {
-    if (plotRef.current) {
-      const plotElement = plotRef.current.el;
+  const handleDownloadImage = useCallback(() => {
+    if (plotRef.current?.el) {
       // @ts-ignore
-      Plotly.downloadImage(plotElement, {
+      Plotly.downloadImage(plotRef.current.el, {
         format: 'png',
         filename: `${drillDownState.title.replace(/\s+/g, "_").toLowerCase()}`
       });
     }
-  };
+  }, [drillDownState.title]);
 
-  // Function to handle CSV download
-  const handleDownloadCSV = () => {
+  const handleDownloadCSV = useCallback(() => {
     if (!drillDownData) return;
 
     let csvContent = "data:text/csv;charset=utf-8,";
 
-    // Handle different chart types
     if (drillDownState.chartType === 'bar' || drillDownState.chartType === 'line') {
-      // Get x-axis values
       const xValues = drillDownData[0].x;
       csvContent += ["Category", ...xValues].join(",") + "\n";
-
-      // Add data for each trace
       drillDownData.forEach((trace: any) => {
         csvContent += [trace.name, ...trace.y].join(",") + "\n";
       });
@@ -149,66 +163,27 @@ const DrillDownChart: React.FC<{
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  };
+  }, [drillDownData, drillDownState.title, drillDownState.chartType]);
 
-  // Render the appropriate chart based on drill-down state
-  const renderDrillDownChart = () => {
+  const renderDrillDownChart = useCallback(() => {
+    const commonProps = {
+      ref: plotRef,
+      data: drillDownData,
+      style: { width: "100%", height: "100%" },
+      config: DEFAULT_CONFIGURATION
+    };
+
     switch (drillDownState.chartType) {
       case 'line':
-        return (
-          <Plot
-            ref={plotRef}
-            data={drillDownData}
-            layout={{
-              title: drillDownState.title,
-              autosize: true
-            }}
-            style={{ width: "100%", height: "100%" }}
-            config={DEFAULT_CONFIGURATION}
-          />
-        );
+        return <Plot {...commonProps} layout={{ title: drillDownState.title, autosize: true }} />;
       case 'bar':
-        return (
-          <Plot
-            ref={plotRef}
-            data={drillDownData}
-            layout={{
-              title: drillDownState.title,
-              barmode: 'group',
-              autosize: true
-            }}
-            style={{ width: "100%", height: "100%" }}
-            config={DEFAULT_CONFIGURATION}
-          />
-        );
+        return <Plot {...commonProps} layout={{ title: drillDownState.title, barmode: 'group', autosize: true }} />;
       case 'pie':
-        return (
-          <Plot
-            ref={plotRef}
-            data={drillDownData}
-            layout={{
-              title: drillDownState.title,
-              autosize: true
-            }}
-            style={{ width: "100%", height: "100%" }}
-            config={DEFAULT_CONFIGURATION}
-          />
-        );
+        return <Plot {...commonProps} layout={{ title: drillDownState.title, autosize: true }} />;
       default:
-        return (
-          <Plot
-            ref={plotRef}
-            data={drillDownData}
-            layout={{
-              title: drillDownState.title,
-              autosize: true
-            }}
-            style={{ width: "100%", height: "100%" }}
-            config={DEFAULT_CONFIGURATION}
-          />
-        );
+        return <Plot {...commonProps} layout={{ title: drillDownState.title, autosize: true }} />;
     }
-  };
+  }, [drillDownData, drillDownState.chartType, drillDownState.title]);
 
   return (
     <ChartContainer
@@ -221,23 +196,29 @@ const DrillDownChart: React.FC<{
       {renderDrillDownChart()}
     </ChartContainer>
   );
-};
+});
 
-const DEFAULT_CONFIGURATION = {
-  responsive: true,
-  displayModeBar: false,
-  modeBarButtonsToRemove: ['editInChartStudio', 'zoom2d', 'select2d', 'lasso2d', 'autoScale2d', 'resetScale2d']
-};
-
-export default function ReactPlotly() {
+export default function FinancialDashboard() {
   const { executeQuery, isDataLoaded } = useDuckDBContext();
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [dimensions, setDimensions] = useState<Dimensions | null>(null);
+  const [isGroupModalOpen, setIsGroupModalOpen] = useState<boolean>(false);
 
+  // Chart data states
   const [lineChartData, setLineChartData] = useState<LineChartDataPoint[]>([]);
   const [barChartData, setBarChartData] = useState<BarChartDataPoint[]>([]);
-  const [pieChartData, setPieChartData] = useState<PieChartData | null>(null);
+  const [pieChartData, setPieChartData] = useState<PieChartData | null >(null);
   const [donutChartData, setDonutChartData] = useState<DonutChartData[]>([]);
+
+  // Drill-down state
+  const [drillDown, setDrillDown] = useState<DrillDownState>({
+    active: false,
+    chartType: "bar",
+    category: "",
+    title: ""
+  });
+  const [drillDownData, setDrillDownData] = useState<any>(null);
 
   // Refs for chart components
   const linePlotRef = useRef<any>(null);
@@ -245,334 +226,173 @@ export default function ReactPlotly() {
   const piePlotRef = useRef<any>(null);
   const donutPlotRef = useRef<any>(null);
 
-  // Drill-down state
-  const [drillDown, setDrillDown] = useState<DrillDownState>({
-    active: false,
-    chartType: "",
-    category: "",
-    title: ""
-  });
-  const [drillDownData, setDrillDownData] = useState<any>(null);
-
-  // Group management
-  const [isGroupModalOpen, setIsGroupModalOpen] = useState<boolean>(false);
-  const [dimensions, setDimensions] = useState<Dimensions | null>(null);
-
   // Reset drill down state
-  const resetDrillDown = () => {
+  const resetDrillDown = useCallback(() => {
     setDrillDown({
       active: false,
-      chartType: "",
+      chartType: "bar",
       category: "",
       title: ""
     });
     setDrillDownData(null);
-  };
+  }, []);
 
-  const handleCreateGroup = (datas: any) => {
+  const handleCreateGroup = useCallback((datas: any) => {
     setDimensions(datas);
-    
-  };
+  }, []);
 
-  useEffect(() => {
+  // Fetch all chart data
+  const fetchChartData = useCallback(async () => {
     if (!isDataLoaded) return;
 
-    const fetchChartData = async () => {
-      setIsLoading(true);
+    setIsLoading(true);
+    const whereClause = buildWhereClause(dimensions);
 
-      const whereClause = buildWhereClause(dimensions);
-      try {
-        const [lineRes, barRes, pieRes, donutRes] = await Promise.all([
-          executeQuery(`SELECT period, AVG(revenue) as revenue, AVG(grossMargin) as grossMargin, AVG(netProfit) as netProfit FROM financial_data ${whereClause} GROUP BY period ORDER BY period`),
-          executeQuery(`SELECT period, SUM(revenue) as revenue, SUM(operatingExpenses) as expenses FROM financial_data ${whereClause} GROUP BY period ORDER BY period`),
-          executeQuery(`SELECT SUM(grossMargin) as grossMargin, SUM(operatingExpenses) as operatingExpenses, SUM(netProfit) as netProfit, SUM(revenue) as revenue FROM financial_data ${whereClause}`),
-          executeQuery(`SELECT catAccountingView, SUM(revenue) as revenue FROM financial_data ${whereClause} GROUP BY catAccountingView ORDER BY revenue DESC`)
-        ]);
+    try {
+      const [lineRes, barRes, pieRes, donutRes] = await Promise.all([
+        executeQuery(`SELECT period, AVG(revenue) as revenue, AVG(grossMargin) as grossMargin, AVG(netProfit) as netProfit FROM financial_data ${whereClause} GROUP BY period ORDER BY period`),
+        executeQuery(`SELECT period, SUM(revenue) as revenue, SUM(operatingExpenses) as expenses FROM financial_data ${whereClause} GROUP BY period ORDER BY period`),
+        executeQuery(`SELECT SUM(grossMargin) as grossMargin, SUM(operatingExpenses) as operatingExpenses, SUM(netProfit) as netProfit, SUM(revenue) as revenue FROM financial_data ${whereClause}`),
+        executeQuery(`SELECT catAccountingView, SUM(revenue) as revenue FROM financial_data ${whereClause} GROUP BY catAccountingView ORDER BY revenue DESC`)
+      ]);
 
-        if (lineRes.success) setLineChartData(lineRes.data as LineChartDataPoint[]);
+
+       if (lineRes.success) setLineChartData(lineRes.data as LineChartDataPoint[]);
         if (barRes.success) setBarChartData(barRes.data as BarChartDataPoint[]);
         if (pieRes.success && pieRes.data) setPieChartData(pieRes.data[0] as PieChartData);
         if (donutRes.success) setDonutChartData(donutRes.data as DonutChartData[]);
 
-        setError(null);
-      } catch (err) {
-        setError("Failed to load chart data.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchChartData();
+      setError(null);
+    } catch (err) {
+      setError("Failed to load chart data.");
+      console.error("Error fetching chart data:", err);
+    } finally {
+      setIsLoading(false);
+    }
   }, [dimensions, isDataLoaded, executeQuery]);
 
-  
-  // Add a separate useEffect to handle event binding after data updates
-useEffect(() => {
-  const attachEventHandlers = () => {
-    setTimeout(() => {
-      if (linePlotRef.current && linePlotRef.current.el) {
-        linePlotRef.current.el.on('plotly_click', handleLineChartClick);
-      }
-      
-      if (barPlotRef.current && barPlotRef.current.el) {
-        barPlotRef.current.el.on('plotly_click', handleBarChartClick);
-      }
-      
-      if (piePlotRef.current && piePlotRef.current.el) {
-        piePlotRef.current.el.on('plotly_click', handlePieChartClick);
-      }
-      
-      if (donutPlotRef.current && donutPlotRef.current.el) {
-        donutPlotRef.current.el.on('plotly_click', handleDonutChartClick);
-      }
-    }, 100);
-  };
+  useEffect(() => {
+    fetchChartData();
+  }, [fetchChartData]);
 
-  if (!isLoading && !drillDown.active) {
-    attachEventHandlers();
-  }
-}, [lineChartData, barChartData, pieChartData, donutChartData, isLoading, drillDown.active]);
+  // Event handlers for chart clicks
+  const handleChartClick = useCallback(async (chartType: string, point: any) => {
+    if (!point || !isDataLoaded) return;
 
+    let category = point.x || point.label;
+    let dataType = point.data?.name?.toLowerCase() || point.label;
 
+    await handleDrillDown(chartType, category, dataType);
+  }, [isDataLoaded]);
 
-  // Handle drill down for line chart
-  const handleLineChartClick = async (data: any) => {
+  const handleLineChartClick = useCallback((data: any) => {
+    if (data?.points?.[0]) {
+      handleChartClick('line', data.points[0]);
+    }
+  }, [handleChartClick]);
 
-    if (!data || !data.points || data.points.length === 0) return;
+  const handleBarChartClick = useCallback((data: any) => {
+    if (data?.points?.[0]) {
+      handleChartClick('bar', data.points[0]);
+    }
+  }, [handleChartClick]);
 
-    const point = data.points[0];
-    const period = point.x;
-    const dataType = point.data.name?.toLowerCase() || 'revenue';
+  const handlePieChartClick = useCallback((data: any) => {
+    if (data?.points?.[0]) {
+      handleChartClick('pie', data.points[0]);
+    }
+  }, [handleChartClick]);
 
-    await handleDrillDown('line', period, dataType);
-  };
-  const handleBarChartClick = async (data: any) => {
-    if (!data || !data.points || data.points.length === 0) return;
+  const handleDonutChartClick = useCallback((data: any) => {
+    if (data?.points?.[0]) {
+      handleChartClick('donut', data.points[0]);
+    }
+  }, [handleChartClick]);
 
-    const point = data.points[0];
-    const period = point.x;
-    const dataType = point.data.name?.toLowerCase() || 'revenue';
+  // Attach event handlers after data loads
+  useEffect(() => {
+    if (isLoading || drillDown.active) return;
 
-    await handleDrillDown('bar', period, dataType);
-  };
+    const attachHandlers = () => {
+      if (linePlotRef.current?.el) linePlotRef.current.el.on('plotly_click', handleLineChartClick);
+      if (barPlotRef.current?.el) barPlotRef.current.el.on('plotly_click', handleBarChartClick);
+      if (piePlotRef.current?.el) piePlotRef.current.el.on('plotly_click', handlePieChartClick);
+      if (donutPlotRef.current?.el) donutPlotRef.current.el.on('plotly_click', handleDonutChartClick);
+    };
 
-  // Handle drill down for pie chart
-  const handlePieChartClick = async (data: any) => {
-    if (!data || !data.points || data.points.length === 0) return;
-    
-    const point = data.points[0];
-    const dataType = point.label;
- 
-    await handleDrillDown('pie', '', dataType);
-  };
-
-  // Handle drill down for donut chart
-  const handleDonutChartClick = async (data: any) => {
-    if (!data || !data.points || data.points.length === 0) return;
-
-    const point = data.points[0];
-    const category = point.label;
-
-    await handleDrillDown('donut', category, 'categoryRevenue');
-  };
-
+    const timeoutId = setTimeout(attachHandlers, 100);
+    return () => clearTimeout(timeoutId);
+  }, [isLoading, drillDown.active, handleLineChartClick, handleBarChartClick, handlePieChartClick, handleDonutChartClick]);
 
   // Generic drill down function
-  const handleDrillDown = async (chartType: string, category: string, dataType: string) => {
-  if (!isDataLoaded) return;
+  const handleDrillDown = useCallback(async (chartType: string, category: string, dataType: string) => {
+    if (!isDataLoaded) return;
 
-  setIsLoading(true);
-  try {
-    let query = "";
-    let title = "";
-    let drillChartType = 'bar';
+    setIsLoading(true);
+    try {
+      const dimensionsWhereClause = buildWhereClause(dimensions);
+      let baseWhereClause = dimensionsWhereClause 
+        ? `WHERE ${dimensionsWhereClause.replace('WHERE ', '')}`
+        : '';
 
-    // Build the dimensions WHERE clause
-    const dimensionsWhereClause = buildWhereClause(dimensions);
-    
-    // Prepare the base WHERE clause
-    let baseWhereClause = ``;
+      let query = '';
+      let title = '';
+      let drillChartType: 'line' | 'bar' | 'pie' = 'bar';
 
-    switch (chartType) {
-      case 'bar':
-        if (dataType === 'revenue') {
-          // Combine period filter with dimensions filter
-          baseWhereClause = dimensionsWhereClause 
-            ? `period = '${category}' AND ${dimensionsWhereClause.replace('WHERE ', '')}`
-            : `period = '${category}'`;
+      switch (chartType) {
+        case 'bar':
+          if (dataType === 'revenue') {
+            query = `SELECT fiscalYear, catFinancialView, SUM(revenue) as value 
+                     FROM financial_data 
+                     WHERE period = '${category}' ${baseWhereClause ? 'AND ' + baseWhereClause.replace('WHERE ', '') : ''}
+                     GROUP BY fiscalYear, catFinancialView
+                     ORDER BY fiscalYear, value DESC`;
+            title = `Revenue Breakdown for Period: ${category}`;
+          } else if (dataType === 'expenses') {
+            query = `SELECT fiscalYear, catFinancialView, SUM(operatingExpenses) as value 
+                     FROM financial_data 
+                     WHERE period = '${category}' ${baseWhereClause ? 'AND ' + baseWhereClause.replace('WHERE ', '') : ''}
+                     GROUP BY fiscalYear, catFinancialView
+                     ORDER BY fiscalYear, value DESC`;
+            title = `Expenses Breakdown for Period: ${category}`;
+          }
+          break;
 
-          query = `SELECT fiscalYear, catFinancialView, SUM(revenue) as value 
+        case 'line':
+          query = `SELECT fiscalYear, catFinancialView, SUM(${dataType}) as value 
                    FROM financial_data 
-                   WHERE ${baseWhereClause}
+                   WHERE period = '${category}' ${baseWhereClause ? 'AND ' + baseWhereClause.replace('WHERE ', '') : ''}
                    GROUP BY fiscalYear, catFinancialView
-                   ORDER BY fiscalYear, value DESC`;
-          title = `Revenue Breakdown for Period: ${category}`;
-          drillChartType = 'bar';
-        } else if (dataType === 'expenses') {
-          baseWhereClause = dimensionsWhereClause 
-            ? `period = '${category}' AND ${dimensionsWhereClause.replace('WHERE ', '')}`
-            : `period = '${category}'`;
+                   ORDER BY value DESC`;
+          title = `${dataType.charAt(0).toUpperCase() + dataType.slice(1)} Breakdown for Period: ${category}`;
+          break;
 
-          query = `SELECT fiscalYear, catFinancialView, SUM(operatingExpenses) as value 
+        case 'donut':
+          query = `SELECT fiscalYear, period, SUM(revenue) as value 
                    FROM financial_data 
-                   WHERE ${baseWhereClause}
-                   GROUP BY fiscalYear, catFinancialView
-                   ORDER BY fiscalYear, value DESC`;
-          title = `Expenses Breakdown for Period: ${category}`;
-          drillChartType = 'bar';
-        }
-        break;
+                   WHERE catAccountingView = '${category}' ${baseWhereClause ? 'AND ' + baseWhereClause.replace('WHERE ', '') : ''}
+                   GROUP BY fiscalYear, period
+                   ORDER BY fiscalYear, period`;
+          title = `Revenue Breakdown for Category: ${category}`;
+          drillChartType = 'line';
+          break;
 
-      case 'line':
-        baseWhereClause = dimensionsWhereClause 
-          ? `period = '${category}' AND ${dimensionsWhereClause.replace('WHERE ', '')}`
-          : `period = '${category}'`;
+        case 'pie':
+          const metricColumn = dataType.toLowerCase().replace(/\s+/g, '');
+          query = `SELECT catFinancialView, SUM(${dataType}) as value 
+                   FROM financial_data 
+                   ${baseWhereClause}
+                   GROUP BY catFinancialView
+                   ORDER BY value DESC`;
+          title = `${dataType} Breakdown by Financial Category`;
+          drillChartType = 'pie';
+          break;
+      }
 
-        query = `SELECT fiscalYear, catFinancialView, SUM(${dataType}) as value 
-                 FROM financial_data 
-                 WHERE ${baseWhereClause}
-                 GROUP BY fiscalYear, catFinancialView
-                 ORDER BY value DESC`;
-        title = `${dataType.charAt(0).toUpperCase() + dataType.slice(1)} Breakdown for Period: ${category}`;
-        drillChartType = 'bar';
-        break;
-
-      case 'donut':
-        baseWhereClause = dimensionsWhereClause 
-          ? `catAccountingView = '${category}' AND ${dimensionsWhereClause.replace('WHERE ', '')}`
-          : `catAccountingView = '${category}'`;
-
-        query = `SELECT fiscalYear, period, SUM(revenue) as value 
-                 FROM financial_data 
-                 WHERE ${baseWhereClause}
-                 GROUP BY fiscalYear, period
-                 ORDER BY fiscalYear, period`;
-        title = `Revenue Breakdown for Category: ${category}`;
-        drillChartType = 'line';
-        break;
-
-      case 'pie':
-        const metricColumn = dataType.toLowerCase().replace(/\s+/g, '');
-        baseWhereClause = dimensionsWhereClause 
-          ? dimensionsWhereClause.replace('WHERE ', '')
-          : "1=1";
-
-        query = `SELECT catFinancialView, SUM(${dataType}) as value 
-                 FROM financial_data 
-                 WHERE ${baseWhereClause}
-                 GROUP BY catFinancialView
-                 ORDER BY value DESC`;
-        title = `${dataType} Breakdown by Financial Category`;
-        drillChartType = 'pie';
-        break;
-    }
-
-      // Execute the query and handle results...
       if (query) {
         const result = await executeQuery(query);
-        if (result.success && result.data && result.data.length > 0) {
-          const drillData = result.data;
-
-          // Format data for Plotly based on chart type
-          let formattedData: any = [];
-
-          if (drillChartType === 'bar') {
-            // Group by fiscal year if present
-            if (drillData[0].fiscalYear) {
-              const categories = Array.from(new Set(drillData.map((d: any) => d.catFinancialView)));
-              const fiscalYears = Array.from(new Set(drillData.map((d: any) => d.fiscalYear)));
-
-              formattedData = fiscalYears.map((year: string, idx: number) => {
-                const yearData = drillData.filter((d: any) => d.fiscalYear === year);
-                const colorIdx = idx % 6;
-                const colors = [
-                  'rgb(75, 192, 192)',
-                  'rgb(255, 99, 132)',
-                  'rgb(53, 162, 235)',
-                  'rgb(255, 206, 86)',
-                  'rgb(153, 102, 255)',
-                  'rgb(255, 159, 64)'
-                ];
-
-                return {
-                  x: categories,
-                  y: categories.map(cat => {
-                    const match = yearData.find((d: any) => d.catFinancialView === cat);
-                    return match ? match.value : 0;
-                  }),
-                  type: 'bar',
-                  name: `Year ${year}`,
-                  marker: { color: colors[colorIdx] }
-                };
-              });
-            } else {
-              formattedData = [{
-                x: drillData.map((d: any) => d.catFinancialView || d.period),
-                y: drillData.map((d: any) => d.value),
-                type: 'bar',
-                name: 'Value',
-                marker: { color: 'rgb(75, 192, 192)' }
-              }];
-            }
-          } else if (drillChartType === 'line') {
-            // Group by period if present
-            if (drillData[0].period) {
-              const fiscalYears = Array.from(new Set(drillData.map((d: any) => d.fiscalYear)));
-              const periods = Array.from(new Set(drillData.map((d: any) => d.period))).sort();
-
-              formattedData = fiscalYears.map((year: string, idx: number) => {
-                const yearData = drillData.filter((d: any) => d.fiscalYear === year);
-                const colorIdx = idx % 6;
-                const colors = [
-                  'rgb(75, 192, 192)',
-                  'rgb(255, 99, 132)',
-                  'rgb(53, 162, 235)',
-                  'rgb(255, 206, 86)',
-                  'rgb(153, 102, 255)',
-                  'rgb(255, 159, 64)'
-                ];
-
-                return {
-                  x: periods,
-                  y: periods.map(period => {
-                    const match = yearData.find((d: any) => d.period === period);
-                    return match ? match.value : 0;
-                  }),
-                  type: 'scatter',
-                  mode: 'lines+markers',
-                  name: `Year ${year}`,
-                  line: { color: colors[colorIdx] }
-                };
-              });
-            } else {
-              formattedData = [{
-                x: drillData.map((d: any) => d.period || d.fiscalYear),
-                y: drillData.map((d: any) => d.value),
-                type: 'scatter',
-                mode: 'lines+markers',
-                name: 'Value',
-                line: { color: 'rgb(75, 192, 192)' }
-              }];
-            }
-          } else if (drillChartType === 'pie') {
-            formattedData = [{
-              values: drillData.map((d: any) => d.value),
-              labels: drillData.map((d: any) => d.catFinancialView),
-              type: 'pie',
-              marker: {
-                colors: [
-                  'rgba(75, 192, 192, 0.6)',
-                  'rgba(255, 99, 132, 0.6)',
-                  'rgba(53, 162, 235, 0.6)',
-                  'rgba(255, 206, 86, 0.6)',
-                  'rgba(153, 102, 255, 0.6)',
-                  'rgba(255, 159, 64, 0.6)'
-                ]
-              }
-            }];
-          }
-
-          // Set drill-down data and state
+        if (result.success && result.data?.length) {
+          const formattedData = formatDrillDownData(result.data, drillChartType);
           setDrillDownData(formattedData);
           setDrillDown({
             active: true,
@@ -591,53 +411,104 @@ useEffect(() => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [dimensions, isDataLoaded, executeQuery]);
 
-  // Handle image download functions
-  const handleDownloadImage = (plotRef: React.RefObject<any>, title: string) => {
-    if (plotRef.current && plotRef.current.el) {
+  // Format drill down data for Plotly
+  const formatDrillDownData = useCallback((data: any[], chartType: 'line' | 'bar' | 'pie') => {
+    if (chartType === 'bar') {
+      if (data[0]?.fiscalYear) {
+        const categories = Array.from(new Set(data.map(d => d.catFinancialView)));
+        const fiscalYears = Array.from(new Set(data.map(d => d.fiscalYear)));
+
+        return fiscalYears.map((year, idx) => ({
+          x: categories,
+          y: categories.map(cat => {
+            const match = data.find(d => d.fiscalYear === year && d.catFinancialView === cat);
+            return match ? match.value : 0;
+          }),
+          type: 'bar',
+          name: `Year ${year}`,
+          marker: { color: CHART_COLORS[idx % CHART_COLORS.length] }
+        }));
+      }
+      return [{
+        x: data.map(d => d.catFinancialView || d.period),
+        y: data.map(d => d.value),
+        type: 'bar',
+        name: 'Value',
+        marker: { color: CHART_COLORS[0] }
+      }];
+    } else if (chartType === 'line') {
+      if (data[0]?.period) {
+        const fiscalYears = Array.from(new Set(data.map(d => d.fiscalYear)));
+        const periods = Array.from(new Set(data.map(d => d.period))).sort();
+
+        return fiscalYears.map((year, idx) => ({
+          x: periods,
+          y: periods.map(period => {
+            const match = data.find(d => d.fiscalYear === year && d.period === period);
+            return match ? match.value : 0;
+          }),
+          type: 'scatter',
+          mode: 'lines+markers',
+          name: `Year ${year}`,
+          line: { color: CHART_COLORS[idx % CHART_COLORS.length] }
+        }));
+      }
+      return [{
+        x: data.map(d => d.period || d.fiscalYear),
+        y: data.map(d => d.value),
+        type: 'scatter',
+        mode: 'lines+markers',
+        name: 'Value',
+        line: { color: CHART_COLORS[0] }
+      }];
+    } else if (chartType === 'pie') {
+      return [{
+        values: data.map(d => d.value),
+        labels: data.map(d => d.catFinancialView),
+        type: 'pie',
+        marker: { colors: CHART_COLORS }
+      }];
+    }
+    return [];
+  }, []);
+
+  // Handle downloads
+  const handleDownloadImage = useCallback((plotRef: React.RefObject<any>, title: string) => {
+    if (plotRef.current?.el) {
       // @ts-ignore
       Plotly.downloadImage(plotRef.current.el, {
         format: 'png',
         filename: title.replace(/\s+/g, "_").toLowerCase()
       });
     }
-  };
+  }, []);
 
-  // Handle CSV download functions
-  const handleDownloadCSV = (chartData: any, title: string, chartType: string) => {
+  const handleDownloadCSV = useCallback((chartData: any, title: string, chartType: string) => {
     if (!chartData) return;
 
     let csvContent = "data:text/csv;charset=utf-8,";
 
     if (chartType === 'line') {
-      // For line chart
-      const periods = lineChartData.map(d => d.period);
       csvContent += ["Period", "Revenue", "Gross Margin", "Net Profit"].join(",") + "\n";
-
-      lineChartData.forEach((data) => {
+      chartData.forEach((data: any) => {
         csvContent += [data.period, data.revenue, data.grossMargin, data.netProfit].join(",") + "\n";
       });
     } else if (chartType === 'bar') {
-      // For bar chart
       csvContent += ["Period", "Revenue", "Expenses"].join(",") + "\n";
-
-      barChartData.forEach((data) => {
+      chartData.forEach((data: any) => {
         csvContent += [data.period, data.revenue, data.expenses].join(",") + "\n";
       });
-    } else if (chartType === 'pie') {
-      // For pie chart
+    } else if (chartType === 'pie' && pieChartData) {
       csvContent += "Category,Value\n";
-      if (pieChartData) {
-        csvContent += `Revenue,${pieChartData.revenue}\n`;
-        csvContent += `Gross Margin,${pieChartData.grossMargin}\n`;
-        csvContent += `Net Profit,${pieChartData.netProfit}\n`;
-        csvContent += `Operating Expenses,${pieChartData.opEx}\n`;
-      }
+      csvContent += `Revenue,${pieChartData.revenue}\n`;
+      csvContent += `Gross Margin,${pieChartData.grossMargin}\n`;
+      csvContent += `Net Profit,${pieChartData.netProfit}\n`;
+      csvContent += `Operating Expenses,${pieChartData.operatingExpenses}\n`;
     } else if (chartType === 'donut') {
-      // For donut chart
       csvContent += "Category,Revenue\n";
-      donutChartData.forEach((data) => {
+      chartData.forEach((data: any) => {
         csvContent += `${data.catAccountingView},${data.revenue}\n`;
       });
     }
@@ -649,7 +520,7 @@ useEffect(() => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  };
+  }, [pieChartData]);
 
   if (isLoading) {
     return <div className="p-8 text-center">Loading financial data...</div>;
@@ -661,11 +532,9 @@ useEffect(() => {
 
   return (
     <section className="p-8 bg-gray-50">
-      <h1 className="text-3xl font-bold text-center mb-8">Financial Dashboard React Plotly</h1>
+      <h1 className="text-3xl font-bold text-center mb-8">Financial Dashboard</h1>
 
       <div className="flex flex-row justify-between items-center mb-6">
-        {/* <FilterBar years={years} selectedYear={selectedYear} onYearChange={setSelectedYear} /> */}
-
         <div>
           <GroupModal
             isOpen={isGroupModalOpen}
@@ -673,10 +542,24 @@ useEffect(() => {
             onCreateGroup={handleCreateGroup}
           />
           <div className="flex flex-col mb-4">
-            {dimensions?.groupName && <p className="text-sm text-gray-500">Current Group Name: <span className="capitalize font-bold">{dimensions.groupName}</span></p>}
+            {dimensions?.groupName && (
+              <p className="text-sm text-gray-500">
+                Current Group Name: <span className="capitalize font-bold">{dimensions.groupName}</span>
+              </p>
+            )}
             <div>
-              <button onClick={() => setDimensions(null)} className="shadow-xl border bg-red-400 p-2 rounded text-white mr-2">Reset Group</button>
-              <button onClick={() => setIsGroupModalOpen(true)} className="shadow-xl border bg-blue-400 p-2 rounded text-white">Create Group</button>
+              <button 
+                onClick={() => setDimensions(null)} 
+                className="shadow-xl border bg-red-400 p-2 rounded text-white mr-2"
+              >
+                Reset Group
+              </button>
+              <button 
+                onClick={() => setIsGroupModalOpen(true)} 
+                className="shadow-xl border bg-blue-400 p-2 rounded text-white"
+              >
+                Create Group
+              </button>
             </div>
           </div>
         </div>
@@ -700,24 +583,24 @@ useEffect(() => {
               ref={linePlotRef}
               data={[
                 {
-                  x: lineChartData.map((d) => d.period),
-                  y: lineChartData.map((d) => d.revenue),
+                  x: lineChartData.map(d => d.period),
+                  y: lineChartData.map(d => d.revenue),
                   type: "scatter",
                   mode: "lines+markers",
                   name: "Revenue",
                   line: { color: "blue" },
                 },
                 {
-                  x: lineChartData.map((d) => d.period),
-                  y: lineChartData.map((d) => d.grossMargin),
+                  x: lineChartData.map(d => d.period),
+                  y: lineChartData.map(d => d.grossMargin),
                   type: "scatter",
                   mode: "lines+markers",
                   name: "GrossMargin",
                   line: { color: "purple" },
                 },
                 {
-                  x: lineChartData.map((d) => d.period),
-                  y: lineChartData.map((d) => d.netProfit),
+                  x: lineChartData.map(d => d.period),
+                  y: lineChartData.map(d => d.netProfit),
                   type: "scatter",
                   mode: "lines+markers",
                   name: "NetProfit",
@@ -727,14 +610,10 @@ useEffect(() => {
               layout={{
                 title: "Monthly Performance",
                 autosize: true,
-                xaxis: {
-                  tickformat: 'digits'
-                }
-
+                xaxis: { tickformat: 'digits' }
               }}
               style={{ width: "100%", height: "100%" }}
               config={DEFAULT_CONFIGURATION}
-              //onClick={handleLineChartClick}
             />
           </ChartContainer>
 
@@ -744,19 +623,19 @@ useEffect(() => {
             onDownloadImage={() => handleDownloadImage(barPlotRef, "Revenue_vs_Expenses")}
           >
             <Plot
-            key={`bar-chart-${dimensions?.groupName || 'default'}`}
+              key={`bar-chart-${dimensions?.groupName || 'default'}`}
               ref={barPlotRef}
               data={[
                 {
-                  x: barChartData.map((d) => d.period),
-                  y: barChartData.map((d) => d.revenue),
+                  x: barChartData.map(d => d.period),
+                  y: barChartData.map(d => d.revenue),
                   type: "bar",
                   name: "Revenue",
                   marker: { color: "teal" },
                 },
                 {
-                  x: barChartData.map((d) => d.period),
-                  y: barChartData.map((d) => d.expenses),
+                  x: barChartData.map(d => d.period),
+                  y: barChartData.map(d => d.expenses),
                   type: "bar",
                   name: "Expenses",
                   marker: { color: "orange" },
@@ -766,67 +645,55 @@ useEffect(() => {
                 title: "Revenue vs Operating Expenses",
                 barmode: "group",
                 autosize: true,
-                xaxis: {
-                  tickformat: 'digits'
-                }
+                xaxis: { tickformat: 'digits' }
               }}
-              // style={{ width: "100%", height: "100%" }}
               config={DEFAULT_CONFIGURATION}
-             // onClick={handleBarChartClick}
             />
           </ChartContainer>
-          <ChartContainer title="Financial Breakdown (Pie)"
+
+          <ChartContainer
+            title="Financial Breakdown (Pie)"
             onDownloadCSV={() => handleDownloadCSV(pieChartData, "Revenue", "line")}
             onDownloadImage={() => handleDownloadImage(piePlotRef, "Revenue")}
           >
             <Plot
-            key={`pie-chart-${dimensions?.groupName || 'default'}`}
+              key={`pie-chart-${dimensions?.groupName || 'default'}`}
               ref={piePlotRef}
-              data={[
-                {
-                  values: [
-                    pieChartData?.revenue || 0,
-                    pieChartData?.grossMargin || 0,
-                    pieChartData?.netProfit || 0,
-                    pieChartData?.opEx || 0,
-                  ],
-                  labels: ["Revenue", "GrossMargin", "NetProfit", "OperatingExpenses"],
-                  type: "pie",
-                },
-              ]}
+              data={[{
+                values: [
+                  pieChartData?.revenue || 0,
+                  pieChartData?.grossMargin || 0,
+                  pieChartData?.netProfit || 0,
+                  pieChartData?.operatingExpenses || 0,
+                ],
+                labels: ["Revenue", "GrossMargin", "NetProfit", "OperatingExpenses"],
+                type: "pie",
+              }]}
               layout={{ title: "Financial Distribution" }}
-              // style={{ width: "100%", height: "100%" }}
-              config={{
-                responsive: true,
-                displayModeBar: false,
-                modeBarButtonsToRemove: ['toImage', 'editInChartStudio', 'zoom2d', 'select2d', 'lasso2d', 'autoScale2d', 'resetScale2d']
-              }}
-             // onClick={handlePieChartClick}
+              config={DEFAULT_CONFIGURATION}
             />
           </ChartContainer>
 
-          <ChartContainer title="Category-wise Revenue (Donut)"
+          <ChartContainer
+            title="Category-wise Revenue (Donut)"
             onDownloadCSV={() => handleDownloadCSV(donutChartData, "Revenue_by_Category", "line")}
             onDownloadImage={() => handleDownloadImage(donutPlotRef, "Revenue_by_Category")}
           >
             <Plot
-            key={`donut-chart-${dimensions?.groupName || 'default'}`}
+              key={`donut-chart-${dimensions?.groupName || 'default'}`}
               ref={donutPlotRef}
-              data={[
-                {
-                  values: donutChartData.map((d) => d.revenue),
-                  labels: donutChartData.map((d) => d.catAccountingView),
-                  type: "pie",
-                  hole: 0.5,
-                },
-              ]}
+              data={[{
+                values: donutChartData.map(d => d.revenue),
+                labels: donutChartData.map(d => d.catAccountingView),
+                type: "pie",
+                hole: 0.5,
+              }]}
               layout={{ title: "Revenue by Category" }}
-              // style={{ width: "100%", height: "100%" }}
               config={DEFAULT_CONFIGURATION}
-             // onClick={handleDonutChartClick}
             />
           </ChartContainer>
-        </div>)}
+        </div>
+      )}
     </section>
   );
-}
+};
