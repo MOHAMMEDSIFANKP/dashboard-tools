@@ -1,253 +1,3 @@
-// "use client";
-// import React, { useEffect, useState } from "react";
-// import Plot from "react-plotly.js";
-// import { useDuckDBContext } from "../_providers/DuckDBContext";
-
-// // Interfaces
-// interface FilterBarProps {
-//   years: string[];
-//   selectedYear: string;
-//   onYearChange: (year: string) => void;
-// }
-
-// interface ChartContainerProps {
-//   title: string;
-//   children: React.ReactNode;
-// }
-
-// interface LineChartDataPoint {
-//   period: string;
-//   revenue: number;
-//   grossMargin: number;
-//   netProfit: number;
-// }
-
-// interface BarChartDataPoint {
-//   period: string;
-//   revenue: number;
-//   expenses: number;
-// }
-
-// interface PieChartData {
-//   grossMargin: number;
-//   opEx: number;
-//   netProfit: number;
-//   revenue: number;
-// }
-
-// interface DonutChartData {
-//   catAccountingView: string;
-//   revenue: number;
-// }
-
-// export default function ReactPlotly() {
-//   const { executeQuery, isDataLoaded } = useDuckDBContext();
-//   const [selectedYear, setSelectedYear] = useState<string>("all");
-//   const [years, setYears] = useState<string[]>([]);
-//   const [isLoading, setIsLoading] = useState<boolean>(true);
-//   const [error, setError] = useState<string | null>(null);
-
-//   const [lineChartData, setLineChartData] = useState<LineChartDataPoint[]>([]);
-//   const [barChartData, setBarChartData] = useState<BarChartDataPoint[]>([]);
-//   const [pieChartData, setPieChartData] = useState<PieChartData | null>(null);
-//   const [donutChartData, setDonutChartData] = useState<DonutChartData[]>([]);
-
-//   useEffect(() => {
-//     if (!isDataLoaded) return;
-
-//     const fetchYears = async () => {
-//       try {
-//         const result = await executeQuery("SELECT DISTINCT fiscalYear FROM financial_data ORDER BY fiscalYear");
-//         if (result.success && result.data) {
-//           setYears(result.data.map((row: { fiscalYear: string }) => row.fiscalYear));
-//         }
-//       } catch (err) {
-//         console.error("Failed to fetch years:", err);
-//       }
-//     };
-
-//     fetchYears();
-//   }, [isDataLoaded, executeQuery]);
-
-//   useEffect(() => {
-//     if (!isDataLoaded) return;
-
-//     const fetchChartData = async () => {
-//       setIsLoading(true);
-//       const whereClause = selectedYear !== "all" ? `WHERE fiscalYear = '${selectedYear}'` : "";
-
-//       try {
-//         const [lineRes, barRes, pieRes, donutRes] = await Promise.all([
-//           executeQuery(`
-//             SELECT period, AVG(revenue) as revenue, AVG(grossMargin) as grossMargin, AVG(netProfit) as netProfit 
-//             FROM financial_data ${whereClause}
-//             GROUP BY period ORDER BY period
-//           `),
-//           executeQuery(`
-//             SELECT period, SUM(revenue) as revenue, SUM(operatingExpenses) as expenses 
-//             FROM financial_data ${whereClause}
-//             GROUP BY period ORDER BY period
-//           `),
-//           executeQuery(`
-//             SELECT SUM(grossMargin) as grossMargin, SUM(operatingExpenses) as opEx, 
-//                    SUM(netProfit) as netProfit, SUM(revenue) as revenue 
-//             FROM financial_data ${whereClause}
-//           `),
-//           executeQuery(`
-//             SELECT catAccountingView, SUM(revenue) as revenue 
-//             FROM financial_data ${whereClause}
-//             GROUP BY catAccountingView ORDER BY revenue DESC
-//           `)
-//         ]);
-
-//         if (lineRes.success) setLineChartData(lineRes.data as LineChartDataPoint[]);
-//         if (barRes.success) setBarChartData(barRes.data as BarChartDataPoint[]);
-//         if (pieRes.success && pieRes.data) setPieChartData(pieRes.data[0] as PieChartData);
-//         if (donutRes.success) setDonutChartData(donutRes.data as DonutChartData[]);
-    
-//         setError(null);
-//       } catch (err) {
-//         setError("Failed to load chart data.");
-//       } finally {
-//         setIsLoading(false);
-//       }
-//     };
-
-//     fetchChartData();
-//   }, [isDataLoaded, selectedYear, executeQuery]);
-
-//   if (isLoading) {
-//     return <div className="p-8 text-center">Loading financial data...</div>;
-//   }
-
-//   if (error) {
-//     return <div className="p-4 text-red-600">Error: {error}</div>;
-//   }
-
-//   return (
-//     <section className="p-8 bg-gray-50">
-//       <h1 className="text-3xl font-bold text-center mb-8">Financial Dashboard React Plotly</h1>
-//       <FilterBar years={years} selectedYear={selectedYear} onYearChange={setSelectedYear} />
-
-//       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-//         <ChartContainer title="Monthly Performance (Line)">
-//           <Plot
-//             data={[
-//               {
-//                 x: lineChartData.map((d) => d.period),
-//                 y: lineChartData.map((d) => d.revenue),
-//                 type: "scatter",
-//                 mode: "lines+markers",
-//                 name: "Revenue",
-//                 line: { color: "blue" },
-//               },
-//               {
-//                 x: lineChartData.map((d) => d.period),
-//                 y: lineChartData.map((d) => d.grossMargin),
-//                 type: "scatter",
-//                 mode: "lines+markers",
-//                 name: "Gross Margin",
-//                 line: { color: "purple" },
-//               },
-//               {
-//                 x: lineChartData.map((d) => d.period),
-//                 y: lineChartData.map((d) => d.netProfit),
-//                 type: "scatter",
-//                 mode: "lines+markers",
-//                 name: "Net Profit",
-//                 line: { color: "green" },
-//               },
-//             ]}
-//             layout={{ title: "Monthly Performance" }}
-//             style={{ width: "100%", height: "100%" }}
-//           />
-//         </ChartContainer>
-
-//         <ChartContainer title="Revenue vs Expenses (Bar)">
-//           <Plot
-//             data={[
-//               {
-//                 x: barChartData.map((d) => d.period),
-//                 y: barChartData.map((d) => d.revenue),
-//                 type: "bar",
-//                 name: "Revenue",
-//                 marker: { color: "teal" },
-//               },
-//               {
-//                 x: barChartData.map((d) => d.period),
-//                 y: barChartData.map((d) => d.expenses),
-//                 type: "bar",
-//                 name: "Expenses",
-//                 marker: { color: "orange" },
-//               },
-//             ]}
-//             layout={{ title: "Revenue vs Operating Expenses", barmode: "group" }}
-//             style={{ width: "100%", height: "100%" }}
-//           />
-//         </ChartContainer>
-
-//         <ChartContainer title="Financial Breakdown (Pie)">
-//           <Plot
-//             data={[
-//               {
-//                 values: [
-//                   pieChartData?.revenue || 0,
-//                   pieChartData?.grossMargin || 0,
-//                   pieChartData?.netProfit || 0,
-//                   pieChartData?.opEx || 0,
-//                 ],
-//                 labels: ["Revenue", "Gross Margin", "Net Profit", "Operating Expenses"],
-//                 type: "pie",
-//               },
-//             ]}
-//             layout={{ title: "Financial Distribution" }}
-//             style={{ width: "100%", height: "100%" }}
-//           />
-//         </ChartContainer>
-
-//         <ChartContainer title="Category-wise Revenue (Donut)">
-//           <Plot
-//             data={[
-//               {
-//                 values: donutChartData.map((d) => d.revenue),
-//                 labels: donutChartData.map((d) => d.catAccountingView),
-//                 type: "pie",
-//                 hole: 0.5,
-//               },
-//             ]}
-//             layout={{ title: "Revenue by Category" }}
-//             style={{ width: "100%", height: "100%" }}
-//           />
-//         </ChartContainer>
-//       </div>
-//     </section>
-//   );
-// }
-
-// const ChartContainer: React.FC<ChartContainerProps> = ({ title, children }) => (
-//   <div className="bg-white p-6 rounded-lg shadow-md">
-//     <h2 className="text-xl font-semibold mb-4">{title}</h2>
-//     <div className="">{children}</div>
-//   </div>
-// );
-
-// const FilterBar: React.FC<FilterBarProps> = ({ years, selectedYear, onYearChange }) => (
-//   <div className="mb-6">
-//     <label className="mr-2 font-medium">Year:</label>
-//     <select
-//       value={selectedYear}
-//       onChange={(e) => onYearChange(e.target.value)}
-//       className="border border-gray-300 rounded px-3 py-2"
-//     >
-//       <option value="all">All Years</option>
-//       {years.map((year) => (
-//         <option key={year} value={year}>
-//           {year}
-//         </option>
-//       ))}
-//     </select>
-//   </div>
-// );
 "use client";
 import React, { useEffect, useState, useRef } from "react";
 import Plot from "react-plotly.js";
@@ -521,6 +271,7 @@ export default function ReactPlotly() {
 
   const handleCreateGroup = (datas: any) => {
     setDimensions(datas);
+    
   };
 
   useEffect(() => {
@@ -554,9 +305,38 @@ export default function ReactPlotly() {
     fetchChartData();
   }, [dimensions, isDataLoaded, executeQuery]);
 
+  
+  // Add a separate useEffect to handle event binding after data updates
+useEffect(() => {
+  const attachEventHandlers = () => {
+    setTimeout(() => {
+      if (linePlotRef.current && linePlotRef.current.el) {
+        linePlotRef.current.el.on('plotly_click', handleLineChartClick);
+      }
+      
+      if (barPlotRef.current && barPlotRef.current.el) {
+        barPlotRef.current.el.on('plotly_click', handleBarChartClick);
+      }
+      
+      if (piePlotRef.current && piePlotRef.current.el) {
+        piePlotRef.current.el.on('plotly_click', handlePieChartClick);
+      }
+      
+      if (donutPlotRef.current && donutPlotRef.current.el) {
+        donutPlotRef.current.el.on('plotly_click', handleDonutChartClick);
+      }
+    }, 100);
+  };
+
+  if (!isLoading && !drillDown.active) {
+    attachEventHandlers();
+  }
+}, [lineChartData, barChartData, pieChartData, donutChartData, isLoading, drillDown.active]);
+
+
+
   // Handle drill down for line chart
   const handleLineChartClick = async (data: any) => {
-    console.log(data, "line chart data");
 
     if (!data || !data.points || data.points.length === 0) return;
 
@@ -579,11 +359,11 @@ export default function ReactPlotly() {
   // Handle drill down for pie chart
   const handlePieChartClick = async (data: any) => {
     if (!data || !data.points || data.points.length === 0) return;
-
+    
     const point = data.points[0];
     const dataType = point.label;
-
-    await handleDrillDown('pie', dataType, 'financialDistribution');
+ 
+    await handleDrillDown('pie', '', dataType);
   };
 
   // Handle drill down for donut chart
@@ -599,95 +379,93 @@ export default function ReactPlotly() {
 
   // Generic drill down function
   const handleDrillDown = async (chartType: string, category: string, dataType: string) => {
-    if (!isDataLoaded) return;
+  if (!isDataLoaded) return;
 
-    setIsLoading(true);
-    try {
-      let query = "";
-      let title = "";
-      let drillChartType = 'bar';
+  setIsLoading(true);
+  try {
+    let query = "";
+    let title = "";
+    let drillChartType = 'bar';
 
-      // Prepare the base WHERE clause - this is the key change
-      let baseWhereClause = ``;
+    // Build the dimensions WHERE clause
+    const dimensionsWhereClause = buildWhereClause(dimensions);
+    
+    // Prepare the base WHERE clause
+    let baseWhereClause = ``;
 
-      switch (chartType) {
-        case 'bar':
-          if (dataType === 'revenue') {
-            // Start with the specific filter condition
-            baseWhereClause = `period = '${category}'`;
-            // If we have dimension filters, add them with AND
-            // if (dimensionsWhereClause) {
-            //   baseWhereClause += ` AND ${dimensionsWhereClause}`;
-            // }
+    switch (chartType) {
+      case 'bar':
+        if (dataType === 'revenue') {
+          // Combine period filter with dimensions filter
+          baseWhereClause = dimensionsWhereClause 
+            ? `period = '${category}' AND ${dimensionsWhereClause.replace('WHERE ', '')}`
+            : `period = '${category}'`;
 
-            query = `SELECT fiscalYear, catFinancialView, SUM(revenue) as value 
-                     FROM financial_data 
-                     WHERE period = '${category}'
-                     GROUP BY fiscalYear, catFinancialView
-                     ORDER BY fiscalYear, value DESC`;
-            title = `Revenue Breakdown for Period: ${category}`;
-            drillChartType = 'bar';
-          } else if (dataType === 'expenses') {
-            baseWhereClause = `period = '${category}'`;
-            // if (dimensionsWhereClause) {
-            //   baseWhereClause += ` AND ${dimensionsWhereClause}`;
-            // }
-
-            query = `SELECT fiscalYear, catFinancialView, SUM(operatingExpenses) as value 
-                     FROM financial_data 
-                     WHERE period = '${category}'
-                     GROUP BY fiscalYear, catFinancialView
-                     ORDER BY fiscalYear, value DESC`;
-            title = `Expenses Breakdown for Period: ${category}`;
-            drillChartType = 'bar';
-          }
-          break;
-
-        case 'line':
-          let columnName = dataType.toLowerCase().replace(/\s+/g, '');
-          baseWhereClause = `period = '${category}'`;
-          // if (dimensionsWhereClause) {
-          //   baseWhereClause += ` AND ${dimensionsWhereClause}`;
-          // }
-
-          query = `SELECT fiscalYear, catFinancialView, SUM(${dataType}) as value 
+          query = `SELECT fiscalYear, catFinancialView, SUM(revenue) as value 
                    FROM financial_data 
-                   WHERE period = '${category}'
+                   WHERE ${baseWhereClause}
                    GROUP BY fiscalYear, catFinancialView
-                   ORDER BY value DESC`;
-          title = `${dataType.charAt(0).toUpperCase() + dataType.slice(1)} Breakdown for Period: ${category}`;
+                   ORDER BY fiscalYear, value DESC`;
+          title = `Revenue Breakdown for Period: ${category}`;
           drillChartType = 'bar';
-          break;
+        } else if (dataType === 'expenses') {
+          baseWhereClause = dimensionsWhereClause 
+            ? `period = '${category}' AND ${dimensionsWhereClause.replace('WHERE ', '')}`
+            : `period = '${category}'`;
 
-        case 'donut':
-          baseWhereClause = `catAccountingView = '${category}'`;
-          // if (dimensionsWhereClause) {
-          //   baseWhereClause += ` AND ${dimensionsWhereClause}`;
-          // }
-
-          query = `SELECT fiscalYear, period, SUM(revenue) as value 
+          query = `SELECT fiscalYear, catFinancialView, SUM(operatingExpenses) as value 
                    FROM financial_data 
-                   WHERE catAccountingView = '${category}'
-                   GROUP BY fiscalYear, period
-                   ORDER BY fiscalYear, period`;
-          title = `Revenue Breakdown for Category: ${category}`;
-          drillChartType = 'line';
-          break;
+                   WHERE ${baseWhereClause}
+                   GROUP BY fiscalYear, catFinancialView
+                   ORDER BY fiscalYear, value DESC`;
+          title = `Expenses Breakdown for Period: ${category}`;
+          drillChartType = 'bar';
+        }
+        break;
 
-        case 'pie':
-          const metricColumn = dataType.toLowerCase().replace(/\s+/g, '');
-          // For pie chart, we might not need a specific filter
-          // baseWhereClause = dimensionsWhereClause ? dimensionsWhereClause : "1=1";
+      case 'line':
+        baseWhereClause = dimensionsWhereClause 
+          ? `period = '${category}' AND ${dimensionsWhereClause.replace('WHERE ', '')}`
+          : `period = '${category}'`;
 
-          query = `SELECT catFinancialView, SUM(${category}) as value 
-                     FROM financial_data 
-                     WHERE 1=1
-                     GROUP BY catFinancialView
-                     ORDER BY value DESC`;
-          title = `${dataType} Breakdown by Financial Category`;
-          drillChartType = 'pie';
-          break;
-      }
+        query = `SELECT fiscalYear, catFinancialView, SUM(${dataType}) as value 
+                 FROM financial_data 
+                 WHERE ${baseWhereClause}
+                 GROUP BY fiscalYear, catFinancialView
+                 ORDER BY value DESC`;
+        title = `${dataType.charAt(0).toUpperCase() + dataType.slice(1)} Breakdown for Period: ${category}`;
+        drillChartType = 'bar';
+        break;
+
+      case 'donut':
+        baseWhereClause = dimensionsWhereClause 
+          ? `catAccountingView = '${category}' AND ${dimensionsWhereClause.replace('WHERE ', '')}`
+          : `catAccountingView = '${category}'`;
+
+        query = `SELECT fiscalYear, period, SUM(revenue) as value 
+                 FROM financial_data 
+                 WHERE ${baseWhereClause}
+                 GROUP BY fiscalYear, period
+                 ORDER BY fiscalYear, period`;
+        title = `Revenue Breakdown for Category: ${category}`;
+        drillChartType = 'line';
+        break;
+
+      case 'pie':
+        const metricColumn = dataType.toLowerCase().replace(/\s+/g, '');
+        baseWhereClause = dimensionsWhereClause 
+          ? dimensionsWhereClause.replace('WHERE ', '')
+          : "1=1";
+
+        query = `SELECT catFinancialView, SUM(${dataType}) as value 
+                 FROM financial_data 
+                 WHERE ${baseWhereClause}
+                 GROUP BY catFinancialView
+                 ORDER BY value DESC`;
+        title = `${dataType} Breakdown by Financial Category`;
+        drillChartType = 'pie';
+        break;
+    }
 
       // Execute the query and handle results...
       if (query) {
@@ -934,7 +712,7 @@ export default function ReactPlotly() {
                   y: lineChartData.map((d) => d.grossMargin),
                   type: "scatter",
                   mode: "lines+markers",
-                  name: "Gross Margin",
+                  name: "GrossMargin",
                   line: { color: "purple" },
                 },
                 {
@@ -942,7 +720,7 @@ export default function ReactPlotly() {
                   y: lineChartData.map((d) => d.netProfit),
                   type: "scatter",
                   mode: "lines+markers",
-                  name: "Net Profit",
+                  name: "NetProfit",
                   line: { color: "green" },
                 },
               ]}
@@ -956,7 +734,7 @@ export default function ReactPlotly() {
               }}
               style={{ width: "100%", height: "100%" }}
               config={DEFAULT_CONFIGURATION}
-              onClick={handleLineChartClick}
+              //onClick={handleLineChartClick}
             />
           </ChartContainer>
 
@@ -966,6 +744,7 @@ export default function ReactPlotly() {
             onDownloadImage={() => handleDownloadImage(barPlotRef, "Revenue_vs_Expenses")}
           >
             <Plot
+            key={`bar-chart-${dimensions?.groupName || 'default'}`}
               ref={barPlotRef}
               data={[
                 {
@@ -993,7 +772,7 @@ export default function ReactPlotly() {
               }}
               // style={{ width: "100%", height: "100%" }}
               config={DEFAULT_CONFIGURATION}
-              onClick={handleBarChartClick}
+             // onClick={handleBarChartClick}
             />
           </ChartContainer>
           <ChartContainer title="Financial Breakdown (Pie)"
@@ -1001,6 +780,7 @@ export default function ReactPlotly() {
             onDownloadImage={() => handleDownloadImage(piePlotRef, "Revenue")}
           >
             <Plot
+            key={`pie-chart-${dimensions?.groupName || 'default'}`}
               ref={piePlotRef}
               data={[
                 {
@@ -1021,7 +801,7 @@ export default function ReactPlotly() {
                 displayModeBar: false,
                 modeBarButtonsToRemove: ['toImage', 'editInChartStudio', 'zoom2d', 'select2d', 'lasso2d', 'autoScale2d', 'resetScale2d']
               }}
-              onClick={handlePieChartClick}
+             // onClick={handlePieChartClick}
             />
           </ChartContainer>
 
@@ -1030,6 +810,7 @@ export default function ReactPlotly() {
             onDownloadImage={() => handleDownloadImage(donutPlotRef, "Revenue_by_Category")}
           >
             <Plot
+            key={`donut-chart-${dimensions?.groupName || 'default'}`}
               ref={donutPlotRef}
               data={[
                 {
@@ -1042,7 +823,7 @@ export default function ReactPlotly() {
               layout={{ title: "Revenue by Category" }}
               // style={{ width: "100%", height: "100%" }}
               config={DEFAULT_CONFIGURATION}
-              onClick={handleDonutChartClick}
+             // onClick={handleDonutChartClick}
             />
           </ChartContainer>
         </div>)}
