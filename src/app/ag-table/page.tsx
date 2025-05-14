@@ -1,48 +1,44 @@
+// // app/financial-data/page.tsx
+// "use client";
+// import DataGrid from "@/components/DataGrid";
+// import { useFetchTestTableDataQuery } from "@/lib/services/usersApi";
+
+// export default function FinancialDataPage() {
+//   const { data, error, isLoading } = useFetchTestTableDataQuery({ limit: 10, offset: 0 });
+//   if (error) {
+//     return <div className="p-4 text-red-600">Error: {JSON.stringify(error)}</div>;
+//   }
+
+//   return (
+//     <section className="p-4">
+//       <h1 className="text-xl font-bold mb-4">Financial Data - Ag Table</h1>
+//       <DataGrid financialData={data?.data || []} totalCount={data?.total_rows || 0} />
+//     </section>
+//   );
+// }
+
 // app/financial-data/page.tsx
-"use client";
-import { useCallback, useEffect, useState } from "react";
-import DataGrid from "@/components/DataGrid";
-import { useDuckDBContext } from "../_providers/DuckDBContext";
-import { FinancialSchema } from "@/types/Schemas";
+'use client'
+import React from 'react'
+import FinancialDashboard from '../ag-charts/FinancialDashboard'
+import { TabsContainer } from '@/components/ui/TabsContainer'
+import DataGrid from './DataGrid'
 
-export default function FinancialDataPage() {
-  const { executeQuery, isDataLoaded } = useDuckDBContext();
-  const [financialData, setFinancialData] = useState<FinancialSchema[]>([]);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchData = useCallback(async () => {
-    if (!isDataLoaded) return;
-
-    try {
-      const result = await executeQuery("SELECT * FROM financial_data");
-      if (result.success && result.data) {
-        setFinancialData(result.data);        
-      } else {
-        setError(result.error || "Failed to fetch data");
-      }
-    } catch (err:unknown) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("An unknown error occurred");
-      }
-    }
-  }, [isDataLoaded, executeQuery]);
-
-  useEffect(() => {
-    if (isDataLoaded) {
-      fetchData();
-    }
-  }, [isDataLoaded, fetchData]);
-
-  if (error) {
-    return <div className="p-4 text-red-600">Error: {error}</div>;
-  }
+function Page() {
+  const [selectedTab, setSelectedTab] = React.useState<'charts' | 'table'>('charts')
 
   return (
-    <section className="p-4">
-      <h1 className="text-xl font-bold mb-4">Financial Data - Ag Table</h1>
-      <DataGrid financialData={financialData} />
-    </section>
-  );
+    <>
+      <TabsContainer selectedTab={selectedTab} setSelectedTab={setSelectedTab} />
+      {selectedTab === 'charts' ? (
+         <DataGrid/>
+      ) : (
+        <FinancialDashboard />
+     
+      )}
+    </>
+  )
 }
+
+export default Page
+

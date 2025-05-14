@@ -1,7 +1,22 @@
-import { Post } from "@/types/Schemas";
+import { FinancialDataResponse, Post } from "@/types/Schemas";
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
 export const api = createApi({
+  reducerPath: 'api',
+  baseQuery: fetchBaseQuery({
+    baseUrl: 'https://15.237.225.138/api/duckdb/',
+  }),
+  endpoints: (builder) => ({
+    fetchTestTableData: builder.query<FinancialDataResponse, { limit: number; offset: number }>({
+      query: ({ limit, offset }) => `tables/test/data?limit=${limit}&offset=${offset}`,
+    }),
+  }),
+});
+
+export const { useFetchTestTableDataQuery,useLazyFetchTestTableDataQuery } = api;
+
+
+export const sapi = createApi({
     reducerPath: "api",
     baseQuery: fetchBaseQuery({baseUrl: 'https://jsonplaceholder.typicode.com/'}),
     endpoints: (builder) => ({
@@ -28,4 +43,4 @@ export const {
     useGetPostsQuery,
     useGetPostByIdQuery,
     useCreatePostMutation,
-} = api
+} = sapi

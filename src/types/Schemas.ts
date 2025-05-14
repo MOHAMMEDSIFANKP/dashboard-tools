@@ -6,12 +6,21 @@ export interface Post {
 }
 
 export interface FinancialSchema {
-  fiscalYear: string;
+  fiscalYear: number;
   period: string;
-  revenue: string;
-  operatingExpenses: string;
-  netProfit: string;
-  [key: string]: string; // Allow for additional fields
+  catAccountingView: string;
+  catFinancialView: string;
+  revenue: number;
+  otherIncome: number;
+  grossMargin: number;
+  operatingExpenses: number;
+  operatingProfit: number;
+  FinancialResult: number;
+  EarningsBeforeTax: number;
+  nonRecurringResult: number;
+  netProfit: number;
+  country?: string;
+  continent?: string;
 }
 
 export interface FinancialData {
@@ -48,3 +57,12 @@ export type Dimensions = {
   groupName: string;
   filteredSelections: DimensionSelection[];
 };
+
+// Api Response
+export interface FinancialDataResponse {
+  table_name: string;
+  total_rows: number;
+  limit: number;
+  offset: number;
+  data: FinancialData[];
+}

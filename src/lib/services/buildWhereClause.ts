@@ -1,9 +1,6 @@
 import { Dimensions } from "@/types/Schemas";
 
-export const buildWhereClause = (
-    dimensions: Dimensions | null
-): string => {
-  const MONTHS: { [key: string]: string } = {
+export const MONTHS: { [key: string]: string } = {
     January: "01",
     February: "02",
     March: "03",
@@ -17,6 +14,10 @@ export const buildWhereClause = (
     November: "11",
     December: "12"
   };
+export const buildWhereClause = (
+    dimensions: Dimensions | null
+): string => {
+  
 
   if (!dimensions?.filteredSelections?.length) return "";
 
