@@ -217,7 +217,7 @@ export default VictoryChartsPage;
 const ChartContainer: React.FC<ChartContainerProps> = ({ title, children }) => (
   <div className="bg-white p-6 rounded-lg shadow-md">
     <h2 className="text-xl font-semibold mb-4">{title}</h2>
-    <div className="h-64">{children}</div>
+    <div className="w-full h-[500px]">{children}</div>
   </div>
 );
 
@@ -247,8 +247,7 @@ const LineChartComponent = ({ data }: { data: LineChartDataPoint[] }) => {
     <VictoryChart 
       theme={VictoryTheme.material} 
       domainPadding={20}
-      height={300}
-    >
+      height={300}>
       <VictoryAxis 
         tickFormat={(x) => x}
         style={{
