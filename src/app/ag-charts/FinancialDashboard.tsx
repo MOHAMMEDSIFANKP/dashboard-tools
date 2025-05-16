@@ -78,12 +78,11 @@ export default function FinancialDashboard() {
           SUM(FinancialResult) as FinancialResult, 
           SUM(EarningsBeforeTax) as EarningsBeforeTax, 
           SUM(nonRecurringResult) as nonRecurringResult, 
-          SUM(netProfit) as netProfit,
-          country
+          SUM(netProfit) as netProfit
         FROM financial_data 
         WHERE fiscalYear = ${selectedYear} 
         AND SUBSTRING(CAST(period AS VARCHAR), 5, 2) = '${selectedMonth}'
-        GROUP BY fiscalYear, period, country
+        GROUP BY fiscalYear, period
       `
 
       // Current Year Data (YTD)
@@ -99,8 +98,7 @@ export default function FinancialDashboard() {
           SUM(FinancialResult) as FinancialResult, 
           SUM(EarningsBeforeTax) as EarningsBeforeTax, 
           SUM(nonRecurringResult) as nonRecurringResult, 
-          SUM(netProfit) as netProfit,
-          'All' as country
+          SUM(netProfit) as netProfit
         FROM financial_data 
         WHERE fiscalYear = ${selectedYear}
         GROUP BY fiscalYear
