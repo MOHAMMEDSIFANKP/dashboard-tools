@@ -1,12 +1,19 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import ReactECharts from "echarts-for-react";
 import { useDuckDBContext } from "../_providers/DuckDBContext";
+import { Dimensions } from "@/types/Schemas";
+import { buildWhereClause } from "@/lib/services/buildWhereClause";
+import { GroupModal } from "@/components/GroupManagement";
 
 // Define TypeScript interfaces for chart data
 interface ChartContainerProps {
   title: string;
   children: React.ReactNode;
+  onExportCSV?: () => void;
+  onExportPNG?: () => void;
+  isDrilled?: boolean;
+  onBack?: () => void;
 }
 
 interface FilterBarProps {
@@ -40,10 +47,17 @@ interface DonutChartDataPoint {
   revenue: number;
 }
 
+// Drill-down state interface
+interface DrillDownState {
+  active: boolean;
+  chartType: string;
+  category: string;
+  title: string;
+  dataType: string;
+}
+
 const EChartsPage = () => {
   const { executeQuery, isDataLoaded } = useDuckDBContext();
-  const [selectedYear, setSelectedYear] = useState<string>("all");
-  const [years, setYears] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
@@ -52,24 +66,26 @@ const EChartsPage = () => {
   const [barChartData, setBarChartData] = useState<BarChartDataPoint[]>([]);
   const [pieChartData, setPieChartData] = useState<PieChartDataPoint | null>(null);
   const [donutChartData, setDonutChartData] = useState<DonutChartDataPoint[]>([]);
+  const [isGroupModalOpen, setIsGroupModalOpen] = useState<boolean>(false);
+  const [dimensions, setDimensions] = useState<Dimensions | null>(null);
+  const [drillDownData, setDrillDownData] = useState<any[]>([]);
 
-  // Fetch available years (small query)
-  useEffect(() => {
-    if (!isDataLoaded) return;
+  // Chart refs for PNG export
+  const lineChartRef = useRef(null);
+  const barChartRef = useRef(null);
+  const pieChartRef = useRef(null);
+  const donutChartRef = useRef(null);
+  const drillDownChartRef = useRef(null);
 
-    const fetchYears = async (): Promise<void> => {
-      try {
-        const result = await executeQuery("SELECT DISTINCT fiscalYear FROM financial_data ORDER BY fiscalYear");
-        if (result.success && result.data) {
-          setYears(result.data.map((row: { fiscalYear: string }) => row.fiscalYear));
-        }
-      } catch (err: unknown) {
-        console.error("Failed to fetch years:", err);
-      }
-    };
+  // Drill down state
+  const [drillDown, setDrillDown] = useState<DrillDownState>({
+    active: false,
+    chartType: "",
+    category: "",
+    title: "",
+    dataType: ""
+  });
 
-    fetchYears();
-  }, [isDataLoaded, executeQuery]);
 
   // Fetch chart data based on selected year
   useEffect(() => {
@@ -79,7 +95,7 @@ const EChartsPage = () => {
       setIsLoading(true);
       try {
         // Build WHERE clause for year filter
-        const whereClause = selectedYear !== "all" ? `WHERE fiscalYear = '${selectedYear}'` : "";
+        const whereClause = buildWhereClause(dimensions);
 
         // Line chart data - monthly performance trends
         const lineQuery = `
@@ -154,7 +170,123 @@ const EChartsPage = () => {
     };
 
     fetchChartData();
-  }, [isDataLoaded, executeQuery, selectedYear]);
+  }, [dimensions, isDataLoaded, executeQuery]);
+
+  // Reset drill down
+  const resetDrillDown = () => {
+    setDrillDown({
+      active: false,
+      chartType: "",
+      category: "",
+      title: "",
+      dataType: ""
+    });
+    setDrillDownData([]);
+  };
+
+  const handleCreateGroup = (datas: any) => {
+    setDimensions(datas);
+  }
+  
+  // Handle drill down
+  const handleDrillDown = async (chartType: string, category: string, value: any, dataType: string) => {
+    if (!isDataLoaded) return;
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      let query = "";
+      let title = "";
+
+      switch (chartType) {
+        case 'bar':
+          if (dataType === 'revenue') {
+            query = `SELECT fiscalYear, catFinancialView, SUM(revenue) as value 
+                     FROM financial_data 
+                     WHERE period = '${category}'
+                     GROUP BY fiscalYear, catFinancialView
+                     ORDER BY fiscalYear, value DESC`;
+            title = `Revenue Breakdown for Period: ${category}`;
+          } else if (dataType === 'expenses') {
+            query = `SELECT fiscalYear, catFinancialView, SUM(operatingExpenses) as value 
+                     FROM financial_data 
+                     WHERE period = '${category}'
+                     GROUP BY fiscalYear, catFinancialView
+                     ORDER BY fiscalYear, value DESC`;
+            title = `Expenses Breakdown for Period: ${category}`;
+          }
+          break;
+
+        case 'line':
+          query = `SELECT fiscalYear, catFinancialView, SUM(${dataType}) as value 
+                   FROM financial_data 
+                   WHERE period = '${category}'
+                   GROUP BY fiscalYear, catFinancialView
+                   ORDER BY value DESC`;
+          title = `${dataType.charAt(0).toUpperCase() + dataType.slice(1)} Breakdown for Period: ${category}`;
+          break;
+
+        case 'donut':
+          query = `SELECT fiscalYear, period, SUM(revenue) as value 
+                   FROM financial_data 
+                   WHERE catAccountingView = '${category}'
+                   GROUP BY fiscalYear, period
+                   ORDER BY fiscalYear, period`;
+          title = `Revenue Breakdown for Category: ${category}`;
+          break;
+
+        case 'pie':
+          if (dataType === 'financialDistribution') {
+            query = `SELECT catFinancialView, SUM(${category}) as value 
+                     FROM financial_data 
+                     GROUP BY catFinancialView
+                     ORDER BY value DESC`;
+            title = `${category} Breakdown by Financial Category`;
+          }
+          break;
+      }
+
+      if (query) {
+        const result = await executeQuery(query);
+        if (result.success && result.data && result.data.length > 0) {
+          setDrillDownData(result.data);
+          setDrillDown({
+            active: true,
+            chartType,
+            category,
+            title,
+            dataType
+          });
+        } else {
+          setError("No data available for this selection");
+        }
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error occurred");
+      console.error("Error in drill-down:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Export to CSV function
+  const exportToCSV = (data: any[]) => {
+    if (!data || !data.length) return;
+
+    const headers = Object.keys(data[0]).join(',');
+    const rows = data.map(row => Object.values(row).join(',')).join('\n');
+    const csv = `${headers}\n${rows}`;
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `chart_data.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   if (error) {
     return <div className="p-4 text-red-600">Error: {error}</div>;
@@ -174,29 +306,82 @@ const EChartsPage = () => {
         Financial Dashboard ECharts
       </h1>
 
-      <FilterBar
-        years={years}
-        selectedYear={selectedYear}
-        onYearChange={setSelectedYear}
-      />
+      {!drillDown.active && (
+       <>
+       <GroupModal
+              isOpen={isGroupModalOpen}
+              onClose={() => setIsGroupModalOpen(false)}
+              onCreateGroup={handleCreateGroup}
+            />
+            <div className="flex flex-col mb-4">
+              {dimensions?.groupName && <p className="text-sm text-gray-500">Current Group Name: <span className="capitalize font-bold">{dimensions.groupName}</span></p>}
+              <div>
+                <button onClick={() => setDimensions(null)} className="shadow-xl border bg-red-400 p-2 rounded text-white">Reset Group</button>
+                <button onClick={() => setIsGroupModalOpen(true)} className="shadow-xl border bg-blue-400 p-2 rounded text-white">Create Group</button>
+              </div>
+            </div>
+       </>
+      
+      )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <ChartContainer title="Revenue Trends">
-          <LineChartComponent data={lineChartData} />
-        </ChartContainer>
+      {drillDown.active ? (
+        <DrillDownChart
+          drillDownState={drillDown}
+          drillDownData={drillDownData}
+          onBack={resetDrillDown}
+          chartRef={drillDownChartRef}
+        />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <ChartContainer 
+            title="Revenue Trends" 
+            onExportCSV={() => exportToCSV(lineChartData)}
+            onExportPNG={() => exportToPNG(lineChartRef)}
+          >
+            <LineChartComponent 
+              data={lineChartData} 
+              onDrillDown={(period, value, dataType) => handleDrillDown('line', period, value, dataType)} 
+              chartRef={lineChartRef}
+            />
+          </ChartContainer>
 
-        <ChartContainer title="Revenue vs Expenses">
-          <BarChartComponent data={barChartData} />
-        </ChartContainer>
+          <ChartContainer 
+            title="Revenue vs Expenses"
+            onExportCSV={() => exportToCSV(barChartData)}
+            onExportPNG={() => exportToPNG(barChartRef)}
+          >
+            <BarChartComponent 
+              data={barChartData} 
+              onDrillDown={(period, value, dataType) => handleDrillDown('bar', period, value, dataType)} 
+              chartRef={barChartRef}
+            />
+          </ChartContainer>
 
-        <ChartContainer title="Financial Distribution">
-          <PieChartComponent data={pieChartData} />
-        </ChartContainer>
+          <ChartContainer 
+            title="Financial Distribution"
+            onExportCSV={() => pieChartData ? exportToCSV([pieChartData]) : null}
+            onExportPNG={() => exportToPNG(pieChartRef)}
+          >
+            <PieChartComponent 
+              data={pieChartData} 
+              onDrillDown={(category, value) => handleDrillDown('pie', category, value, 'financialDistribution')} 
+              chartRef={pieChartRef}
+            />
+          </ChartContainer>
 
-        <ChartContainer title="Revenue by Category">
-          <DonutChartComponent data={donutChartData} />
-        </ChartContainer>
-      </div>
+          <ChartContainer 
+            title="Revenue by Category"
+            onExportCSV={() => exportToCSV(donutChartData)}
+            onExportPNG={() => exportToPNG(donutChartRef)}
+          >
+            <DonutChartComponent 
+              data={donutChartData} 
+              onDrillDown={(category, value) => handleDrillDown('donut', category, value, 'categoryRevenue')} 
+              chartRef={donutChartRef}
+            />
+          </ChartContainer>
+        </div>
+      )}
     </section>
   );
 };
@@ -204,33 +389,224 @@ const EChartsPage = () => {
 export default EChartsPage;
 
 // Chart container component
-const ChartContainer: React.FC<ChartContainerProps> = ({ title, children }) => (
+const ChartContainer: React.FC<ChartContainerProps> = ({ title, children, onExportCSV, onExportPNG, isDrilled, onBack }) => (
   <div className="bg-white p-6 rounded-lg shadow-md">
-    <h2 className="text-xl font-semibold mb-4">{title}</h2>
+    <div className="flex justify-between items-center mb-4">
+      <div className="flex items-center">
+        <h2 className="text-xl font-semibold">{title}</h2>
+        {isDrilled && (
+          <button
+            onClick={onBack}
+            className="ml-3 px-2 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-sm"
+          >
+            ↩ Back
+          </button>
+        )}
+      </div>
+      <div className="flex space-x-2">
+        {onExportPNG && (
+          <button
+            onClick={onExportPNG}
+            className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
+          >
+            PNG
+          </button>
+        )}
+        {onExportCSV && (
+          <button
+            onClick={onExportCSV}
+            className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
+          >
+            CSV
+          </button>
+        )}
+      </div>
+    </div>
     <div className="h-64">{children}</div>
   </div>
 );
 
-// Filter component
-const FilterBar: React.FC<FilterBarProps> = ({ years, selectedYear, onYearChange }) => (
-  <div className="mb-6">
-    <label className="mr-2 font-medium">Year:</label>
-    <select
-      value={selectedYear}
-      onChange={(e) => onYearChange(e.target.value)}
-      className="border border-gray-300 rounded px-3 py-2"
-    >
-      <option value="all">All Years</option>
-      {years.map((year) => (
-        <option key={year} value={year}>
-          {year}
-        </option>
-      ))}
-    </select>
-  </div>
-);
+const exportToPNG = (chartRef: any) => {
+  if (!chartRef || !chartRef.current || !chartRef.current.getEchartsInstance) return;
+  
+  try {
+    const echartInstance = chartRef.current.getEchartsInstance();
+    const dataURL = echartInstance.getDataURL({
+      type: 'png',
+      pixelRatio: 2,
+      backgroundColor: '#fff'
+    });
+    
+    const link = document.createElement('a');
+    link.download = 'chart.png';
+    link.href = dataURL;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } catch (err) {
+    console.error("Failed to export chart:", err);
+    alert("Could not export chart as PNG. Please try again.");
+  }
+};
 
-const LineChartComponent = ({ data }: { data: LineChartDataPoint[] }) => {
+// Drill Down Chart Component
+const DrillDownChart: React.FC<{
+  drillDownState: DrillDownState;
+  drillDownData: any[];
+  onBack: () => void;
+  chartRef: React.RefObject<any>;
+}> = ({ drillDownState, drillDownData, onBack, chartRef }) => {
+  const { title, chartType, dataType } = drillDownState;
+  
+  // Determine chart type based on data structure
+  const firstDataPoint = drillDownData[0];
+  const dataKeys = firstDataPoint ? Object.keys(firstDataPoint) : [];
+  
+  let option: any = {};
+  
+  if (dataKeys.includes('catFinancialView')) {
+    // Bar chart for financial view breakdown
+    option = {
+      title: {
+        text: title,
+        left: 'center'
+      },
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: { type: 'shadow' },
+        formatter: '{b}: ${c}'
+      },
+      xAxis: {
+        type: 'category',
+        data: drillDownData.map(item => item.catFinancialView),
+        axisLabel: {
+          rotate: 45,
+          fontSize: 10
+        }
+      },
+      yAxis: {
+        type: 'value',
+        axisLabel: {
+          formatter: '${value}'
+        }
+      },
+      series: [
+        {
+          type: 'bar',
+          data: drillDownData.map(item => item.value),
+          itemStyle: { color: '#4bc0c0' }
+        }
+      ]
+    };
+  } else if (dataKeys.includes('period')) {
+    // Line chart for period data
+    option = {
+      title: {
+        text: title,
+        left: 'center'
+      },
+      tooltip: {
+        trigger: 'axis',
+        formatter: '{b}: ${c}'
+      },
+      xAxis: {
+        type: 'category',
+        data: drillDownData.map(item => item.period),
+        axisLabel: {
+          rotate: 45,
+          fontSize: 10
+        }
+      },
+      yAxis: {
+        type: 'value',
+        axisLabel: {
+          formatter: '${value}'
+        }
+      },
+      series: [
+        {
+          type: 'line',
+          smooth: true,
+          data: drillDownData.map(item => item.value),
+          itemStyle: { color: '#36a2eb' }
+        }
+      ]
+    };
+  } else {
+    // Pie chart for other breakdowns
+    const labelKey = dataKeys.find(key => key !== 'value') || dataKeys[0];
+    option = {
+      title: {
+        text: title,
+        left: 'center'
+      },
+      tooltip: {
+        trigger: 'item',
+        formatter: '{b}: ${c} ({d}%)'
+      },
+      series: [
+        {
+          type: 'pie',
+          radius: '70%',
+          data: drillDownData.map(item => ({
+            name: item[labelKey],
+            value: item.value
+          })),
+          emphasis: {
+            itemStyle: {
+              shadowBlur: 10,
+              shadowOffsetX: 0,
+              shadowColor: 'rgba(0, 0, 0, 0.5)'
+            }
+          },
+          label: {
+            fontSize: 10
+          }
+        }
+      ]
+    };
+  }
+
+  return (
+    <div className="mb-4">
+      <ChartContainer
+        title={title}
+        isDrilled={true}
+        onBack={onBack}
+        onExportCSV={() => {
+          const blob = new Blob([JSON.stringify(drillDownData)], { type: 'text/csv;charset=utf-8;' });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.setAttribute('href', url);
+          link.setAttribute('download', `drill_down_data.csv`);
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        }}
+        onExportPNG={() => exportToPNG(chartRef)}
+      >
+        <ReactECharts 
+          option={option} 
+          style={{ height: '100%' }} 
+          ref={chartRef}
+        />
+      </ChartContainer>
+      <p className="mt-2 text-sm text-gray-500 text-center">
+        <i>Drill-down view showing detailed breakdown data</i>
+      </p>
+    </div>
+  );
+};
+
+const LineChartComponent = ({ 
+  data, 
+  onDrillDown,
+  chartRef
+}: { 
+  data: LineChartDataPoint[],
+  onDrillDown: (period: string, value: number, dataType: string) => void,
+  chartRef: React.RefObject<any>
+}) => {
   if (!data || data.length === 0) return <div>No data available</div>;
   
   const option = {
@@ -287,10 +663,35 @@ const LineChartComponent = ({ data }: { data: LineChartDataPoint[] }) => {
     ]
   };
 
-  return <ReactECharts option={option} style={{ height: '100%' }} />;
+  const onChartClick = (params: any) => {
+    const { name, seriesName, value } = params;
+    let dataType = 'revenue';
+    if (seriesName === 'Gross Margin') dataType = 'grossMargin';
+    if (seriesName === 'Net Profit') dataType = 'netProfit';
+    onDrillDown(name, value, dataType);
+  };
+  
+  const onEvents = {
+    'click': onChartClick
+  };
+
+  return <ReactECharts 
+    option={option} 
+    style={{ height: '100%' }} 
+    onEvents={onEvents}
+    ref={chartRef}
+  />;
 };
 
-const BarChartComponent = ({ data }: { data: BarChartDataPoint[] }) => {
+const BarChartComponent = ({ 
+  data,
+  onDrillDown,
+  chartRef
+}: { 
+  data: BarChartDataPoint[],
+  onDrillDown: (period: string, value: number, dataType: string) => void,
+  chartRef: React.RefObject<any>
+}) => {
   if (!data || data.length === 0) return <div>No data available</div>;
   
   const option = {
@@ -339,17 +740,40 @@ const BarChartComponent = ({ data }: { data: BarChartDataPoint[] }) => {
     ]
   };
 
-  return <ReactECharts option={option} style={{ height: '100%' }} />;
+  const onChartClick = (params: any) => {
+    const { name, seriesName, value } = params;
+    const dataType = seriesName === 'Revenue' ? 'revenue' : 'expenses';
+    onDrillDown(name, value, dataType);
+  };
+  
+  const onEvents = {
+    'click': onChartClick
+  };
+
+  return <ReactECharts 
+    option={option} 
+    style={{ height: '100%' }} 
+    onEvents={onEvents}
+    ref={chartRef}
+  />;
 };
 
-const PieChartComponent = ({ data }: { data: PieChartDataPoint | null }) => {
+const PieChartComponent = ({ 
+  data,
+  onDrillDown,
+  chartRef
+}: { 
+  data: PieChartDataPoint | null,
+  onDrillDown: (category: string, value: number) => void,
+  chartRef: React.RefObject<any>
+}) => {
   if (!data) return <div>No data available</div>;
   
   const pieData = [
-    { value: data.grossMargin, name: 'Gross Margin' },
-    { value: data.opEx, name: 'Operating Expenses' },
-    { value: data.netProfit, name: 'Net Profit' },
-    { value: data.revenue - data.grossMargin - data.opEx - data.netProfit, name: 'Other' }
+    { value: data.grossMargin, name: 'GrossMargin' },
+    { value: data.opEx, name: 'OperatingExpenses' },
+    { value: data.netProfit, name: 'NetProfit' },
+    { value: data.revenue, name: 'revenue' }
   ];
   
   const option = {
@@ -383,10 +807,32 @@ const PieChartComponent = ({ data }: { data: PieChartDataPoint | null }) => {
     ]
   };
 
-  return <ReactECharts option={option} style={{ height: '100%' }} />;
+  const onChartClick = (params: any) => {
+    const { name, value } = params.data;
+    onDrillDown(name, value);
+  };
+  
+  const onEvents = {
+    'click': onChartClick
+  };
+
+  return <ReactECharts 
+    option={option} 
+    style={{ height: '100%' }} 
+    onEvents={onEvents}
+    ref={chartRef}
+  />;
 };
 
-const DonutChartComponent = ({ data }: { data: DonutChartDataPoint[] }) => {
+const DonutChartComponent = ({ 
+  data,
+  onDrillDown,
+  chartRef
+}: { 
+  data: DonutChartDataPoint[],
+  onDrillDown: (category: string, value: number) => void,
+  chartRef: React.RefObject<any>
+}) => {
   if (!data || data.length === 0) return <div>No data available</div>;
   
   // Limit to top 6 categories for better visibility
@@ -423,5 +869,19 @@ const DonutChartComponent = ({ data }: { data: DonutChartDataPoint[] }) => {
     ]
   };
 
-  return <ReactECharts option={option} style={{ height: '100%' }} />;
+  const onChartClick = (params: any) => {
+    const { name, value } = params.data;
+    onDrillDown(name, value);
+  };
+  
+  const onEvents = {
+    'click': onChartClick
+  };
+
+  return <ReactECharts 
+    option={option} 
+    style={{ height: '100%' }} 
+    onEvents={onEvents}
+    ref={chartRef}
+  />;
 };
