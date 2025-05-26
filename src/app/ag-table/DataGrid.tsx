@@ -28,7 +28,9 @@ const DataGrid = ({ }) => {
     refetch: refetchData,
   } = useFetchSearchableDataQuery(searchParams);
 
-  const financialData = (data?.data ?? []) as FinancialSchema[];
+  // const financialData = (data?.data ?? []) as FinancialSchema[];
+  const financialData = ((data?.data ?? []) as FinancialSchema[]).map(row => ({ ...row }));
+
   const totalRows = data?.total_rows ?? 0;
   const filteredRows = data?.filtered_rows ?? 0;
   
