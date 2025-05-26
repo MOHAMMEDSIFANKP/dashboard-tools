@@ -37,7 +37,7 @@ export default function TanstackTable() {
   const [columnOrder, setColumnOrder] = useState<ColumnOrderState>([]);
   const [pagination, setPagination] = useState({
     pageIndex: 0,
-    pageSize: 1000,
+    pageSize: 5,
   });
   
   // Selection and editing state
