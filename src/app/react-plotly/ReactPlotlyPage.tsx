@@ -1,9 +1,18 @@
 "use client";
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import Plot from "react-plotly.js";
-import { useDuckDBContext } from "../_providers/DuckDBContext";
 import { GroupModal } from "@/components/GroupManagement";
-import { buildWhereClause } from "@/lib/services/buildWhereClause";
+import { 
+  useFetchLineChartDataMutation,
+  useFetchBarChartDataMutation,
+  useFetchPieChartDataMutation,
+  useFetchDonutChartDataMutation,
+  useFetchDrillDownDataMutation,
+  databaseName
+} from "@/lib/services/usersApi";
+// Types
+import { Dimensions } from "@/types/Schemas";
+import { buildRequestBody } from "@/lib/services/buildWhereClause";
 
 // Constants
 const DEFAULT_CONFIGURATION = {
@@ -20,6 +29,20 @@ const CHART_COLORS = [
   'rgb(153, 102, 255)',
   'rgb(255, 159, 64)'
 ];
+
+// Core data types
+interface ChartDataPoint {
+  period?: string;
+  revenue?: number;
+  expenses?: number;
+  grossMargin?: number;
+  netProfit?: number;
+  catAccountingView?: string;
+  catFinancialView?: string;
+  label?: string;
+  value?: number;
+  [key: string]: any;
+}
 
 // Interfaces
 interface ChartContainerProps {
@@ -38,42 +61,6 @@ interface DrillDownState {
   title: string;
   dataType?: string;
 }
-
-type DimensionSelection = {
-  dimension: string;
-  members: string[];
-};
-
-type Dimensions = {
-  groupName: string;
-  filteredSelections: DimensionSelection[];
-};
-
-interface LineChartDataPoint {
-  period: string;
-  revenue: number;
-  grossMargin: number;
-  netProfit: number;
-}
-
-interface BarChartDataPoint {
-  period: string;
-  revenue: number;
-  expenses: number;
-}
-
-interface PieChartData {
-  grossMargin: number;
-  operatingExpenses: number;
-  netProfit: number;
-  revenue: number;
-}
-
-interface DonutChartData {
-  catAccountingView: string;
-  revenue: number;
-}
-
 
 // Memoized Chart Container Component
 const ChartContainer = React.memo(({
@@ -100,19 +87,19 @@ const ChartContainer = React.memo(({
       {(onDownloadCSV || onDownloadImage) && (
         <div className="flex gap-2 mb-4">
           {onDownloadImage && (
-            <button onClick={onDownloadImage} className="px-4 py-2 bg-blue-500 text-white rounded">
-              Download Image
+            <button onClick={onDownloadImage} className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+              PNG
             </button>
           )}
           {onDownloadCSV && (
-            <button onClick={onDownloadCSV} className="px-4 py-2 bg-green-500 text-white rounded">
-              Download CSV
+            <button onClick={onDownloadCSV} className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">
+              CSV
             </button>
           )}
         </div>
       )}
     </div>
-    <div className="">{children}</div>
+    <div className="min-h-64">{children}</div>
   </div>
 ));
 
@@ -120,10 +107,12 @@ const ChartContainer = React.memo(({
 const DrillDownChart = React.memo(({
   drillDownState,
   drillDownData,
+  rawDrillData,
   onBack
 }: {
   drillDownState: DrillDownState;
   drillDownData: any;
+  rawDrillData: ChartDataPoint[];
   onBack: () => void;
 }) => {
   const plotRef = useRef<any>(null);
@@ -139,31 +128,21 @@ const DrillDownChart = React.memo(({
   }, [drillDownState.title]);
 
   const handleDownloadCSV = useCallback(() => {
-    if (!drillDownData) return;
+    if (!rawDrillData || !rawDrillData.length) return;
 
     let csvContent = "data:text/csv;charset=utf-8,";
+    const headers = Object.keys(rawDrillData[0]).join(',');
+    const rows = rawDrillData.map(row => Object.values(row).join(',')).join('\n');
+    const csv = `${headers}\n${rows}`;
 
-    if (drillDownState.chartType === 'bar' || drillDownState.chartType === 'line') {
-      const xValues = drillDownData[0].x;
-      csvContent += ["Category", ...xValues].join(",") + "\n";
-      drillDownData.forEach((trace: any) => {
-        csvContent += [trace.name, ...trace.y].join(",") + "\n";
-      });
-    } else if (drillDownState.chartType === 'pie') {
-      csvContent += "Label,Value\n";
-      drillDownData[0].labels.forEach((label: string, i: number) => {
-        csvContent += `${label},${drillDownData[0].values[i]}\n`;
-      });
-    }
-
-    const encodedUri = encodeURI(csvContent);
+    const encodedUri = encodeURI(csvContent + csv);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
     link.setAttribute("download", `${drillDownState.title.replace(/\s+/g, "_").toLowerCase()}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  }, [drillDownData, drillDownState.title, drillDownState.chartType]);
+  }, [rawDrillData, drillDownState.title]);
 
   const renderDrillDownChart = useCallback(() => {
     const commonProps = {
@@ -175,7 +154,7 @@ const DrillDownChart = React.memo(({
 
     switch (drillDownState.chartType) {
       case 'line':
-        return <Plot {...commonProps} layout={{ title: drillDownState.title, autosize: true }} />;
+        return <Plot {...commonProps} layout={{ title: drillDownState.title, autosize: true, xaxis: { tickformat: 'digits' }, }} />;
       case 'bar':
         return <Plot {...commonProps} layout={{ title: drillDownState.title, barmode: 'group', autosize: true }} />;
       case 'pie':
@@ -186,30 +165,48 @@ const DrillDownChart = React.memo(({
   }, [drillDownData, drillDownState.chartType, drillDownState.title]);
 
   return (
-    <ChartContainer
-      title={drillDownState.title}
-      onDownloadCSV={handleDownloadCSV}
-      onDownloadImage={handleDownloadImage}
-      isDrilled={true}
-      onBack={onBack}
-    >
-      {renderDrillDownChart()}
-    </ChartContainer>
+    <div className="mb-4">
+      <ChartContainer
+        title={drillDownState.title}
+        onDownloadCSV={handleDownloadCSV}
+        onDownloadImage={handleDownloadImage}
+        isDrilled={true}
+        onBack={onBack}
+      >
+        {renderDrillDownChart()}
+      </ChartContainer>
+      <p className="mt-2 text-sm text-gray-500">
+        <i>Click any data point for further drill-down, or use the back button to return</i>
+      </p>
+    </div>
   );
 });
 
 export default function ReactPlotlyPage() {
-  const { executeQuery, isDataLoaded } = useDuckDBContext();
-  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [dimensions, setDimensions] = useState<Dimensions | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isGroupModalOpen, setIsGroupModalOpen] = useState<boolean>(false);
+  const [dimensions, setDimensions] = useState<Dimensions | null>(null);
+
+  // API Mutations
+  const [fetchLineChartData] = useFetchLineChartDataMutation();
+  const [fetchBarChartData] = useFetchBarChartDataMutation();
+  const [fetchPieChartData] = useFetchPieChartDataMutation();
+  const [fetchDonutChartData] = useFetchDonutChartDataMutation();
+  const [fetchDrillDownData] = useFetchDrillDownDataMutation();
 
   // Chart data states
-  const [lineChartData, setLineChartData] = useState<LineChartDataPoint[]>([]);
-  const [barChartData, setBarChartData] = useState<BarChartDataPoint[]>([]);
-  const [pieChartData, setPieChartData] = useState<PieChartData | null >(null);
-  const [donutChartData, setDonutChartData] = useState<DonutChartData[]>([]);
+  const [chartData, setChartData] = useState<{
+    line: ChartDataPoint[],
+    bar: ChartDataPoint[],
+    pie: ChartDataPoint[],
+    donut: ChartDataPoint[]
+  }>({
+    line: [],
+    bar: [],
+    pie: [],
+    donut: []
+  });
 
   // Drill-down state
   const [drillDown, setDrillDown] = useState<DrillDownState>({
@@ -219,6 +216,7 @@ export default function ReactPlotlyPage() {
     title: ""
   });
   const [drillDownData, setDrillDownData] = useState<any>(null);
+  const [rawDrillData, setRawDrillData] = useState<ChartDataPoint[]>([]);
 
   // Refs for chart components
   const linePlotRef = useRef<any>(null);
@@ -235,6 +233,7 @@ export default function ReactPlotlyPage() {
       title: ""
     });
     setDrillDownData(null);
+    setRawDrillData([]);
   }, []);
 
   const handleCreateGroup = useCallback((datas: any) => {
@@ -242,48 +241,67 @@ export default function ReactPlotlyPage() {
   }, []);
 
   // Fetch all chart data
-  const fetchChartData = useCallback(async () => {
-    if (!isDataLoaded) return;
-
+  const fetchAllChartData = useCallback(async () => {
     setIsLoading(true);
-    const whereClause = buildWhereClause(dimensions);
+    setError(null);
 
     try {
-      const [lineRes, barRes, pieRes, donutRes] = await Promise.all([
-        executeQuery(`SELECT period, AVG(revenue) as revenue, AVG(grossMargin) as grossMargin, AVG(netProfit) as netProfit FROM financial_data ${whereClause} GROUP BY period ORDER BY period`),
-        executeQuery(`SELECT period, SUM(revenue) as revenue, SUM(operatingExpenses) as expenses FROM financial_data ${whereClause} GROUP BY period ORDER BY period`),
-        executeQuery(`SELECT SUM(grossMargin) as grossMargin, SUM(operatingExpenses) as operatingExpenses, SUM(netProfit) as netProfit, SUM(revenue) as revenue FROM financial_data ${whereClause}`),
-        executeQuery(`SELECT catAccountingView, SUM(revenue) as revenue FROM financial_data ${whereClause} GROUP BY catAccountingView ORDER BY revenue DESC`)
-      ]);
+      // Fetch line chart data
+      const lineResult = await fetchLineChartData({
+        body: buildRequestBody(dimensions, 'line', 'period')
+      }).unwrap();
 
+      // Fetch bar chart data
+      const barResult = await fetchBarChartData({
+        body: buildRequestBody(dimensions, 'bar', 'period')
+      }).unwrap();
 
-       if (lineRes.success) setLineChartData(lineRes.data as LineChartDataPoint[]);
-        if (barRes.success) setBarChartData(barRes.data as BarChartDataPoint[]);
-        if (pieRes.success && pieRes.data) setPieChartData(pieRes.data[0] as PieChartData);
-        if (donutRes.success) setDonutChartData(donutRes.data as DonutChartData[]);
+      // Fetch pie chart data
+      const pieResult = await fetchPieChartData({
+        body: buildRequestBody(dimensions, 'pie', 'catfinancialview')
+      }).unwrap();
 
-      setError(null);
-    } catch (err) {
-      setError("Failed to load chart data.");
+      // Fetch donut chart data
+      const donutResult = await fetchDonutChartData({
+        body: buildRequestBody(dimensions, 'donut', 'cataccountingview')
+      }).unwrap();
+
+      // Process and store chart data
+      const lineData = lineResult.success ? lineResult.data || [] : [];
+      const barData = barResult.success ? barResult.data || [] : [];
+      const pieData = pieResult.success ? pieResult.data || [] : [];
+      const donutData = donutResult.success ? donutResult.data || [] : [];
+
+      setChartData({
+        line: lineData,
+        bar: barData,
+        pie: pieData,
+        donut: donutData
+      });
+
+    } catch (err: any) {
+      setError(err?.data?.detail || err.message || "Failed to fetch chart data");
       console.error("Error fetching chart data:", err);
     } finally {
       setIsLoading(false);
     }
-  }, [dimensions, isDataLoaded, executeQuery]);
+  }, [buildRequestBody, fetchLineChartData, fetchBarChartData, fetchPieChartData, fetchDonutChartData]);
 
+  // Fetch data when dimensions change
   useEffect(() => {
-    fetchChartData();
-  }, [fetchChartData]);
+    fetchAllChartData();
+  }, [fetchAllChartData]);
 
   // Event handlers for chart clicks
   const handleChartClick = useCallback(async (chartType: string, point: any) => {
-    if (!point || !isDataLoaded) return;
+    if (!point) return;
 
     let category = point.x || point.label;
     let dataType = point.data?.name?.toLowerCase() || point.label;
+    let value = point.y || point.value;
 
-    await handleDrillDown(chartType, category, dataType);
-  }, [isDataLoaded]);
+    await handleDrillDown(chartType, category, dataType, value);
+  }, []);
 
   const handleLineChartClick = useCallback((data: any) => {
     if (data?.points?.[0]) {
@@ -324,123 +342,65 @@ export default function ReactPlotlyPage() {
     return () => clearTimeout(timeoutId);
   }, [isLoading, drillDown.active, handleLineChartClick, handleBarChartClick, handlePieChartClick, handleDonutChartClick]);
 
-  // Generic drill down function
-  const handleDrillDown = useCallback(async (chartType: string, category: string, dataType: string) => {
-    if (!isDataLoaded) return;
-
+  // Generic drill down function using API
+  const handleDrillDown = useCallback(async (chartType: string, category: string, dataType: string, value?: any) => {
     setIsLoading(true);
+    setError(null);
+    console.log("Drill down triggered:", chartType, category, dataType, value);
+
     try {
-      const dimensionsWhereClause = buildWhereClause(dimensions);
-      let baseWhereClause = dimensionsWhereClause 
-        ? `WHERE ${dimensionsWhereClause.replace('WHERE ', '')}`
-        : '';
+      const result = await fetchDrillDownData({
+        table_name: databaseName,
+        chart_type: chartType,
+        category: category,
+        data_type: dataType,
+        value: value || category
+      }).unwrap();
 
-      let query = '';
-      let title = '';
-      let drillChartType: 'line' | 'bar' | 'pie' = 'bar';
+      if (result.success && result.data && result.data.length > 0) {
+        const drillData = result.data;
+        const title = result.title || `${dataType} Breakdown for ${category}`;
+        const columns = result.columns || Object.keys(drillData[0]);
 
-      switch (chartType) {
-        case 'bar':
-          if (dataType === 'revenue') {
-            query = `SELECT fiscalYear, catFinancialView, SUM(revenue) as value 
-                     FROM financial_data 
-                     WHERE period = '${category}' ${baseWhereClause ? 'AND ' + baseWhereClause.replace('WHERE ', '') : ''}
-                     GROUP BY fiscalYear, catFinancialView
-                     ORDER BY fiscalYear, value DESC`;
-            title = `Revenue Breakdown for Period: ${category}`;
-          } else if (dataType === 'expenses') {
-            query = `SELECT fiscalYear, catFinancialView, SUM(operatingExpenses) as value 
-                     FROM financial_data 
-                     WHERE period = '${category}' ${baseWhereClause ? 'AND ' + baseWhereClause.replace('WHERE ', '') : ''}
-                     GROUP BY fiscalYear, catFinancialView
-                     ORDER BY fiscalYear, value DESC`;
-            title = `Expenses Breakdown for Period: ${category}`;
-          }
-          break;
+        // Convert API response to Plotly format
+        const formattedData = formatDrillDownData(drillData, columns);
+        let drillChartType: 'line' | 'bar' | 'pie' = 'bar';
 
-        case 'line':
-          query = `SELECT fiscalYear, catFinancialView, SUM(${dataType}) as value 
-                   FROM financial_data 
-                   WHERE period = '${category}' ${baseWhereClause ? 'AND ' + baseWhereClause.replace('WHERE ', '') : ''}
-                   GROUP BY fiscalYear, catFinancialView
-                   ORDER BY value DESC`;
-          title = `${dataType.charAt(0).toUpperCase() + dataType.slice(1)} Breakdown for Period: ${category}`;
-          break;
-
-        case 'donut':
-          query = `SELECT fiscalYear, period, SUM(revenue) as value 
-                   FROM financial_data 
-                   WHERE catAccountingView = '${category}' ${baseWhereClause ? 'AND ' + baseWhereClause.replace('WHERE ', '') : ''}
-                   GROUP BY fiscalYear, period
-                   ORDER BY fiscalYear, period`;
-          title = `Revenue Breakdown for Category: ${category}`;
+        // Determine chart type based on data structure
+        if (columns.includes('period')) {
           drillChartType = 'line';
-          break;
-
-        case 'pie':
-          const metricColumn = dataType.toLowerCase().replace(/\s+/g, '');
-          query = `SELECT catFinancialView, SUM(${dataType}) as value 
-                   FROM financial_data 
-                   ${baseWhereClause}
-                   GROUP BY catFinancialView
-                   ORDER BY value DESC`;
-          title = `${dataType} Breakdown by Financial Category`;
-          drillChartType = 'pie';
-          break;
-      }
-
-      if (query) {
-        const result = await executeQuery(query);
-        if (result.success && result.data?.length) {
-          const formattedData = formatDrillDownData(result.data, drillChartType);
-          setDrillDownData(formattedData);
-          setDrillDown({
-            active: true,
-            chartType: drillChartType,
-            category,
-            title,
-            dataType
-          });
+        } else if (columns.includes('catfinancialview') || columns.includes('cataccountingview')) {
+          drillChartType = 'bar';
         } else {
-          setError("No data available for this selection");
+          drillChartType = 'pie';
         }
+
+        setDrillDownData(formattedData);
+        setRawDrillData(drillData);
+        setDrillDown({
+          active: true,
+          chartType: drillChartType,
+          category,
+          title,
+          dataType
+        });
+      } else {
+        setError("No data available for this selection");
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error occurred");
+    } catch (err: any) {
+      setError(err?.data?.detail || err.message || "Failed to fetch drill-down data");
       console.error("Error in drill-down:", err);
     } finally {
       setIsLoading(false);
     }
-  }, [dimensions, isDataLoaded, executeQuery]);
+  }, [fetchDrillDownData]);
 
   // Format drill down data for Plotly
-  const formatDrillDownData = useCallback((data: any[], chartType: 'line' | 'bar' | 'pie') => {
-    if (chartType === 'bar') {
+  const formatDrillDownData = useCallback((data: ChartDataPoint[], columns: string[]) => {
+    // Time series data - use line chart
+    if (columns.includes('period')) {
       if (data[0]?.fiscalYear) {
-        const categories = Array.from(new Set(data.map(d => d.catFinancialView)));
-        const fiscalYears = Array.from(new Set(data.map(d => d.fiscalYear)));
-
-        return fiscalYears.map((year, idx) => ({
-          x: categories,
-          y: categories.map(cat => {
-            const match = data.find(d => d.fiscalYear === year && d.catFinancialView === cat);
-            return match ? match.value : 0;
-          }),
-          type: 'bar',
-          name: `Year ${year}`,
-          marker: { color: CHART_COLORS[idx % CHART_COLORS.length] }
-        }));
-      }
-      return [{
-        x: data.map(d => d.catFinancialView || d.period),
-        y: data.map(d => d.value),
-        type: 'bar',
-        name: 'Value',
-        marker: { color: CHART_COLORS[0] }
-      }];
-    } else if (chartType === 'line') {
-      if (data[0]?.period) {
-        const fiscalYears = Array.from(new Set(data.map(d => d.fiscalYear)));
+        const fiscalYears = Array.from(new Set(data.map(d => d.fiscalYear))).sort();
         const periods = Array.from(new Set(data.map(d => d.period))).sort();
 
         return fiscalYears.map((year, idx) => ({
@@ -456,22 +416,51 @@ export default function ReactPlotlyPage() {
         }));
       }
       return [{
-        x: data.map(d => d.period || d.fiscalYear),
+        x: data.map(d => d.period),
         y: data.map(d => d.value),
         type: 'scatter',
         mode: 'lines+markers',
         name: 'Value',
         line: { color: CHART_COLORS[0] }
       }];
-    } else if (chartType === 'pie') {
+    }
+    // Category data - use bar chart
+    else if (columns.includes('catfinancialview') || columns.includes('cataccountingview')) {
+      if (data[0]?.fiscalYear) {
+        const labelKey = columns.find(col => col.includes('cat')) || columns[0];
+        const categories = Array.from(new Set(data.map(d => d[labelKey])));
+        const fiscalYears = Array.from(new Set(data.map(d => d.fiscalYear)));
+
+        return fiscalYears.map((year, idx) => ({
+          x: categories,
+          y: categories.map(cat => {
+            const match = data.find(d => d.fiscalYear === year && d[labelKey] === cat);
+            return match ? match.value : 0;
+          }),
+          type: 'bar',
+          name: `Year ${year}`,
+          marker: { color: CHART_COLORS[idx % CHART_COLORS.length] }
+        }));
+      }
+      const labelKey = columns.find(col => col.includes('cat')) || columns[0];
+      return [{
+        x: data.map(d => d[labelKey]),
+        y: data.map(d => d.value),
+        type: 'bar',
+        name: 'Value',
+        marker: { color: CHART_COLORS[0] }
+      }];
+    }
+    // Default to pie chart
+    else {
+      const labelKey = columns.find(key => key !== 'value') || columns[0];
       return [{
         values: data.map(d => d.value),
-        labels: data.map(d => d.catFinancialView),
+        labels: data.map(d => d[labelKey]),
         type: 'pie',
         marker: { colors: CHART_COLORS }
       }];
     }
-    return [];
   }, []);
 
   // Handle downloads
@@ -485,213 +474,244 @@ export default function ReactPlotlyPage() {
     }
   }, []);
 
-  const handleDownloadCSV = useCallback((chartData: any, title: string, chartType: string) => {
-    if (!chartData) return;
+  const handleDownloadCSV = useCallback((chartData: ChartDataPoint[], title: string) => {
+    if (!chartData || !chartData.length) return;
 
     let csvContent = "data:text/csv;charset=utf-8,";
+    const headers = Object.keys(chartData[0]).join(',');
+    const rows = chartData.map(row => Object.values(row).join(',')).join('\n');
+    const csv = `${headers}\n${rows}`;
 
-    if (chartType === 'line') {
-      csvContent += ["Period", "Revenue", "Gross Margin", "Net Profit"].join(",") + "\n";
-      chartData.forEach((data: any) => {
-        csvContent += [data.period, data.revenue, data.grossMargin, data.netProfit].join(",") + "\n";
-      });
-    } else if (chartType === 'bar') {
-      csvContent += ["Period", "Revenue", "Expenses"].join(",") + "\n";
-      chartData.forEach((data: any) => {
-        csvContent += [data.period, data.revenue, data.expenses].join(",") + "\n";
-      });
-    } else if (chartType === 'pie' && pieChartData) {
-      csvContent += "Category,Value\n";
-      csvContent += `Revenue,${pieChartData.revenue}\n`;
-      csvContent += `Gross Margin,${pieChartData.grossMargin}\n`;
-      csvContent += `Net Profit,${pieChartData.netProfit}\n`;
-      csvContent += `Operating Expenses,${pieChartData.operatingExpenses}\n`;
-    } else if (chartType === 'donut') {
-      csvContent += "Category,Revenue\n";
-      chartData.forEach((data: any) => {
-        csvContent += `${data.catAccountingView},${data.revenue}\n`;
-      });
-    }
-
-    const encodedUri = encodeURI(csvContent);
+    const encodedUri = encodeURI(csvContent + csv);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
     link.setAttribute("download", `${title.replace(/\s+/g, "_").toLowerCase()}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  }, [pieChartData]);
+  }, []);
+
+  // Calculate pie chart data from aggregated data
+  const getPieChartData = useCallback(() => {
+    if (!chartData.pie.length) return { values: [], labels: [] };
+    
+    // If API returns aggregated data, use it directly
+    if (chartData.pie.length === 1 && chartData.pie[0].revenue) {
+      const data = chartData.pie[0];
+      return {
+        values: [
+          data.revenue || 0,
+          data.grossMargin || 0,
+          data.netProfit || 0,
+          data.expenses || data.operatingExpenses || 0,
+        ],
+        labels: ["Revenue", "Gross Margin", "Net Profit", "Operating Expenses"]
+      };
+    }
+    
+    // Otherwise, use the data as category breakdown
+    return {
+      values: chartData.pie.map(d => d.revenue || d.value || 0),
+      labels: chartData.pie.map(d => d.catFinancialView || d.label || '')
+    };
+  }, [chartData.pie]);
 
   if (isLoading) {
     return <div className="p-8 text-center">Loading financial data...</div>;
   }
-
-  if (error) {
-    return <div className="p-4 text-red-600">Error: {error}</div>;
-  }
+console.log(chartData.donut);
 
   return (
-    <section className="p-8 bg-gray-50">
-      <h1 className="text-3xl font-bold text-center mb-8">Financial Dashboard</h1>
+    <section className="p-5">
+      <h1 className="text-2xl font-bold text-center mb-4">Financial Dashboard - React Plotly</h1>
 
-      <div className="flex flex-row justify-between items-center mb-6">
-        <div>
-          <GroupModal
-            isOpen={isGroupModalOpen}
-            onClose={() => setIsGroupModalOpen(false)}
-            onCreateGroup={handleCreateGroup}
-          />
-          <div className="flex flex-col mb-4">
-            {dimensions?.groupName && (
-              <p className="text-sm text-gray-500">
-                Current Group Name: <span className="capitalize font-bold">{dimensions.groupName}</span>
-              </p>
-            )}
-            <div>
-              <button 
-                onClick={() => setDimensions(null)} 
-                className="shadow-xl border bg-red-400 p-2 rounded text-white mr-2"
-              >
-                Reset Group
-              </button>
-              <button 
-                onClick={() => setIsGroupModalOpen(true)} 
-                className="shadow-xl border bg-blue-400 p-2 rounded text-white"
-              >
-                Create Group
-              </button>
-            </div>
-          </div>
+      <GroupModal
+        isOpen={isGroupModalOpen}
+        onClose={() => setIsGroupModalOpen(false)}
+        onCreateGroup={handleCreateGroup}
+      />
+      
+      <div className="flex flex-col mb-4">
+        {dimensions?.groupName && (
+          <p className="text-sm text-gray-500">
+            Current Group Name: <span className="capitalize font-bold">{dimensions.groupName}</span>
+          </p>
+        )}
+        <div className="flex gap-2">
+          <button 
+            onClick={() => setDimensions(null)} 
+            className="shadow-xl border bg-red-400 p-2 rounded text-white hover:bg-red-500"
+          >
+            Reset Group
+          </button>
+          <button 
+            onClick={() => setIsGroupModalOpen(true)} 
+            className="shadow-xl border bg-blue-400 p-2 rounded text-white hover:bg-blue-500"
+          >
+            Create Group
+          </button>
+          <button 
+            onClick={fetchAllChartData} 
+            className="shadow-xl border bg-green-400 p-2 rounded text-white hover:bg-green-500"
+          >
+            Refresh Data
+          </button>
         </div>
       </div>
+
+      {error && (
+        <div className="flex justify-between bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          <p>{error}</p>
+          <p onClick={() => setError('')} className="cursor-pointer">x</p>
+        </div>
+      )}
 
       {drillDown.active && drillDownData ? (
         <DrillDownChart
           drillDownState={drillDown}
           drillDownData={drillDownData}
+          rawDrillData={rawDrillData}
           onBack={resetDrillDown}
         />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <ChartContainer
-            title="Monthly Performance (Line)"
-            onDownloadCSV={() => handleDownloadCSV(lineChartData, "Monthly_Performance", "line")}
-            onDownloadImage={() => handleDownloadImage(linePlotRef, "Monthly_Performance")}
-          >
-            <Plot
-              key={`line-chart-${dimensions?.groupName || 'default'}`}
-              ref={linePlotRef}
-              data={[
-                {
-                  x: lineChartData.map(d => d.period),
-                  y: lineChartData.map(d => d.revenue),
-                  type: "scatter",
-                  mode: "lines+markers",
-                  name: "Revenue",
-                  line: { color: "blue" },
-                },
-                {
-                  x: lineChartData.map(d => d.period),
-                  y: lineChartData.map(d => d.grossMargin),
-                  type: "scatter",
-                  mode: "lines+markers",
-                  name: "GrossMargin",
-                  line: { color: "purple" },
-                },
-                {
-                  x: lineChartData.map(d => d.period),
-                  y: lineChartData.map(d => d.netProfit),
-                  type: "scatter",
-                  mode: "lines+markers",
-                  name: "NetProfit",
-                  line: { color: "green" },
-                },
-              ]}
-              layout={{
-                title: "Monthly Performance",
-                autosize: true,
-                xaxis: { tickformat: 'digits' }
-              }}
-              style={{ width: "100%", height: "100%" }}
-              config={DEFAULT_CONFIGURATION}
-            />
-          </ChartContainer>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {chartData.line.length > 0 && (
+            <ChartContainer
+              title="Revenue Trends"
+              onDownloadCSV={() => handleDownloadCSV(chartData.line, "Revenue_Trends")}
+              onDownloadImage={() => handleDownloadImage(linePlotRef, "Revenue_Trends")}
+            >
+              <Plot
+                key={`line-chart-${dimensions?.groupName || 'default'}`}
+                ref={linePlotRef}
+                data={[
+                  {
+                    x: chartData.line.map(d => d.period),
+                    y: chartData.line.map(d => d.revenue),
+                    type: "scatter",
+                    mode: "lines+markers",
+                    name: "Revenue",
+                    line: { color: "blue" },
+                  },
+                  {
+                    x: chartData.line.map(d => d.period),
+                    y: chartData.line.map(d => d.grossMargin),
+                    type: "scatter",
+                    mode: "lines+markers",
+                    name: "grossMargin",
+                    line: { color: "purple" },
+                  },
+                  {
+                    x: chartData.line.map(d => d.period),
+                    y: chartData.line.map(d => d.netProfit),
+                    type: "scatter",
+                    mode: "lines+markers",
+                    name: "netProfit",
+                    line: { color: "green" },
+                  },
+                ]}
+                layout={{
+                  title: "Revenue Trends Over Time",
+                  autosize: true,
+                  xaxis: { tickformat: 'digits' },
+                  yaxis: { title: "Amount ($)" }
+                }}
+                style={{ width: "100%", height: "100%" }}
+                config={DEFAULT_CONFIGURATION}
+              />
+            </ChartContainer>
+          )}
 
-          <ChartContainer
-            title="Revenue vs Expenses (Bar)"
-            onDownloadCSV={() => handleDownloadCSV(barChartData, "Revenue_vs_Expenses", "bar")}
-            onDownloadImage={() => handleDownloadImage(barPlotRef, "Revenue_vs_Expenses")}
-          >
-            <Plot
-              key={`bar-chart-${dimensions?.groupName || 'default'}`}
-              ref={barPlotRef}
-              data={[
-                {
-                  x: barChartData.map(d => d.period),
-                  y: barChartData.map(d => d.revenue),
-                  type: "bar",
-                  name: "Revenue",
-                  marker: { color: "teal" },
-                },
-                {
-                  x: barChartData.map(d => d.period),
-                  y: barChartData.map(d => d.expenses),
-                  type: "bar",
-                  name: "Expenses",
-                  marker: { color: "orange" },
-                },
-              ]}
-              layout={{
-                title: "Revenue vs Operating Expenses",
-                barmode: "group",
-                autosize: true,
-                xaxis: { tickformat: 'digits' }
-              }}
-              config={DEFAULT_CONFIGURATION}
-            />
-          </ChartContainer>
+          {chartData.bar.length > 0 && (
+            <ChartContainer
+              title="Revenue vs Expenses"
+              onDownloadCSV={() => handleDownloadCSV(chartData.bar, "Revenue_vs_Expenses")}
+              onDownloadImage={() => handleDownloadImage(barPlotRef, "Revenue_vs_Expenses")}
+            >
+              <Plot
+                key={`bar-chart-${dimensions?.groupName || 'default'}`}
+                ref={barPlotRef}
+                data={[
+                  {
+                    x: chartData.bar.map(d => d.period),
+                    y: chartData.bar.map(d => d.revenue),
+                    type: "bar",
+                    name: "Revenue",
+                    marker: { color: "teal" },
+                  },
+                  {
+                    x: chartData.bar.map(d => d.period),
+                    y: chartData.bar.map(d => d.expenses),
+                    type: "bar",
+                    name: "Expenses",
+                    marker: { color: "orange" },
+                  },
+                ]}
+                layout={{
+                  title: "Revenue vs Operating Expenses",
+                  barmode: "group",
+                  autosize: true,
+                  xaxis: { tickformat: 'digits' },
+                  yaxis: { title: "Amount ($)" }
+                }}
+                config={DEFAULT_CONFIGURATION}
+              />
+            </ChartContainer>
+          )}
 
-          <ChartContainer
-            title="Financial Breakdown (Pie)"
-            onDownloadCSV={() => handleDownloadCSV(pieChartData, "Revenue", "line")}
-            onDownloadImage={() => handleDownloadImage(piePlotRef, "Revenue")}
-          >
-            <Plot
-              key={`pie-chart-${dimensions?.groupName || 'default'}`}
-              ref={piePlotRef}
-              data={[{
-                values: [
-                  pieChartData?.revenue || 0,
-                  pieChartData?.grossMargin || 0,
-                  pieChartData?.netProfit || 0,
-                  pieChartData?.operatingExpenses || 0,
-                ],
-                labels: ["Revenue", "GrossMargin", "NetProfit", "OperatingExpenses"],
-                type: "pie",
-              }]}
-              layout={{ title: "Financial Distribution" }}
-              config={DEFAULT_CONFIGURATION}
-            />
-          </ChartContainer>
+          {chartData.pie.length > 0 && (
+            <ChartContainer
+              title="Financial Distribution"
+              onDownloadCSV={() => handleDownloadCSV(chartData.pie, "Financial_Distribution")}
+              onDownloadImage={() => handleDownloadImage(piePlotRef, "Financial_Distribution")}
+            >
+              <Plot
+                key={`pie-chart-${dimensions?.groupName || 'default'}`}
+                ref={piePlotRef}
+                data={[{
+                  values: getPieChartData().values,
+                  type: "pie",
+                  marker: { colors: CHART_COLORS },
+                  labels: chartData.pie.map((item: any) => item.catfinancialview || '')
+                }]}                
+                layout={{ 
+                  title: "Financial Distribution",
+                  autosize: true
+                }}
+                config={DEFAULT_CONFIGURATION}
+              />
+            </ChartContainer>
+          )}
 
-          <ChartContainer
-            title="Category-wise Revenue (Donut)"
-            onDownloadCSV={() => handleDownloadCSV(donutChartData, "Revenue_by_Category", "line")}
-            onDownloadImage={() => handleDownloadImage(donutPlotRef, "Revenue_by_Category")}
-          >
-            <Plot
-              key={`donut-chart-${dimensions?.groupName || 'default'}`}
-              ref={donutPlotRef}
-              data={[{
-                values: donutChartData.map(d => d.revenue),
-                labels: donutChartData.map(d => d.catAccountingView),
-                type: "pie",
-                hole: 0.5,
-              }]}
-              layout={{ title: "Revenue by Category" }}
-              config={DEFAULT_CONFIGURATION}
-            />
-          </ChartContainer>
+          {chartData.donut.length > 0 && (
+            <ChartContainer
+              title="Revenue by Category"
+              onDownloadCSV={() => handleDownloadCSV(chartData.donut, "Revenue_by_Category")}
+              onDownloadImage={() => handleDownloadImage(donutPlotRef, "Revenue_by_Category")}
+            >
+              <Plot
+                key={`donut-chart-${dimensions?.groupName || 'default'}`}
+                ref={donutPlotRef}
+                data={[{
+                  values: chartData.donut.map(d => d.revenue || ''),
+                  labels: chartData.donut.map((d: any) => d.cataccountingview || ''),
+
+                  type: "pie",
+                  hole: 0.5,
+                  marker: { colors: CHART_COLORS }
+                }]}
+                layout={{ 
+                  title: "Revenue by Category",
+                  autosize: true
+                }}
+                config={DEFAULT_CONFIGURATION}
+              />
+            </ChartContainer>
+          )}
+          
+          <p className="col-span-1 md:col-span-2 text-sm text-gray-500">
+            <i>Click on any chart element to drill down into more detailed data</i>
+          </p>
         </div>
       )}
     </section>

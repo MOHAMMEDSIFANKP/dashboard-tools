@@ -12,25 +12,46 @@ import {
   VictoryTooltip,
   VictoryScatter
 } from "victory";
-import { useDuckDBContext } from "../_providers/DuckDBContext";
-import { Dimensions } from "@/types/Schemas";
-import { buildWhereClause } from "@/lib/services/buildWhereClause";
 import { GroupModal } from "../../components/GroupManagement";
+import { 
+  useFetchLineChartDataMutation,
+  useFetchBarChartDataMutation,
+  useFetchPieChartDataMutation,
+  useFetchDonutChartDataMutation,
+  useFetchDrillDownDataMutation,
+  databaseName
+} from "@/lib/services/usersApi";
+import { Dimensions } from "@/types/Schemas";
+import { buildRequestBody } from "@/lib/services/buildWhereClause";
 
-// Types
+// Core data types
+interface ChartDataPoint {
+  period?: string;
+  revenue?: number;
+  expenses?: number;
+  grossMargin?: number;
+  netProfit?: number;
+  catAccountingView?: string;
+  catfinancialview?: string;
+  label?: string;
+  value?: number;
+  [key: string]: any;
+}
+
+// Chart data interface
 interface ChartData {
-  line: Array<{ period: string; revenue: number; grossMargin: number; netProfit: number; }>;
-  bar: Array<{ period: string; revenue: number; expenses: number; }>;
-  pie: { grossMargin: number; opEx: number; netProfit: number; revenue: number; } | null;
-  donut: Array<{ catAccountingView: string; revenue: number; }>;
+  line: ChartDataPoint[];
+  bar: ChartDataPoint[];
+  pie: ChartDataPoint[];
+  donut: ChartDataPoint[];
   drillDown: any[];
 }
 
+// Drill-down state interface
 interface DrillDownState {
   active: boolean;
-  type: 'line' | 'bar' | 'pie' | 'donut' | '';
+  chartType: string;
   category: string;
-  field: string;
   title: string;
 }
 
@@ -71,18 +92,15 @@ const ChartContainer: React.FC<{
     
     if (svg) {
       try {
-        // Create a canvas element
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
         const svgData = new XMLSerializer().serializeToString(svg);
         const img = new Image();
         
-        // Set dimensions from SVG
         const svgRect = svg.getBoundingClientRect();
         canvas.width = svgRect.width;
         canvas.height = svgRect.height;
         
-        // Convert SVG to PNG
         const svgBlob = new Blob([svgData], {type: 'image/svg+xml;charset=utf-8'});
         const DOMURL = window.URL || window.webkitURL || window;
         const url = DOMURL.createObjectURL(svgBlob);
@@ -149,145 +167,139 @@ const ChartContainer: React.FC<{
   );
 };
 
-
 // Main Component
 const VictoryChartsPage: React.FC = () => {
-  const { executeQuery, isDataLoaded } = useDuckDBContext();
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isGroupModalOpen, setIsGroupModalOpen] = useState<boolean>(false);
   const [dimensions, setDimensions] = useState<Dimensions | null>(null);
+  
+  // API Mutations
+  const [fetchLineChartData] = useFetchLineChartDataMutation();
+  const [fetchBarChartData] = useFetchBarChartDataMutation();
+  const [fetchPieChartData] = useFetchPieChartDataMutation();
+  const [fetchDonutChartData] = useFetchDonutChartDataMutation();
+  const [fetchDrillDownData] = useFetchDrillDownDataMutation();
+  
+  // Chart data state
   const [chartData, setChartData] = useState<ChartData>({
     line: [],
     bar: [],
-    pie: null,
+    pie: [],
     donut: [],
     drillDown: []
   });
+
+  // Drill down state
   const [drillDown, setDrillDown] = useState<DrillDownState>({
     active: false,
-    type: '',
-    category: '',
-    field: '',
-    title: ''
+    chartType: "",
+    category: "",
+    title: ""
   });
 
-
-  // Fetch chart data
-  useEffect(() => {
-    if (!isDataLoaded) return;
-
-    const fetchData = async () => {
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        const whereClause = buildWhereClause(dimensions);
-
-        const queries = {
-          line: `SELECT period, AVG(revenue) as revenue, AVG(grossMargin) as grossMargin, AVG(netProfit) as netProfit 
-                 FROM financial_data ${whereClause} GROUP BY period ORDER BY period`,
-          bar: `SELECT period, SUM(revenue) as revenue, SUM(operatingExpenses) as expenses
-                FROM financial_data ${whereClause} GROUP BY period ORDER BY period`,
-          pie: `SELECT SUM(grossMargin) as grossMargin, SUM(operatingExpenses) as opEx, 
-                SUM(netProfit) as netProfit, SUM(revenue) as revenue
-                FROM financial_data ${whereClause}`,
-          donut: `SELECT catAccountingView, SUM(revenue) as revenue
-                  FROM financial_data ${whereClause} GROUP BY catAccountingView ORDER BY revenue DESC`
-        };
-
-        const [lineResult, barResult, pieResult, donutResult] = await Promise.all([
-          executeQuery(queries.line),
-          executeQuery(queries.bar),
-          executeQuery(queries.pie),
-          executeQuery(queries.donut)
-        ]);
-
-        setChartData({
-          line: lineResult.success ? lineResult.data || [] : [],
-          bar: barResult.success ? barResult.data || [] : [],
-          pie: pieResult.success && pieResult.data?.[0] ? pieResult.data[0] : null,
-          donut: donutResult.success ? donutResult.data || [] : [],
-          drillDown: []
-        });
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Unknown error");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [dimensions, isDataLoaded, executeQuery]);
-
-  // Drill-down handler
-  const handleDrillDown = async (type: DrillDownState['type'], category: string, field: string) => {
-    if (!isDataLoaded) return;
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      let query = "";
-      let title = "";
-
-      switch (type) {
-        case 'line':
-          query = `SELECT fiscalYear, catFinancialView, SUM(${field}) as value 
-                   FROM financial_data WHERE period = '${category}' 
-                   GROUP BY fiscalYear, catFinancialView ORDER BY value DESC`;
-          title = `${field} Breakdown for ${category}`;
-          break;
-        case 'bar':
-          query = `SELECT fiscalYear, catFinancialView, SUM(${field}) as value 
-                   FROM financial_data WHERE period = '${category}' 
-                   GROUP BY fiscalYear, catFinancialView ORDER BY value DESC`;
-          title = `${field} Breakdown for ${category}`;
-          break;
-        case 'pie':
-          query = `SELECT catFinancialView, SUM(${field}) as value 
-                   FROM financial_data GROUP BY catFinancialView ORDER BY value DESC`;
-          title = `${field} Distribution by Category`;
-          break;
-        case 'donut':
-          query = `SELECT fiscalYear, period, SUM(revenue) as value 
-                   FROM financial_data WHERE catAccountingView = '${category}' 
-                   GROUP BY fiscalYear, period ORDER BY fiscalYear, period`;
-          title = `Revenue Breakdown for ${category}`;
-          break;
-      }
-
-      if (query) {
-        const result = await executeQuery(query);
-        if (result.success && result.data?.length) {
-          // @ts-ignore
-          setChartData(prev => ({ ...prev, drillDown: result.data }));
-          setDrillDown({
-            active: true,
-            type,
-            category,
-            field,
-            title
-          });
-        } else {
-          setError("No data available for this selection");
-        }
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Reset drill-down
+  // Reset drill down
   const resetDrillDown = () => {
-    setDrillDown({ active: false, type: '', category: '', field: '', title: '' });
+    setDrillDown({
+      active: false,
+      chartType: "",
+      category: "",
+      title: ""
+    });
     setChartData(prev => ({ ...prev, drillDown: [] }));
   };
 
   const handleCreateGroup = (datas: any) => {
     setDimensions(datas);
-  }
+  };
+
+  // Fetch all chart data using API
+  const fetchAllChartData = async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      // Fetch line chart data
+      const lineResult = await fetchLineChartData({
+        body: buildRequestBody(dimensions, 'line', 'country')
+      }).unwrap();
+
+      // Fetch bar chart data
+      const barResult = await fetchBarChartData({
+        body: buildRequestBody(dimensions, 'bar', 'country')
+      }).unwrap();
+
+      // Fetch pie chart data
+      const pieResult = await fetchPieChartData({
+        body: buildRequestBody(dimensions, 'pie', 'catfinancialview')
+      }).unwrap();
+
+      // Fetch donut chart data
+      const donutResult = await fetchDonutChartData({
+        body: buildRequestBody(dimensions, 'donut', 'cataccountingview')
+      }).unwrap();
+
+      // Process and set chart data
+      setChartData({
+        line: lineResult.success ? lineResult.data || [] : [],
+        bar: barResult.success ? barResult.data || [] : [],
+        pie: pieResult.success ? pieResult.data || [] : [],
+        donut: donutResult.success ? donutResult.data || [] : [],
+        drillDown: []
+      });
+
+    } catch (err: any) {
+      setError(err?.data?.detail || err.message || "Failed to fetch chart data");
+      console.error("Error fetching chart data:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handle drill down using API
+  const handleDrillDown = async (chartType: string, category: string, value: any, dataType: string) => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const result = await fetchDrillDownData({
+        table_name: databaseName,
+        chart_type: chartType,
+        category: category,
+        data_type: dataType,
+        value: value
+      }).unwrap();
+
+      if (result.success && result.data && result.data.length > 0) {
+        const drillData = result.data;
+        const title = result.title || `${dataType} Breakdown for ${category}`;
+
+        setChartData(prev => ({
+          ...prev,
+          drillDown: drillData
+        }));
+
+        setDrillDown({
+          active: true,
+          chartType,
+          category,
+          title
+        });
+      } else {
+        setError("No data available for this selection");
+      }
+    } catch (err: any) {
+      setError(err?.data?.detail || err.message || "Failed to fetch drill-down data");
+      console.error("Error in drill-down:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Fetch data when dimensions change
+  useEffect(() => {
+    fetchAllChartData();
+  }, [dimensions]);
 
   return (
     <section className="p-8 bg-gray-50 min-h-screen">
@@ -298,16 +310,48 @@ const VictoryChartsPage: React.FC = () => {
         onClose={() => setIsGroupModalOpen(false)}
         onCreateGroup={handleCreateGroup}
       />
+
       <div className="flex flex-col mb-4">
-        {dimensions?.groupName && <p className="text-sm text-gray-500">Current Group Name: <span className="capitalize font-bold">{dimensions.groupName}</span></p>}
-        <div>
-          <button onClick={() => setDimensions(null)} className="shadow-xl border bg-red-400 p-2 rounded text-white">Reset Group</button>
-          <button onClick={() => setIsGroupModalOpen(true)} className="shadow-xl border bg-blue-400 p-2 rounded text-white">Create Group</button>
+        {dimensions?.groupName && (
+          <p className="text-sm text-gray-500">
+            Current Group Name: <span className="capitalize font-bold">{dimensions.groupName}</span>
+          </p>
+        )}
+        <div className="flex gap-2">
+          <button 
+            onClick={() => setDimensions(null)} 
+            className="shadow-xl border bg-red-400 p-2 rounded text-white hover:bg-red-500"
+          >
+            Reset Group
+          </button>
+          <button 
+            onClick={() => setIsGroupModalOpen(true)} 
+            className="shadow-xl border bg-blue-400 p-2 rounded text-white hover:bg-blue-500"
+          >
+            Create Group
+          </button>
+          <button 
+            onClick={fetchAllChartData} 
+            className="shadow-xl border bg-green-400 p-2 rounded text-white hover:bg-green-500"
+          >
+            Refresh Data
+          </button>
         </div>
       </div>
 
-      {error && <p className="text-red-500 mb-2">{error}</p>}
-      {isLoading && <p className="text-gray-500 mb-2">Loading...</p>}
+      {error && (
+        <div className="flex justify-between bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          <p>{error}</p>
+          <p onClick={() => setError('')} className="cursor-pointer">x</p>
+        </div>
+      )}
+      
+      {isLoading && (
+        <div className="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded mb-4">
+          <p>Loading chart data...</p>
+        </div>
+      )}
+
       {drillDown.active ? (
         <div className="mb-8">
           <ChartContainer 
@@ -333,7 +377,7 @@ const VictoryChartsPage: React.FC = () => {
               <BarChart data={chartData.bar} onDrillDown={handleDrillDown} />
             </ChartContainer>
 
-            <ChartContainer title="Financial Distribution" data={chartData.pie ? [chartData.pie] : []}>
+            <ChartContainer title="Financial Distribution" data={chartData.pie}>
               <PieChart data={chartData.pie} onDrillDown={handleDrillDown} />
             </ChartContainer>
 
@@ -352,13 +396,13 @@ const VictoryChartsPage: React.FC = () => {
 
 // Individual Chart Components
 const LineChart: React.FC<{
-  data: any[];
-  onDrillDown: (type: 'line', category: string, field: string) => void;
+  data: ChartDataPoint[];
+  onDrillDown: (chartType: string, category: string, value: any, dataType: string) => void;
 }> = ({ data, onDrillDown }) => {
   if (!data?.length) return <div className="text-center text-gray-500">No data available</div>;
 
   return (
-    <VictoryChart theme={VictoryTheme.material} domainPadding={20} height={350}>
+    <VictoryChart theme={VictoryTheme.clean} domainPadding={20} height={350} width={800}>
       <VictoryAxis tickFormat={x => x} style={{ tickLabels: { fontSize: 10, angle: -45 } }} />
       <VictoryAxis dependentAxis tickFormat={y => `$${Math.round(y / 1000)}k`} />
       <VictoryLegend
@@ -385,18 +429,18 @@ const LineChart: React.FC<{
         style={{ data: { stroke: "#ff6384", strokeWidth: 2 } }}
       />
       
-      {/* Invisible scatter points for click detection - one for each line */}
+      {/* Invisible scatter points for click detection */}
       <VictoryScatter
         data={data} x="period" y="revenue"
-        size={10} // Make them bigger for easier clicking
-        style={{ data: { fill: "transparent" } }} // Invisible
+        size={10}
+        style={{ data: { fill: "transparent" } }}
         events={[{
           target: "data",
           eventHandlers: {
             onClick: (event, datum) => {
               const clickedPoint = datum.data[datum.index];
               if (clickedPoint && clickedPoint.period) {
-                onDrillDown('line', clickedPoint.period, 'revenue');
+                onDrillDown('line', clickedPoint.period, clickedPoint.revenue, 'revenue');
               }
             }
           }
@@ -412,7 +456,7 @@ const LineChart: React.FC<{
             onClick: (event, datum) => {
               const clickedPoint = datum.data[datum.index];
               if (clickedPoint && clickedPoint.period) {
-                onDrillDown('line', clickedPoint.period, 'grossMargin');
+                onDrillDown('line', clickedPoint.period, clickedPoint.grossMargin, 'grossMargin');
               }
             }
           }
@@ -428,7 +472,7 @@ const LineChart: React.FC<{
             onClick: (event, datum) => {
               const clickedPoint = datum.data[datum.index];
               if (clickedPoint && clickedPoint.period) {
-                onDrillDown('line', clickedPoint.period, 'netProfit');
+                onDrillDown('line', clickedPoint.period, clickedPoint.netProfit, 'netProfit');
               }
             }
           }
@@ -438,15 +482,14 @@ const LineChart: React.FC<{
   );
 };
 
-
 const BarChart: React.FC<{
-  data: any[];
-  onDrillDown: (type: 'bar', category: string, field: string) => void;
+  data: ChartDataPoint[];
+  onDrillDown: (chartType: string, category: string, value: any, dataType: string) => void;
 }> = ({ data, onDrillDown }) => {
   if (!data?.length) return <div className="text-center text-gray-500">No data available</div>;
 
   return (
-    <VictoryChart theme={VictoryTheme.material} domainPadding={20} height={350}>
+    <VictoryChart theme={VictoryTheme.clean} domainPadding={10} height={350} width={800}>
       <VictoryAxis tickFormat={x => x} style={{ tickLabels: { fontSize: 10, angle: -45 } }} />
       <VictoryAxis dependentAxis tickFormat={y => `$${Math.round(y / 1000)}k`} />
       <VictoryLegend
@@ -459,23 +502,25 @@ const BarChart: React.FC<{
       />
       <VictoryGroup offset={20} colorScale={["#4bc0c0", "#ff6384"]}>
         <VictoryBar
+        labelComponent={<VictoryTooltip />}
           data={data} x="period" y="revenue"
           events={[{
             target: "data",
             eventHandlers: {
               onClick: (event, datum) => {
-                onDrillDown('bar', datum.datum.period, 'revenue');
+                onDrillDown('bar', datum.datum.period, datum.datum.revenue, 'revenue');
               }
             }
           }]}
         />
         <VictoryBar
+          labelComponent={<VictoryTooltip />}
           data={data} x="period" y="expenses"
           events={[{
             target: "data",
             eventHandlers: {
               onClick: (event, datum) => {
-                onDrillDown('bar', datum.datum.period, 'expenses');
+                onDrillDown('bar', datum.datum.period, datum.datum.expenses, 'expenses');
               }
             }
           }]}
@@ -486,31 +531,26 @@ const BarChart: React.FC<{
 };
 
 const PieChart: React.FC<{
-  data: any;
-  onDrillDown: (type: 'pie', category: string, field: string) => void;
+  data: ChartDataPoint[];
+  onDrillDown: (chartType: string, category: string, value: any, dataType: string) => void;
 }> = ({ data, onDrillDown }) => {
-  if (!data) return <div className="text-center text-gray-500">No data available</div>;
-  
-  const pieData = [
-    { x: "Gross Margin", y: data.grossMargin, field: "grossMargin" },
-    { x: "Operating Expenses", y: data.opEx, field: "operatingExpenses" },
-    { x: "Net Profit", y: data.netProfit, field: "netProfit" },
-    { x: "Revenue", y: data.revenue, field: "revenue" }
-  ].filter(item => item.y > 0);
+  if (!data?.length) return <div className="text-center text-gray-500">No data available</div>;
 
   return (
     <VictoryPie
-      data={pieData}
-      colorScale={["#4bc0c0", "#ff6384", "#36a2eb", "#ffce56"]}
+      data={data}
+      x="catfinancialview"
+      y="revenue"
+      colorScale={["#4bc0c0", "#ff6384", "#36a2eb", "#ffce56", "#9966ff", "#ff9f40"]}
       labelRadius={80}
       style={{ labels: { fontSize: 10, fill: "#333" } }}
-      labels={({ datum }) => `${datum.x}: $${Math.round(datum.y)}`}
+      labels={({ datum }) => `${datum.catfinancialview}: $${Math.round(datum.revenue / 1000)}k`}
       height={350}
       events={[{
         target: "data",
         eventHandlers: {
           onClick: (event, datum) => {
-            onDrillDown('pie', datum.datum.x, datum.datum.field);
+            onDrillDown('pie', datum.datum.catfinancialview, datum.datum.revenue, 'revenue');
           }
         }
       }]}
@@ -519,27 +559,30 @@ const PieChart: React.FC<{
 };
 
 const DonutChart: React.FC<{
-  data: any[];
-  onDrillDown: (type: 'donut', category: string, field: string) => void;
+  data: ChartDataPoint[];
+  onDrillDown: (chartType: string, category: string, value: any, dataType: string) => void;
 }> = ({ data, onDrillDown }) => {
   if (!data?.length) return <div className="text-center text-gray-500">No data available</div>;
   
+  // Take top 6 categories for better visibility
   const topCategories = data.slice(0, 6);
   
   return (
     <VictoryPie
       data={topCategories}
-      x="catAccountingView" y="revenue"
+      x="cataccountingview" 
+      y="revenue"
       colorScale={["#ffce56", "#4bc0c0", "#9966ff", "#ff9f40", "#36a2eb", "#ff6384"]}
-      innerRadius={70} labelRadius={90}
+      innerRadius={70} 
+      labelRadius={90}
       style={{ labels: { fontSize: 10, fill: "#333" } }}
-      labels={({ datum }) => `${datum.catAccountingView}: $${Math.round(datum.revenue)}`}
+      labels={({ datum }) => `${datum.cataccountingview}: $${Math.round(datum.revenue / 1000)}k`}
       height={350}
       events={[{
         target: "data",
         eventHandlers: {
           onClick: (event, datum) => {
-            onDrillDown('donut', datum.datum.catAccountingView, 'revenue');
+            onDrillDown('donut', datum.datum.cataccountingview, datum.datum.revenue, 'revenue');
           }
         }
       }]}
@@ -555,20 +598,23 @@ const DrillDownChart: React.FC<{ data: any[] }> = ({ data }) => {
   const keys = Object.keys(firstItem);
   
   // Determine chart type based on data structure
-  if (keys.includes('catFinancialView')) {
+  if (keys.includes('catfinancialview') || keys.includes('cataccountingview')) {
+    const categoryKey = keys.find(key => key.includes('cat')) || keys[0];
     return (
-      <VictoryChart theme={VictoryTheme.material} domainPadding={20} height={350}>
+      <VictoryChart theme={VictoryTheme.clean} domainPadding={20} height={350}>
         <VictoryAxis tickFormat={x => x} style={{ tickLabels: { fontSize: 10, angle: -45 } }} />
         <VictoryAxis dependentAxis tickFormat={y => `$${Math.round(y / 1000)}k`} />
         <VictoryBar
-          data={data} x="catFinancialView" y="value"
+          data={data} 
+          x={categoryKey} 
+          y="value"
           style={{ data: { fill: "#4bc0c0" } }}
         />
       </VictoryChart>
     );
   } else if (keys.includes('period')) {
     return (
-      <VictoryChart theme={VictoryTheme.material} domainPadding={20} height={350}>
+      <VictoryChart theme={VictoryTheme.clean} domainPadding={20} height={350} width={1000}>
         <VictoryAxis tickFormat={x => x} style={{ tickLabels: { fontSize: 10, angle: -45 } }} />
         <VictoryAxis dependentAxis tickFormat={y => `$${Math.round(y / 1000)}k`} />
         <VictoryLine
@@ -583,7 +629,8 @@ const DrillDownChart: React.FC<{ data: any[] }> = ({ data }) => {
     return (
       <VictoryPie
         data={data}
-        x={labelKey} y="value"
+        x={labelKey} 
+        y="value"
         colorScale={["#4bc0c0", "#ff6384", "#36a2eb", "#ffce56", "#9966ff", "#ff9f40"]}
         style={{ labels: { fontSize: 10, fill: "#333" } }}
         height={350}

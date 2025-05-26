@@ -1,12 +1,19 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
 import { AgCharts } from "ag-charts-react";
-import { useDuckDBContext } from "../_providers/DuckDBContext";
 import { AgChartOptions } from "ag-charts-community";
 import { GroupModal } from "../../components/GroupManagement";
-import { buildWhereClause } from "@/lib/services/buildWhereClause";
+import { 
+  useFetchLineChartDataMutation,
+  useFetchBarChartDataMutation,
+  useFetchPieChartDataMutation,
+  useFetchDonutChartDataMutation,
+  useFetchDrillDownDataMutation,
+  databaseName
+} from "@/lib/services/usersApi";
 // Types
 import { Dimensions } from "@/types/Schemas";
+import { buildRequestBody } from "@/lib/services/buildWhereClause";
 
 // Core data types
 interface ChartDataPoint {
@@ -35,7 +42,6 @@ interface DrillDownState {
   category: string;
   title: string;
 }
-
 
 // Chart container component
 const ChartContainer: React.FC<CommonProps & {
@@ -148,14 +154,20 @@ const DrillDownChart: React.FC<{
   );
 };
 
-
 // Main AG Charts Page Component
 const AgChartsPage: React.FC = () => {
-  const { executeQuery, isDataLoaded } = useDuckDBContext();
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isGroupModalOpen, setIsGroupModalOpen] = useState<boolean>(false);
   const [dimensions, setDimensions] = useState<Dimensions | null>(null);
+  
+  // API Mutations
+  const [fetchLineChartData] = useFetchLineChartDataMutation();
+  const [fetchBarChartData] = useFetchBarChartDataMutation();
+  const [fetchPieChartData] = useFetchPieChartDataMutation();
+  const [fetchDonutChartData] = useFetchDonutChartDataMutation();
+  const [fetchDrillDownData] = useFetchDrillDownDataMutation();
+  
   // Drill down state
   const [drillDown, setDrillDown] = useState<DrillDownState>({
     active: false,
@@ -206,326 +218,296 @@ const AgChartsPage: React.FC = () => {
 
   const handleCreateGroup = (datas: any) => {
     setDimensions(datas);
-  }
+  };
 
-  useEffect(() => {
-    if (!isDataLoaded) return;
-
-    const fetchChartData = async () => {
-      setIsLoading(true);
-      setError(null);
-      const whereClause = buildWhereClause(dimensions);
-
-      try {
-        const [lineResult, barResult, pieResult, donutResult] = await Promise.all([
-          executeQuery(`SELECT period, AVG(revenue) as revenue, AVG(grossMargin) as grossMargin, AVG(netProfit) as netProfit FROM financial_data ${whereClause} GROUP BY period ORDER BY period`),
-          executeQuery(`SELECT period, SUM(revenue) as revenue, SUM(operatingExpenses) as expenses FROM financial_data ${whereClause} GROUP BY period ORDER BY period`),
-          executeQuery(`SELECT SUM(grossMargin) as grossMargin, SUM(operatingExpenses) as operatingExpenses, SUM(netProfit) as netProfit, SUM(revenue) as revenue FROM financial_data ${whereClause}`),
-          executeQuery(`SELECT catAccountingView, SUM(revenue) as revenue FROM financial_data ${whereClause} GROUP BY catAccountingView ORDER BY revenue DESC`)
-        ]);
-
-        // Process line chart data
-        const lineData = lineResult.success ? lineResult.data || [] : [];
-        const lineOpts = lineData.length ? {
-          title: { text: "Profit & Loss Accounts" },
-          subtitle: { text: "Showing numbers in $" },
-          data: lineData,
-          series: [
-            {
-              type: "line",
-              xKey: "period",
-              yKey: "revenue",
-              yName: "Revenue",
-              tooltip: { enabled: true },
-            },
-            {
-              type: "line",
-              xKey: "period",
-              yKey: "grossMargin",
-              yName: "Gross Margin",
-              tooltip: { enabled: true },
-            },
-            {
-              type: "line",
-              xKey: "period",
-              yKey: "netProfit",
-              yName: "Net Profit",
-              tooltip: { enabled: true },
-            },
-          ],
-          axes: [
-            { type: "category", position: "bottom", title: { text: "Period" } },
-            { type: "number", position: "left", title: { text: "Amount ($)" } },
-          ],
-          listeners: {
-            // @ts-ignore
-            seriesNodeClick: ({ datum, yKey }) => {
-              if (datum && datum.period) {
-                handleDrillDown("line", datum.period, datum[yKey], yKey);
-              }
-            },
-          }
-        } : null;
-
-        // Process bar chart data
-        const barData = barResult.success ? barResult.data || [] : [];
-        const barOpts = barData.length ? {
-          title: { text: "Revenue vs Expenses" },
-          data: barData,
-          series: [
-            {
-              type: "bar",
-              xKey: "period",
-              yKey: "revenue",
-              yName: "Revenue",
-              tooltip: { enabled: true }
-            },
-            {
-              type: "bar",
-              xKey: "period",
-              yKey: "expenses",
-              yName: "Expenses",
-              tooltip: { enabled: true }
-            },
-          ],
-          axes: [
-            { type: 'category', position: 'bottom', title: { text: 'Period' } },
-            { type: 'number', position: 'left', title: { text: 'Amount ($)' } }
-          ],
-          listeners: {
-            // @ts-ignore
-            seriesNodeClick: ({ datum, yKey }) => {
-              if (datum && datum.period) {
-                handleDrillDown('bar', datum.period, datum[yKey], yKey);
-              }
-            }
-          }
-        } : null;
-
-        // Process pie chart data
-        let pieData: ChartDataPoint[] = [];
-        if (pieResult.success && pieResult.data?.length) {
-          pieData = Object.entries(pieResult.data[0])
-            .map(([key, value]) => ({ label: key, value: value as number }));
-        }
-        const pieOpts = pieData.length ? {
-          title: { text: "Financial Distribution" },
-          data: pieData,
-          series: [{
-            type: "pie",
-            angleKey: "value",
-            labelKey: "label",
-            tooltip: { enabled: true },
-            calloutLabel: { enabled: true },
-            listeners: {
-              // @ts-ignore
-              nodeClick: (event) => {
-                const { datum } = event;
-                if (datum) {
-                  handleDrillDown('pie', datum.label, datum.value, 'financialDistribution');
-                }
-              }
-            }
-          }],
-        } : null;
-
-        // Process donut chart data
-        const donutData = donutResult.success ? donutResult.data || [] : [];
-        const donutOpts = donutData.length ? {
-          title: { text: "Revenue by Category" },
-          data: donutData,
-          series: [{
-            type: "donut",
-            angleKey: "revenue",
-            labelKey: "catAccountingView",
-            tooltip: { enabled: true },
-            calloutLabel: { enabled: true },
-            listeners: {
-              // @ts-ignore
-              nodeClick: (event) => {
-                const { datum } = event;
-                if (datum) {
-                  handleDrillDown('donut', datum.catAccountingView, datum.revenue, 'categoryRevenue');
-                }
-              }
-            }
-          }],
-        } : null;
-
-        // Update all chart data and options
-        setChartData({
-          line: lineData,
-          bar: barData,
-          pie: pieData,
-          donut: donutData,
-          drillDown: []
-        });
-
-        setChartOptions({
-          line: lineOpts as any,
-          bar: barOpts as any,
-          pie: pieOpts as any,
-          donut: donutOpts as any,
-          drillDown: null
-        });
-
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Unknown error occurred");
-        console.error("Error fetching chart data:", err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchChartData();
-  }, [dimensions, isDataLoaded, executeQuery]);
-
-  // Handle drill down - moved to a separate function
-  const handleDrillDown = async (chartType: string, category: string, value: any, dataType: string) => {
-    if (!isDataLoaded) return;
-
+  // Fetch all chart data
+  const fetchAllChartData = async () => {
     setIsLoading(true);
     setError(null);
 
     try {
-      let query = "";
-      let title = "";
+      // Fetch line chart data
+      const lineResult = await fetchLineChartData({
+        body: buildRequestBody(dimensions,'line', 'period')
+      }).unwrap();
 
-      switch (chartType) {
-        case 'bar':
-          if (dataType === 'revenue') {
-            query = `SELECT fiscalYear, catFinancialView, SUM(revenue) as value 
-                     FROM financial_data 
-                     WHERE period = '${category}'
-                     GROUP BY fiscalYear, catFinancialView
-                     ORDER BY fiscalYear, value DESC`;
-            title = `Revenue Breakdown for Period: ${category}`;
-          } else if (dataType === 'expenses') {
-            query = `SELECT fiscalYear, catFinancialView, SUM(operatingExpenses) as value 
-                     FROM financial_data 
-                     WHERE period = '${category}'
-                     GROUP BY fiscalYear, catFinancialView
-                     ORDER BY fiscalYear, value DESC`;
-            title = `Expenses Breakdown for Period: ${category}`;
-          }
-          break;
+      // Fetch bar chart data
+      const barResult = await fetchBarChartData({
+        body: buildRequestBody(dimensions,'bar', 'period')
+      }).unwrap();
 
-        case 'line':
-          query = `SELECT fiscalYear, catFinancialView, SUM(${dataType}) as value 
-                   FROM financial_data 
-                   WHERE period = '${category}'
-                   GROUP BY fiscalYear, catFinancialView
-                   ORDER BY value DESC`;
-          title = `${dataType.charAt(0).toUpperCase() + dataType.slice(1)} Breakdown for Period: ${category}`;
-          break;
+      // Fetch pie chart data
+      const pieResult = await fetchPieChartData({
+        body: buildRequestBody(dimensions,'pie', 'catfinancialview')
+      }).unwrap();
 
-        case 'donut':
-          query = `SELECT fiscalYear, period, SUM(revenue) as value 
-                   FROM financial_data 
-                   WHERE catAccountingView = '${category}'
-                   GROUP BY fiscalYear, period
-                   ORDER BY fiscalYear, period`;
-          title = `Revenue Breakdown for Category: ${category}`;
-          break;
+      // Fetch donut chart data
+      const donutResult = await fetchDonutChartData({
+        body: buildRequestBody(dimensions,'donut', 'cataccountingview')
+      }).unwrap();
 
-        case 'pie':
-          if (dataType === 'financialDistribution') {
-            query = `SELECT catFinancialView, SUM(${category}) as value 
-                     FROM financial_data 
-                     WHERE 1=1
-                     GROUP BY catFinancialView
-                     ORDER BY value DESC`;
-            title = `${category} Breakdown by Financial Category`;
-          }
-          break;
-      }
-
-      if (query) {
-        const result = await executeQuery(query);
-        if (result.success && result.data && result.data.length > 0) {
-          const drillData = result.data;
-
-          // Create appropriate chart options based on data structure
-          const firstDataPoint = drillData[0];
-          const dataKeys = firstDataPoint ? Object.keys(firstDataPoint) : [];
-          let options: AgChartOptions;
-
-          if (dataKeys.includes('catFinancialView')) {
-            options = {
-              title: { text: title },
-              data: drillData,
-              series: [{
-                type: 'bar',
-                xKey: 'catFinancialView',
-                yKey: 'value',
-                yName: 'Value',
-                tooltip: { enabled: true }
-              }],
-              axes: [
-                { type: 'category', position: 'bottom' },
-                { type: 'number', position: 'left', title: { text: 'Value ($)' } }
-              ],
-            };
-          } else if (dataKeys.includes('period')) {
-            options = {
-              title: { text: title },
-              data: drillData,
-              series: [{
-                type: 'line',
-                xKey: 'period',
-                yKey: 'value',
-                yName: 'Value',
-                tooltip: { enabled: true }
-              }],
-              axes: [
-                { type: 'category', position: 'bottom', title: { text: 'Period' } },
-                { type: 'number', position: 'left', title: { text: 'Value ($)' } }
-              ],
-            };
-          } else {
-            const labelKey = dataKeys.find(key => key !== 'value') || dataKeys[0];
-            options = {
-              title: { text: title },
-              data: drillData,
-              series: [{
-                // @ts-ignore
-                type: 'pie',
-                angleKey: 'value',
-                labelKey: labelKey,
-                tooltip: { enabled: true },
-                calloutLabel: { enabled: true }
-              }],
-            };
-          }
-
-          // Update drill-down data and options
-          setChartData(prev => ({
-            ...prev,
-            drillDown: drillData
-          }));
-
-          setChartOptions(prev => ({
-            ...prev,
-            drillDown: options
-          }));
-
-          setDrillDown({
-            active: true,
-            chartType,
-            category,
-            title
-          });
-        } else {
-          setError("No data available for this selection");
+      // Process line chart data
+      const lineData = lineResult.success ? lineResult.data || [] : [];
+      const lineOpts = lineData.length ? {
+        title: { text: "Revenue Trends Over Time" },
+        subtitle: { text: "Showing financial metrics by period" },
+        data: lineData,
+        series: [
+          {
+            type: "line",
+            xKey: "period",
+            yKey: "revenue",
+            yName: "Revenue",
+            tooltip: { enabled: true },
+          },
+          {
+            type: "line",
+            xKey: "period",
+            yKey: "grossMargin",
+            yName: "Gross Margin",
+            tooltip: { enabled: true },
+          },
+          {
+            type: "line",
+            xKey: "period",
+            yKey: "netProfit",
+            yName: "Net Profit",
+            tooltip: { enabled: true },
+          },
+        ],
+        axes: [
+          { type: "category", position: "bottom", title: { text: "Period" } },
+          { type: "number", position: "left", title: { text: "Amount ($)" } },
+        ],
+        listeners: {
+          // @ts-ignore
+          seriesNodeClick: ({ datum, yKey }) => {
+            if (datum && datum.period) {
+              handleDrillDown("line", datum.period, datum[yKey], yKey);
+            }
+          },
         }
+      } : null;
+
+      // Process bar chart data
+      const barData = barResult.success ? barResult.data || [] : [];
+      const barOpts = barData.length ? {
+        title: { text: "Revenue vs Expenses" },
+        data: barData,
+        series: [
+          {
+            type: "bar",
+            xKey: "period",
+            yKey: "revenue",
+            yName: "Revenue",
+            tooltip: { enabled: true }
+          },
+          {
+            type: "bar",
+            xKey: "period",
+            yKey: "expenses",
+            yName: "Expenses",
+            tooltip: { enabled: true }
+          },
+        ],
+        axes: [
+          { type: 'category', position: 'bottom', title: { text: 'Period' } },
+          { type: 'number', position: 'left', title: { text: 'Amount ($)' } }
+        ],
+        listeners: {
+          // @ts-ignore
+          seriesNodeClick: ({ datum, yKey }) => {
+            if (datum && datum.period) {
+              handleDrillDown('bar', datum.period, datum[yKey], yKey);
+            }
+          }
+        }
+      } : null;
+
+      // Process pie chart data
+      const pieData = pieResult.success ? pieResult.data || [] : [];
+      const pieOpts = pieData.length ? {
+        title: { text: "Financial Distribution" },
+        data: pieData,
+        series: [{
+          type: "pie",
+          angleKey: "revenue",
+          labelKey: "catfinancialview",
+          tooltip: { enabled: true },
+          calloutLabel: { enabled: true },
+          sectorLabelKey: 'catfinancialview',
+          listeners: {
+            // @ts-ignore
+            nodeClick: (event) => {
+              const { datum } = event;
+              if (datum) {
+                handleDrillDown('pie', datum.catfinancialview, datum.revenue, 'revenue');
+              }
+            }
+          }
+        }],
+      } : null;
+
+      // Process donut chart data
+      const donutData = donutResult.success ? donutResult.data || [] : [];
+      const donutOpts = donutData.length ? {
+        title: { text: "Revenue by Category" },
+        data: donutData,
+        series: [{
+          type: "donut",
+          angleKey: "revenue",
+          labelKey: "cataccountingview",
+          tooltip: { enabled: true },
+          calloutLabel: { enabled: true },
+          sectorLabelKey: 'cataccountingview',
+          listeners: {
+            // @ts-ignore
+            nodeClick: (event) => {
+              const { datum } = event;
+              if (datum) {
+                handleDrillDown('donut', datum.cataccountingview, datum.revenue, 'revenue');
+              }
+            }
+          }
+        }],
+      } : null;
+
+      // Update all chart data and options
+      setChartData({
+        line: lineData,
+        bar: barData,
+        pie: pieData,
+        donut: donutData,
+        drillDown: []
+      });
+
+      setChartOptions({
+        line: lineOpts as any,
+        bar: barOpts as any,
+        pie: pieOpts as any,
+        donut: donutOpts as any,
+        drillDown: null
+      });
+
+    } catch (err: any) {
+      setError(err?.data?.detail || err.message || "Failed to fetch chart data");
+      console.error("Error fetching chart data:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handle drill down using API
+  const handleDrillDown = async (chartType: string, category: string, value: any, dataType: string) => {
+    setIsLoading(true);
+    setError(null);
+    // console.log("Drill down triggered:", chartType, category, value, dataType);
+    // console.log("Drill down data:", chartData, chartOptions);
+
+    try {
+      const result = await fetchDrillDownData({
+        table_name: databaseName,
+        chart_type: chartType,
+        category: category,
+        data_type: dataType,
+        value: value
+      }).unwrap();
+
+      if (result.success && result.data && result.data.length > 0) {
+        const drillData = result.data;
+        const title = result.title || `${dataType} Breakdown for ${category}`;
+
+        // Create chart options based on API response
+        let options: AgChartOptions;
+        const columns = result.columns || Object.keys(drillData[0]);
+        
+        // Determine chart type based on data structure
+        if (columns.includes('catfinancialview') || columns.includes('cataccountingview')) {
+          options = {
+            title: { text: title },
+            data: drillData,
+            series: [{
+              type: 'bar',
+              // @ts-ignore
+              xKey: columns.find(col => col.includes('cat')) || columns[0],
+              yKey: 'value',
+              yName: 'Value',
+              tooltip: { enabled: true }
+            }],
+            axes: [
+              { type: 'category', position: 'bottom' },
+              { type: 'number', position: 'left', title: { text: 'Value ($)' } }
+            ],
+          };
+        } else if (columns.includes('period')) {
+          options = {
+            title: { text: title },
+            data: drillData,
+            series: [{
+              type: 'line',
+              xKey: 'period',
+              yKey: 'value',
+              yName: 'Value',
+              tooltip: { enabled: true }
+            }],
+            axes: [
+              { type: 'category', position: 'bottom', title: { text: 'Period' } },
+              { type: 'number', position: 'left', title: { text: 'Value ($)' } }
+            ],
+          };
+        } else {
+          // @ts-ignore
+          const labelKey = columns.find(key => key !== 'value') || columns[0];
+          options = {
+            title: { text: title },
+            data: drillData,
+            series: [{
+              // @ts-ignore
+              type: 'pie',
+              angleKey: 'value',
+              labelKey: labelKey,
+              tooltip: { enabled: true },
+              calloutLabel: { enabled: true }
+            }],
+          };
+        }
+
+        setChartData(prev => ({
+          ...prev,
+          drillDown: drillData
+        }));
+
+        setChartOptions(prev => ({
+          ...prev,
+          drillDown: options
+        }));
+
+        setDrillDown({
+          active: true,
+          chartType,
+          category,
+          title
+        });
+      } else {
+        setError("No data available for this selection");
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error occurred");
+    } catch (err: any) {
+      setError(err?.data?.detail || err.message || "Failed to fetch drill-down data");
       console.error("Error in drill-down:", err);
     } finally {
       setIsLoading(false);
     }
   };
+
+  // Fetch data when dimensions change
+  useEffect(() => {
+    fetchAllChartData();
+  }, [dimensions]);
+
+  // Initial data fetch
+  // useEffect(() => {
+  //   fetchAllChartData();
+  // }, []);
 
   return (
     <section className="p-5">
@@ -536,18 +518,47 @@ const AgChartsPage: React.FC = () => {
         onCreateGroup={handleCreateGroup}
       />
       <div className="flex flex-col mb-4">
-        {dimensions?.groupName && <p className="text-sm text-gray-500">Current Group Name: <span className="capitalize font-bold">{dimensions.groupName}</span></p>}
-        <div>
-          <button onClick={() => setDimensions(null)} className="shadow-xl border bg-red-400 p-2 rounded text-white">Reset Group</button>
-          <button onClick={() => setIsGroupModalOpen(true)} className="shadow-xl border bg-blue-400 p-2 rounded text-white">Create Group</button>
+        {dimensions?.groupName && (
+          <p className="text-sm text-gray-500">
+            Current Group Name: <span className="capitalize font-bold">{dimensions.groupName}</span>
+          </p>
+        )}
+        <div className="flex gap-2">
+          <button 
+            onClick={() => setDimensions(null)} 
+            className="shadow-xl border bg-red-400 p-2 rounded text-white hover:bg-red-500"
+          >
+            Reset Group
+          </button>
+          <button 
+            onClick={() => setIsGroupModalOpen(true)} 
+            className="shadow-xl border bg-blue-400 p-2 rounded text-white hover:bg-blue-500"
+          >
+            Create Group
+          </button>
+          <button 
+            onClick={fetchAllChartData} 
+            className="shadow-xl border bg-green-400 p-2 rounded text-white hover:bg-green-500"
+          >
+            Refresh Data
+          </button>
         </div>
       </div>
 
-      {error && <p className="text-red-500 mb-2">{error}</p>}
-      {isLoading && <p className="text-gray-500 mb-2">Loading...</p>}
+      {error && (
+        <div className="flex justify-between bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          <p>{error}</p>
+          <p onClick={()=>setError('')} className="cursor-pointer">x</p>
+        </div>
+      )}
+      
+      {isLoading && (
+        <div className="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded mb-4">
+          <p>Loading chart data...</p>
+        </div>
+      )}
 
       {drillDown.active ? (
-        // Use the separated drill-down component
         <DrillDownChart
           drillDownState={drillDown}
           drillDownData={chartData.drillDown}
@@ -557,22 +568,22 @@ const AgChartsPage: React.FC = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {chartOptions.line && (
-            <ChartContainer title="Line Series" data={chartData.line}>
+            <ChartContainer title="Revenue Trends" data={chartData.line}>
               <AgCharts options={chartOptions.line} />
             </ChartContainer>
           )}
           {chartOptions.bar && (
-            <ChartContainer title="Bar Series" data={chartData.bar}>
+            <ChartContainer title="Revenue vs Expenses" data={chartData.bar}>
               <AgCharts options={chartOptions.bar} />
             </ChartContainer>
           )}
           {chartOptions.pie && (
-            <ChartContainer title="Pie Series" data={chartData.pie}>
+            <ChartContainer title="Financial Distribution" data={chartData.pie}>
               <AgCharts options={chartOptions.pie} />
             </ChartContainer>
           )}
           {chartOptions.donut && (
-            <ChartContainer title="Donut Series" data={chartData.donut}>
+            <ChartContainer title="Revenue by Category" data={chartData.donut}>
               <AgCharts options={chartOptions.donut} />
             </ChartContainer>
           )}

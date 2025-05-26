@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { CompactTable } from "@table-library/react-table-library/compact";
 import { useTheme } from "@table-library/react-table-library/theme";
 import { getTheme } from "@table-library/react-table-library/baseline";
@@ -8,7 +8,7 @@ import { useSort } from "@table-library/react-table-library/sort";
 import { TableNode } from "@table-library/react-table-library/types/table";
 import { Action, State } from "@table-library/react-table-library/types/common";
 import { useRowSelect } from "@table-library/react-table-library/select";
-import { useDuckDBContext } from "../_providers/DuckDBContext";
+import { databaseName, useFetchSearchableDataQuery, useFetchSearchInfoQuery } from "@/lib/services/usersApi"; 
 import { FinancialSchema } from "@/types/Schemas";
 
 interface FinancialRow extends FinancialSchema {
@@ -22,115 +22,73 @@ interface EditableCell {
 }
 
 export default function ReactTable() {
-  const { executeQuery, isDataLoaded } = useDuckDBContext();
-  const [tableData, setTableData] = useState<{ nodes: FinancialRow[] }>({ nodes: [] });
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  // State for filters and pagination
   const [search, setSearch] = useState<string>("");
   const [filterCategory, setFilterCategory] = useState<string>("All");
-  const [categories, setCategories] = useState<string[]>([]);
-  const [totalRows, setTotalRows] = useState<number>(0);
   const [currentPage, setCurrentPage] = useState<number>(0);
   const [pageSize, setPageSize] = useState<number>(10);
   
-  // Selection state
+  // Selection and editing state
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
-  
-  // Editing state
   const [editingCell, setEditingCell] = useState<EditableCell | null>(null);
   const [unsavedChanges, setUnsavedChanges] = useState<Map<string, Partial<FinancialRow>>>(new Map());
 
-  // Fetch categories for filter dropdown
-  useEffect(() => {
-    if (!isDataLoaded) return;
+  // Prepare search parameters
+  const searchParams = useMemo(() => {
+    const columnFilters: Record<string, string | number> = {};
+    
+    if (filterCategory !== "All") {
+      columnFilters.catfinancialview = filterCategory;
+    }
 
-    const fetchCategories = async () => {
-      try {
-        const result = await executeQuery(
-          "SELECT DISTINCT catFinancialView FROM financial_data ORDER BY catFinancialView"
-        );
-        if (result.success && result.data) {
-          setCategories(result.data.map((row: { catFinancialView: string }) => row.catFinancialView));
-        }
-      } catch (err) {
-        console.error("Failed to fetch categories:", err);
-      }
+    return {
+      tableName: databaseName,
+      search: search || undefined,
+      column_filters: Object.keys(columnFilters).length > 0 ? columnFilters : undefined,
+      limit: pageSize,
+      offset: currentPage * pageSize,
     };
+  }, [search, filterCategory, currentPage, pageSize]);
 
-    fetchCategories();
-  }, [isDataLoaded, executeQuery]);
+  // API queries
+  const {
+    data: searchData,
+    error: searchError,
+    isLoading: isSearchLoading,
+    refetch: refetchData,
+  } = useFetchSearchableDataQuery(searchParams);
 
-  // Fetch data with filters applied directly in SQL
-  useEffect(() => {
-    if (!isDataLoaded) return;
+  const {
+    data: searchInfo,
+    error: searchInfoError,
+    isLoading: isSearchInfoLoading,
+  } = useFetchSearchInfoQuery({ tableName: databaseName });
 
-    const fetchFilteredData = async () => {
-      setIsLoading(true);
-      
-      try {
-        // Build WHERE clause based on filter and search
-        let whereClause = "";
-        const conditions = [];
-        
-        if (filterCategory !== "All") {
-          conditions.push(`catFinancialView = '${filterCategory}'`);
-        }
-        
-        if (search) {
-          conditions.push(
-            `(LOWER(catFinancialView) LIKE '%${search.toLowerCase()}%' OR 
-              CAST(revenue AS STRING) LIKE '%${search.toLowerCase()}%')`
-          );
-        }
-        
-        if (conditions.length > 0) {
-          whereClause = `WHERE ${conditions.join(" AND ")}`;
-        }
-        
-        // Get total count for pagination
-        const countQuery = `SELECT COUNT(*) as total FROM financial_data ${whereClause}`;
-        const countResult = await executeQuery(countQuery);
-        
-        if (countResult.success && countResult.data && countResult.data.length > 0) {
-          setTotalRows(Number(countResult.data[0].total));
-        }
-        
-        // Get paginated data
-        const offset = currentPage * pageSize;
-        const dataQuery = `
-          SELECT * FROM financial_data 
-          ${whereClause} 
-          ORDER BY fiscalYear, period 
-          LIMIT ${pageSize} OFFSET ${offset}
-        `;
-        
-        const dataResult = await executeQuery(dataQuery);
-        
-        if (dataResult.success && dataResult.data) {
-          // Add id to each row for the table library
-          const rowsWithIds = dataResult.data.map((item: FinancialSchema, index: number) => ({
-            ...item,
-            id: `row-${index}-${offset}`,
-          }));
-          
-          setTableData({ nodes: rowsWithIds });
-          setError(null);
-        } else {
-          setError(dataResult.error || "Failed to fetch data");
-        }
-      } catch (err) {
-        if (err instanceof Error) {
-          setError(err.message);
-        } else {
-          setError("An unknown error occurred");
-        }
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  // Transform API data for table
+  const tableData = useMemo(() => {
+    if (!searchData?.data) return { nodes: [] };
 
-    fetchFilteredData();
-  }, [isDataLoaded, executeQuery, search, filterCategory, currentPage, pageSize]);
+    const nodesWithIds = searchData.data.map((item: any, index: number) => ({
+      ...item,
+      id: `row-${index}-${currentPage * pageSize}`,
+      // Map API field names to component field names if needed
+      fiscalYear: item.fiscalyear || item.fiscalYear,
+      catFinancialView: item.catfinancialview || item.catFinancialView,
+      catAccountingView: item.cataccountingview || item.catAccountingView,
+      netProfit: item.netprofit || item.netProfit,
+    }));
+
+    return { nodes: nodesWithIds };
+  }, [searchData, currentPage, pageSize]);
+
+  // Get available categories from search info
+  const categories = useMemo(() => {
+    if (!searchInfo?.columns) return [];
+    
+    // You might need to make a separate API call to get unique values
+    // For now, return some default categories based on your sample data
+    return ["Non opérationnel", "Financier", "Exceptionnel"];
+  }, [searchInfo]);
 
   // Apply theme
   const theme = useTheme([
@@ -183,6 +141,7 @@ export default function ReactTable() {
     {
       onChange: (action: Action, state: { sortKey?: string }) => {
         console.log("Sort changed:", action, state);
+        // Note: For server-side sorting, you'd need to update your API call here
       },
     },
     {
@@ -199,7 +158,6 @@ export default function ReactTable() {
 
   // Cell editing handlers
   const handleCellClick = (item: FinancialRow, field: keyof FinancialRow) => {
-    // Only allow editing for certain fields
     const editableFields = ['catFinancialView', 'revenue', 'netProfit'];
     if (editableFields.includes(field as string)) {
       setEditingCell({ id: item.id, field, value: item[field] });
@@ -224,41 +182,10 @@ export default function ReactTable() {
 
   // Update functions
   const handleSaveChanges = async () => {
-    alert('Edited')
+    alert('Changes saved! (You would implement actual update API here)');
     setUnsavedChanges(new Map());
-    // try {
-    //   for (const [rowId, changes] of unsavedChanges.entries()) {
-    //     // Get the original row data
-    //     const originalRow = tableData.nodes.find(node => node.id === rowId);
-    //     if (!originalRow) continue;
-
-    //     // Build update query
-    //     const updateFields = Object.entries(changes)
-    //       .map(([field, value]) => `${field} = '${value}'`)
-    //       .join(', ');
-        
-    //     const updateQuery = `
-    //       UPDATE financial_data 
-    //       SET ${updateFields}
-    //       WHERE fiscalYear = ${originalRow.fiscalYear} 
-    //       AND period = ${originalRow.period}
-    //       AND catFinancialView = '${originalRow.catFinancialView}'
-    //     `;
-        
-    //     const result = await executeQuery(updateQuery);
-    //     if (!result.success) {
-    //       throw new Error(`Failed to update row ${rowId}: ${result.error}`);
-    //     }
-    //   }
-      
-    //   // Clear unsaved changes and refresh data
-    //   setUnsavedChanges(new Map());
-    //   // Refresh the table data
-    //   window.location.reload(); // Simple refresh, you might want to refetch data instead
-    // } catch (err) {
-    //   console.error("Error saving changes:", err);
-    //   setError(err instanceof Error ? err.message : "Failed to save changes");
-    // }
+    // TODO: Implement actual update API call
+    // You'll need to create an update endpoint in your API
   };
 
   const handleDiscardChanges = () => {
@@ -281,6 +208,11 @@ export default function ReactTable() {
     setPageSize(newSize);
     setCurrentPage(0);
   };
+
+  // Reset to first page when search changes
+  useEffect(() => {
+    setCurrentPage(0);
+  }, [search, filterCategory]);
 
   // Column definitions
   const COLUMNS = [
@@ -427,36 +359,47 @@ export default function ReactTable() {
     },
   ];
 
-  const totalPages = Math.ceil(totalRows / pageSize);
+  const totalPages = Math.ceil((searchData?.total_rows || 0) / pageSize);
+  const totalRows = searchData?.total_rows || 0;
+  const filteredRows = searchData?.filtered_rows || 0;
 
-  if (error) {
-    return <div className="p-4 text-red-600">Error: {error}</div>;
+  // Handle loading and error states
+  if (isSearchLoading || isSearchInfoLoading) {
+    return <div className="p-4 text-center">Loading data...</div>;
+  }
+
+  if (searchError || searchInfoError) {
+    return (
+      <div className="p-4 text-red-600">
+        Error: {searchError?.toString() || searchInfoError?.toString()}
+        <button 
+          onClick={() => refetchData()}
+          className="ml-2 px-3 py-1 bg-red-100 hover:bg-red-200 rounded"
+        >
+          Retry
+        </button>
+      </div>
+    );
   }
 
   return (
     <section className="p-8">
-      <h1 className="text-2xl font-bold mb-4">Financial Data Table - Full Featured</h1>
+      <h1 className="text-2xl font-bold mb-4">Financial Data Table - API Integrated</h1>
 
       {/* Controls */}
       <div className="flex flex-wrap items-center gap-4 mb-6">
         <input
           type="text"
-          placeholder="Search..."
+          placeholder="Search across all fields..."
           className="border px-3 py-2 rounded"
           value={search}
-          onChange={(e) => {
-            setSearch(e.target.value);
-            setCurrentPage(0);
-          }}
+          onChange={(e) => setSearch(e.target.value)}
         />
 
         <select
           className="border px-3 py-2 rounded"
           value={filterCategory}
-          onChange={(e) => {
-            setFilterCategory(e.target.value);
-            setCurrentPage(0);
-          }}
+          onChange={(e) => setFilterCategory(e.target.value)}
         >
           <option value="All">All Categories</option>
           {categories.map((category) => (
@@ -476,6 +419,13 @@ export default function ReactTable() {
           <option value="20">20 rows</option>
           <option value="50">50 rows</option>
         </select>
+
+        <button
+          onClick={() => refetchData()}
+          className="px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+        >
+          Refresh
+        </button>
 
         {/* Save/Discard buttons */}
         <div className="ml-auto flex gap-2">
@@ -498,10 +448,20 @@ export default function ReactTable() {
         </div>
       </div>
 
+      {/* Data Info */}
+      <div className="mb-4 text-sm text-gray-600">
+        {searchData?.search_applied && (
+          <span className="mr-4">
+            🔍 Search: "{searchData.search_term}" 
+          </span>
+        )}
+        <span>
+          Showing {filteredRows} of {totalRows} records
+        </span>
+      </div>
+
       {/* Table */}
-      {isLoading ? (
-        <div className="p-4 text-center">Loading data...</div>
-      ) : tableData.nodes.length === 0 ? (
+      {tableData.nodes.length === 0 ? (
         <div className="p-4 text-center">No data found matching your filters</div>
       ) : (
         <>
@@ -529,7 +489,7 @@ export default function ReactTable() {
                 Page {currentPage + 1} of {totalPages || 1}
               </span>
               <span className="text-gray-500">
-                ({totalRows} total rows)
+                ({filteredRows} filtered / {totalRows} total rows)
               </span>
             </div>
             <button

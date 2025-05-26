@@ -7,6 +7,7 @@
 // export default nextConfig;
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  reactStrictMode: false, 
   webpack: (config:any) => {
     // This is needed for WebAssembly
     config.experiments = { ...config.experiments, asyncWebAssembly: true };
