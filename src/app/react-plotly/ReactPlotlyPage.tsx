@@ -339,13 +339,14 @@ export default function ReactPlotlyPage() {
 
     const timeoutId = setTimeout(attachHandlers, 100);
     return () => clearTimeout(timeoutId);
-  }, [isLoading, drillDown.active, handleLineChartClick, handleBarChartClick, handlePieChartClick, handleDonutChartClick]);
+    
+  }, [isLoading, drillDown.active,dimensions, handleLineChartClick, handleBarChartClick, handlePieChartClick, handleDonutChartClick]);
 
   // Generic drill down function using API
   const handleDrillDown = useCallback(async (chartType: string, category: string, dataType: string, value?: any) => {
     setIsLoading(true);
     setError(null);
-    console.log("Drill down triggered:", chartType, category, dataType, value);
+    // console.log("Drill down triggered:", chartType, category, dataType, value);
 
     try {
       const result = await fetchDrillDownData({
@@ -518,7 +519,6 @@ export default function ReactPlotlyPage() {
   if (isLoading) {
     return <div className="p-8 text-center">Loading financial data...</div>;
   }
-console.log(chartData.donut);
 
   return (
     <section className="p-5">
