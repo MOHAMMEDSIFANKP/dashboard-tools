@@ -297,9 +297,8 @@ export default function ReactPlotlyPage() {
     if (!point) return;
 
     let category = point.x || point.label;
-    let dataType = point.data?.name?.toLowerCase() || point.label;
-    let value = point.y || point.value;
-
+    let dataType = point.data?.name?.toLowerCase() || 'revenue' ;
+    let value =  point.value;
     await handleDrillDown(chartType, category, dataType, value);
   }, []);
 
@@ -354,7 +353,7 @@ export default function ReactPlotlyPage() {
         chart_type: chartType,
         category: category,
         data_type: dataType,
-        value: value || category
+        value: value
       }).unwrap();
 
       if (result.success && result.data && result.data.length > 0) {
