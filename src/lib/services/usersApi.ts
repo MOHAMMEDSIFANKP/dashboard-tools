@@ -63,7 +63,7 @@ interface SearchDataResponse {
 export const api = createApi({
   reducerPath: 'api',
   baseQuery: fetchBaseQuery({
-    baseUrl: 'http://15.237.225.138:8000/api/',
+    baseUrl: 'https://15.237.225.138/api/',
   }),
   endpoints: (builder) => ({
      // Table API Endpoints
