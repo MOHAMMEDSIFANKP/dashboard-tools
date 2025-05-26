@@ -40,7 +40,7 @@ const DataGrid = ({ }) => {
   const startRecord = searchParams.offset + 1;
   const endRecord = Math.min(searchParams.offset + searchParams.limit, totalRecords);
 
-  console.log(data?.total_rows, 'total_rows');
+  // console.log(data?.total_rows, 'total_rows');
 
   const onFilterChanged = () => {
     if (!gridRef.current) return;
@@ -49,10 +49,10 @@ const DataGrid = ({ }) => {
     const newSearchFilters: Record<string, string> = {};
 
     Object.entries(filterModel).forEach(([field, model]) => {
-      if ('filter' in model) {
-        newSearchFilters[field] = model.filter as string;
-      }
-    });
+  if ('filter' in model && model.filter != null && model.filter !== '') {
+    newSearchFilters[field] = String(model.filter);
+  }
+});
 
     // Reset to first page when filters change
     setSearchParams((prev) => ({
@@ -110,7 +110,8 @@ const DataGrid = ({ }) => {
       headerName: 'Fiscal Year',
       sortable: true,
       editable: false,
-      floatingFilter: true
+      floatingFilter: true,
+      valueParser: (params) => String(params.newValue)
     },
     {
       field: 'period',
@@ -138,63 +139,72 @@ const DataGrid = ({ }) => {
       headerName: 'Revenue',
       sortable: true,
       editable: true,
-      floatingFilter: true
+      floatingFilter: true,
+      valueParser: (params) => String(params.newValue)
     },
     {
       field: 'otherincome',
       headerName: 'Other Income',
       sortable: true,
       editable: true,
-      floatingFilter: true
+      floatingFilter: true,
+      valueParser: (params) => String(params.newValue)
     },
     {
       field: 'grossmargin',
       headerName: 'Gross Margin',
       sortable: true,
       editable: true,
-      floatingFilter: true
+      floatingFilter: true,
+      valueParser: (params) => String(params.newValue)
     },
     {
       field: 'operatingexpenses',
       headerName: 'Operating Expenses',
       sortable: true,
       editable: true,
-      floatingFilter: true
+      floatingFilter: true,
+      valueParser: (params) => String(params.newValue)
     },
     {
       field: 'operatingprofit',
       headerName: 'Operating Profit',
       sortable: true,
       editable: true,
-      floatingFilter: true
+      floatingFilter: true,
+      valueParser: (params) => String(params.newValue)
     },
     {
       field: 'financialresult',
       headerName: 'Financial Result',
       sortable: true,
       editable: true,
-      floatingFilter: true
+      floatingFilter: true,
+      valueParser: (params) => String(params.newValue)
     },
     {
       field: 'earningsbeforetax',
       headerName: 'Earnings Before Tax',
       sortable: true,
       editable: true,
-      floatingFilter: true
+      floatingFilter: true,
+      valueParser: (params) => String(params.newValue)
     },
     {
       field: 'nonrecurringresult',
       headerName: 'Non-Recurring Result',
       sortable: true,
       editable: true,
-      floatingFilter: true
+      floatingFilter: true,
+      valueParser: (params) => String(params.newValue)
     },
     {
       field: 'netprofit',
       headerName: 'Net Profit',
       sortable: true,
       editable: true,
-      floatingFilter: true
+      floatingFilter: true,
+      valueParser: (params) => String(params.newValue)
     },
   ];
 
