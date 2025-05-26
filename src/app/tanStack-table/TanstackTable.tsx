@@ -287,7 +287,9 @@ export default function TanstackTable() {
   if (searchError || searchInfoError) {
     return (
       <div className="p-4 text-red-600">
-        Error: {searchError?.toString() || searchInfoError?.toString()}
+        Error: {
+        // @ts-ignore
+        searchError?.error?.toString() || searchInfoError?.error?.toString()}
         <button 
           onClick={() => refetchData()}
           className="ml-2 px-3 py-1 bg-red-100 hover:bg-red-200 rounded"

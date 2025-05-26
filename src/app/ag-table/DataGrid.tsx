@@ -223,12 +223,15 @@ const DataGrid = ({ }) => {
     );
   }
 
-  if (error) {
+  if (error) {    
     return (
       <div className="w-full p-4">
         <h1 className="text-xl font-bold mb-4">Financial Data - AG Grid</h1>
         <div className="text-red-600 p-4">
-          Error: {error as any || 'Failed to fetch data.'}
+          
+          Error: {
+          // @ts-ignore
+          error?.error || 'Failed to fetch data.'}
           <button
             onClick={() => refetchData()}
             className="ml-2 px-3 py-1 bg-red-100 hover:bg-red-200 rounded"
