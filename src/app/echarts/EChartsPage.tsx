@@ -2,11 +2,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import ReactECharts from "echarts-for-react";
 import { GroupModal } from "../../components/GroupManagement";
-import { 
-  useFetchLineChartDataMutation,
-  useFetchBarChartDataMutation,
-  useFetchPieChartDataMutation,
-  useFetchDonutChartDataMutation,
+import {
+  useFetchChartDataMutation,
   useFetchDrillDownDataMutation,
   databaseName
 } from "@/lib/services/usersApi";
@@ -75,12 +72,9 @@ const EChartsPage = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isGroupModalOpen, setIsGroupModalOpen] = useState<boolean>(false);
   const [dimensions, setDimensions] = useState<Dimensions | null>(null);
-  
+
   // API Mutations
-  const [fetchLineChartData] = useFetchLineChartDataMutation();
-  const [fetchBarChartData] = useFetchBarChartDataMutation();
-  const [fetchPieChartData] = useFetchPieChartDataMutation();
-  const [fetchDonutChartData] = useFetchDonutChartDataMutation();
+  const [fetchAllChartData] = useFetchChartDataMutation();
   const [fetchDrillDownData] = useFetchDrillDownDataMutation();
 
   // Chart data states
@@ -107,52 +101,39 @@ const EChartsPage = () => {
   });
 
   // Fetch all chart data using APIs
-  const fetchAllChartData = async () => {
+  const fetchAllChartDataHanlde = async () => {
     setIsLoading(true);
     setError(null);
 
     try {
-      // Fetch line chart data
-      const lineResult = await fetchLineChartData({
-        body: buildRequestBody(dimensions,'line', 'country')
+      // Fetch all chart data
+      const result = await fetchAllChartData({
+        body: buildRequestBody(dimensions, 'all')
       }).unwrap();
-
-      // Fetch bar chart data
-      const barResult = await fetchBarChartData({
-        body: buildRequestBody(dimensions,'bar', 'country')
-      }).unwrap();
-
-      // Fetch pie chart data
-      const pieResult = await fetchPieChartData({
-        body: buildRequestBody(dimensions,'pie', 'catfinancialview')
-      }).unwrap();
-
-      // Fetch donut chart data
-      const donutResult = await fetchDonutChartData({
-        body: buildRequestBody(dimensions,'donut', 'cataccountingview')
-      }).unwrap();
-
+      if (!result || !result.success) {
+        throw new Error(result?.message || "Failed to fetch chart data");
+      }
       // Process line chart data
-      const lineData = lineResult.success ? lineResult.data || [] : [];
+      const lineData = result?.charts?.line?.success ? result?.charts?.line?.data || [] : [];
       setLineChartData(lineData);
 
       // Process bar chart data - transform to include expenses
-      const barData = barResult.success ? barResult.data || [] : [];
+      const barData = result?.charts?.bar?.success ? result?.charts?.bar?.data || [] : [];
       const transformedBarData = barData.map((item: any) => ({
         period: item.period,
         revenue: item.revenue,
         expenses: item.expenses
-      }));      
+      }));
       setBarChartData(transformedBarData);
 
       // Process pie chart data - use actual API data instead of dummy
-      const pieData = pieResult.success ? pieResult.data || [] : [];
+      const pieData = result?.charts?.pie?.success ? result?.charts?.pie?.data || [] : [];
       setPieChartData(pieData);
 
       // Process donut chart data
-      const donutData = donutResult.success ? donutResult.data || [] : [];
-      console.log(donutData,'logsssss');
-      
+      const donutData = result?.charts?.donut?.success ? result?.charts?.donut?.data || [] : [];
+      console.log(donutData, 'logsssss');
+
       setDonutChartData(donutData);
 
     } catch (err: any) {
@@ -165,7 +146,7 @@ const EChartsPage = () => {
 
   // Fetch data when dimensions change
   useEffect(() => {
-    fetchAllChartData();
+    fetchAllChartDataHanlde();
   }, [dimensions]);
 
   // Reset drill down
@@ -183,7 +164,7 @@ const EChartsPage = () => {
   const handleCreateGroup = (datas: any) => {
     setDimensions(datas);
   }
-  
+
   // Handle drill down using API
   const handleDrillDown = async (chartType: string, category: string, value: any, dataType: string) => {
     setIsLoading(true);
@@ -263,21 +244,21 @@ const EChartsPage = () => {
       </h1>
 
       {!drillDown.active && (
-       <>
-       <GroupModal
-              isOpen={isGroupModalOpen}
-              onClose={() => setIsGroupModalOpen(false)}
-              onCreateGroup={handleCreateGroup}
-            />
-            <div className="flex flex-col mb-4">
-              {dimensions?.groupName && <p className="text-sm text-gray-500">Current Group Name: <span className="capitalize font-bold">{dimensions.groupName}</span></p>}
-              <div className="flex gap-2">
-                <button onClick={() => setDimensions(null)} className="shadow-xl border bg-red-400 p-2 rounded text-white hover:bg-red-500">Reset Group</button>
-                <button onClick={() => setIsGroupModalOpen(true)} className="shadow-xl border bg-blue-400 p-2 rounded text-white hover:bg-blue-500">Create Group</button>
-                <button onClick={fetchAllChartData} className="shadow-xl border bg-green-400 p-2 rounded text-white hover:bg-green-500">Refresh Data</button>
-              </div>
+        <>
+          <GroupModal
+            isOpen={isGroupModalOpen}
+            onClose={() => setIsGroupModalOpen(false)}
+            onCreateGroup={handleCreateGroup}
+          />
+          <div className="flex flex-col mb-4">
+            {dimensions?.groupName && <p className="text-sm text-gray-500">Current Group Name: <span className="capitalize font-bold">{dimensions.groupName}</span></p>}
+            <div className="flex gap-2">
+              <button onClick={() => setDimensions(null)} className="shadow-xl border bg-red-400 p-2 rounded text-white hover:bg-red-500">Reset Group</button>
+              <button onClick={() => setIsGroupModalOpen(true)} className="shadow-xl border bg-blue-400 p-2 rounded text-white hover:bg-blue-500">Create Group</button>
+              <button onClick={fetchAllChartDataHanlde} className="shadow-xl border bg-green-400 p-2 rounded text-white hover:bg-green-500">Refresh Data</button>
             </div>
-       </>
+          </div>
+        </>
       )}
 
       {drillDown.active ? (
@@ -289,50 +270,50 @@ const EChartsPage = () => {
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <ChartContainer 
-            title="Revenue Trends" 
+          <ChartContainer
+            title="Revenue Trends"
             onExportCSV={() => exportToCSV(lineChartData)}
             onExportPNG={() => exportToPNG(lineChartRef)}
           >
-            <LineChartComponent 
-              data={lineChartData} 
-              onDrillDown={(period, value, dataType) => handleDrillDown('line', period, value, dataType)} 
+            <LineChartComponent
+              data={lineChartData}
+              onDrillDown={(period, value, dataType) => handleDrillDown('line', period, value, dataType)}
               chartRef={lineChartRef}
             />
           </ChartContainer>
 
-          <ChartContainer 
+          <ChartContainer
             title="Revenue vs Expenses"
             onExportCSV={() => exportToCSV(barChartData)}
             onExportPNG={() => exportToPNG(barChartRef)}
           >
-            <BarChartComponent 
-              data={barChartData} 
-              onDrillDown={(period, value, dataType) => handleDrillDown('bar', period, value, dataType)} 
+            <BarChartComponent
+              data={barChartData}
+              onDrillDown={(period, value, dataType) => handleDrillDown('bar', period, value, dataType)}
               chartRef={barChartRef}
             />
           </ChartContainer>
 
-          <ChartContainer 
+          <ChartContainer
             title="Financial Distribution"
             onExportCSV={() => exportToCSV(pieChartData)}
             onExportPNG={() => exportToPNG(pieChartRef)}
           >
-            <PieChartComponent 
-              data={pieChartData} 
-              onDrillDown={(category, value) => handleDrillDown('pie', category, value, 'revenue')} 
+            <PieChartComponent
+              data={pieChartData}
+              onDrillDown={(category, value) => handleDrillDown('pie', category, value, 'revenue')}
               chartRef={pieChartRef}
             />
           </ChartContainer>
 
-          <ChartContainer 
+          <ChartContainer
             title="Revenue by Category"
             onExportCSV={() => exportToCSV(donutChartData)}
             onExportPNG={() => exportToPNG(donutChartRef)}
           >
-            <DonutChartComponent 
-              data={donutChartData} 
-              onDrillDown={(category, value) => handleDrillDown('donut', category, value, 'revenue')} 
+            <DonutChartComponent
+              data={donutChartData}
+              onDrillDown={(category, value) => handleDrillDown('donut', category, value, 'revenue')}
               chartRef={donutChartRef}
             />
           </ChartContainer>
@@ -390,7 +371,7 @@ const ChartContainer: React.FC<ChartContainerProps> = ({ title, children, onExpo
 
 const exportToPNG = (chartRef: any) => {
   if (!chartRef || !chartRef.current || !chartRef.current.getEchartsInstance) return;
-  
+
   try {
     const echartInstance = chartRef.current.getEchartsInstance();
     const dataURL = echartInstance.getDataURL({
@@ -398,7 +379,7 @@ const exportToPNG = (chartRef: any) => {
       pixelRatio: 2,
       backgroundColor: '#fff'
     });
-    
+
     const link = document.createElement('a');
     link.download = 'chart.png';
     link.href = dataURL;
@@ -419,13 +400,13 @@ const DrillDownChart: React.FC<{
   chartRef: React.RefObject<any>;
 }> = ({ drillDownState, drillDownData, onBack, chartRef }) => {
   const { title } = drillDownState;
-  
+
   // Determine chart type based on data structure
   const firstDataPoint = drillDownData[0];
   const dataKeys = firstDataPoint ? Object.keys(firstDataPoint) : [];
-  
+
   let option: any = {};
-  
+
   if (dataKeys.includes('catfinancialview') || dataKeys.includes('catFinancialView')) {
     // Bar chart for financial view breakdown
     const categoryKey = dataKeys.includes('catfinancialview') ? 'catfinancialview' : 'catFinancialView';
@@ -540,9 +521,9 @@ const DrillDownChart: React.FC<{
         onExportCSV={() => exportToCSV(drillDownData)}
         onExportPNG={() => exportToPNG(chartRef)}
       >
-        <ReactECharts 
-          option={option} 
-          style={{ height: '100%' }} 
+        <ReactECharts
+          option={option}
+          style={{ height: '100%' }}
           ref={chartRef}
         />
       </ChartContainer>
@@ -553,17 +534,17 @@ const DrillDownChart: React.FC<{
   );
 };
 
-const LineChartComponent = ({ 
-  data, 
+const LineChartComponent = ({
+  data,
   onDrillDown,
   chartRef
-}: { 
+}: {
   data: LineChartDataPoint[],
   onDrillDown: (period: string, value: number, dataType: string) => void,
   chartRef: React.RefObject<any>
 }) => {
   if (!data || data.length === 0) return <div>No data available</div>;
-  
+
   const option = {
     tooltip: {
       trigger: 'axis',
@@ -625,30 +606,30 @@ const LineChartComponent = ({
     if (seriesName === 'Net Profit') dataType = 'netProfit';
     onDrillDown(name, value, dataType);
   };
-  
+
   const onEvents = {
     'click': onChartClick
   };
 
-  return <ReactECharts 
-    option={option} 
-    style={{ height: '100%' }} 
+  return <ReactECharts
+    option={option}
+    style={{ height: '100%' }}
     onEvents={onEvents}
     ref={chartRef}
   />;
 };
 
-const BarChartComponent = ({ 
+const BarChartComponent = ({
   data,
   onDrillDown,
   chartRef
-}: { 
+}: {
   data: BarChartDataPoint[],
   onDrillDown: (period: string, value: number, dataType: string) => void,
   chartRef: React.RefObject<any>
 }) => {
   if (!data || data.length === 0) return <div>No data available</div>;
-  
+
   const option = {
     tooltip: {
       trigger: 'axis',
@@ -700,30 +681,30 @@ const BarChartComponent = ({
     const dataType = seriesName === 'Revenue' ? 'revenue' : 'expenses';
     onDrillDown(name, value, dataType);
   };
-  
+
   const onEvents = {
     'click': onChartClick
   };
 
-  return <ReactECharts 
-    option={option} 
-    style={{ height: '100%' }} 
+  return <ReactECharts
+    option={option}
+    style={{ height: '100%' }}
     onEvents={onEvents}
     ref={chartRef}
   />;
 };
 
-const PieChartComponent = ({ 
+const PieChartComponent = ({
   data,
   onDrillDown,
   chartRef
-}: { 
+}: {
   data: PieChartDataPoint[],
   onDrillDown: (category: string, value: number) => void,
   chartRef: React.RefObject<any>
 }) => {
   if (!data || data.length === 0) return <div>No data available</div>;
-  
+
   const option = {
     tooltip: {
       trigger: 'item',
@@ -762,33 +743,33 @@ const PieChartComponent = ({
     const { name, value } = params.data;
     onDrillDown(name, value);
   };
-  
+
   const onEvents = {
     'click': onChartClick
   };
 
-  return <ReactECharts 
-    option={option} 
-    style={{ height: '100%' }} 
+  return <ReactECharts
+    option={option}
+    style={{ height: '100%' }}
     onEvents={onEvents}
     ref={chartRef}
   />;
 };
 
-const DonutChartComponent = ({ 
+const DonutChartComponent = ({
   data,
   onDrillDown,
   chartRef
-}: { 
+}: {
   data: DonutChartDataPoint[],
   onDrillDown: (category: string, value: number) => void,
   chartRef: React.RefObject<any>
 }) => {
   if (!data || data.length === 0) return <div>No data available</div>;
-  
+
   // Limit to top 6 categories for better visibility
   const topCategories = data.slice(0, 6);
-  
+
   const option = {
     tooltip: {
       trigger: 'item',
@@ -813,7 +794,7 @@ const DonutChartComponent = ({
           value: item.revenue
         })),
         color: [
-          '#ffce56', '#4bc0c0', '#9966ff', 
+          '#ffce56', '#4bc0c0', '#9966ff',
           '#ff9f40', '#36a2eb', '#ff6384'
         ]
       }
@@ -824,14 +805,14 @@ const DonutChartComponent = ({
     const { name, value } = params.data;
     onDrillDown(name, value);
   };
-  
+
   const onEvents = {
     'click': onChartClick
   };
 
-  return <ReactECharts 
-    option={option} 
-    style={{ height: '100%' }} 
+  return <ReactECharts
+    option={option}
+    style={{ height: '100%' }}
     onEvents={onEvents}
     ref={chartRef}
   />;

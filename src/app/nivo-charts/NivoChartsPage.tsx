@@ -5,10 +5,7 @@ import { ResponsivePie } from "@nivo/pie";
 import { ResponsiveLine } from "@nivo/line";
 import { GroupModal } from "../../components/GroupManagement";
 import { 
-  useFetchLineChartDataMutation,
-  useFetchBarChartDataMutation,
-  useFetchPieChartDataMutation,
-  useFetchDonutChartDataMutation,
+  useFetchChartDataMutation,
   useFetchDrillDownDataMutation,
   databaseName
 } from "@/lib/services/usersApi";
@@ -148,10 +145,7 @@ export default function NivoChartsPage() {
   const [dimensions, setDimensions] = useState<Dimensions | null>(null);
   
   // API Mutations
-  const [fetchLineChartData] = useFetchLineChartDataMutation();
-  const [fetchBarChartData] = useFetchBarChartDataMutation();
-  const [fetchPieChartData] = useFetchPieChartDataMutation();
-  const [fetchDonutChartData] = useFetchDonutChartDataMutation();
+  const [fetchAllChartData] = useFetchChartDataMutation()
   const [fetchDrillDownData] = useFetchDrillDownDataMutation();
   
   // Chart data states
@@ -201,29 +195,21 @@ export default function NivoChartsPage() {
   };
 
   // Fetch all chart data using API
-  const fetchAllChartData = async () => {
+  const fetchAllChartDataHanlde = async () => {
     setIsLoading(true);
     setError(null);
 
     try {
       // Fetch all chart data in parallel
-      const [lineResult, barResult, pieResult, donutResult] = await Promise.all([
-        fetchLineChartData({
-          body: buildRequestBody(dimensions, 'line', 'period')
-        }).unwrap(),
-        fetchBarChartData({
-          body: buildRequestBody(dimensions, 'bar', 'period')
-        }).unwrap(),
-        fetchPieChartData({
-          body: buildRequestBody(dimensions, 'pie', 'catfinancialview')
-        }).unwrap(),
-        fetchDonutChartData({
-          body: buildRequestBody(dimensions, 'donut', 'cataccountingview')
-        }).unwrap()
-      ]);
+      const result = await fetchAllChartData({
+             body: buildRequestBody(dimensions, 'all')
+           }).unwrap();
+           if (!result || !result.success) {
+             throw new Error(result?.message || "Failed to fetch chart data");
+           }
 
       // Process line chart data
-      const lineData = lineResult.success ? lineResult.data || [] : [];
+      const lineData = result?.charts?.line?.success ? result?.charts?.line?.data || [] : [];
       if (lineData.length > 0) {
         const lineChartSeries: LineChartSeries[] = [
           {
@@ -252,11 +238,11 @@ export default function NivoChartsPage() {
       }
 
       // Process bar chart data
-      const barData = barResult.success ? barResult.data || [] : [];
+      const barData = result?.charts?.bar?.success ? result?.charts?.bar?.data || [] : [];
       setBarChartData(barData);
 
       // Process pie chart data
-      const pieData = pieResult.success ? pieResult.data || [] : [];
+      const pieData = result?.charts?.pie?.success ? result?.charts?.pie?.data || [] : [];
       if (pieData.length > 0) {
         // If the API returns aggregated data, use it directly
         // Otherwise, create the pie chart structure
@@ -269,7 +255,7 @@ export default function NivoChartsPage() {
       }
 
       // Process donut chart data
-      const donutData = donutResult.success ? donutResult.data || [] : [];
+      const donutData = result?.charts?.donut?.success ? result?.charts?.donut?.data || [] : [];
       if (donutData.length > 0) {
         const formattedDonutData = donutData.map((item: any) => ({
           id: item.cataccountingview || item.catAccountingView || item.label || 'Unknown',
@@ -442,7 +428,7 @@ export default function NivoChartsPage() {
 
   // Fetch data when dimensions change
   useEffect(() => {
-    fetchAllChartData();
+    fetchAllChartDataHanlde();
   }, [dimensions]);
 
   if (isLoading && !lineChartData.length && !barChartData.length && !pieChartData.length && !donutChartData.length) {
@@ -479,7 +465,7 @@ export default function NivoChartsPage() {
             Create Group
           </button>
           <button 
-            onClick={fetchAllChartData} 
+            onClick={fetchAllChartDataHanlde} 
             className="shadow-xl border bg-green-400 p-2 rounded text-white hover:bg-green-500"
           >
             Refresh Data

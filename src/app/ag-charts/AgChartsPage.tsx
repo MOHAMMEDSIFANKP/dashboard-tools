@@ -4,12 +4,9 @@ import { AgCharts } from "ag-charts-react";
 import { AgChartOptions } from "ag-charts-community";
 import { GroupModal } from "../../components/GroupManagement";
 import { 
-  useFetchLineChartDataMutation,
-  useFetchBarChartDataMutation,
-  useFetchPieChartDataMutation,
-  useFetchDonutChartDataMutation,
   useFetchDrillDownDataMutation,
-  databaseName
+  databaseName,
+  useFetchChartDataMutation
 } from "@/lib/services/usersApi";
 // Types
 import { Dimensions } from "@/types/Schemas";
@@ -162,10 +159,7 @@ const AgChartsPage: React.FC = () => {
   const [dimensions, setDimensions] = useState<Dimensions | null>(null);
   
   // API Mutations
-  const [fetchLineChartData] = useFetchLineChartDataMutation();
-  const [fetchBarChartData] = useFetchBarChartDataMutation();
-  const [fetchPieChartData] = useFetchPieChartDataMutation();
-  const [fetchDonutChartData] = useFetchDonutChartDataMutation();
+  const [fetchAllChartData] = useFetchChartDataMutation();
   const [fetchDrillDownData] = useFetchDrillDownDataMutation();
   
   // Drill down state
@@ -221,33 +215,20 @@ const AgChartsPage: React.FC = () => {
   };
 
   // Fetch all chart data
-  const fetchAllChartData = async () => {
+  const fetchAllChartDataHanlde = async () => {
     setIsLoading(true);
     setError(null);
 
     try {
-      // Fetch line chart data
-      const lineResult = await fetchLineChartData({
-        body: buildRequestBody(dimensions,'line', 'period')
+      // Fetch all chart data
+      const result = await fetchAllChartData({
+        body: buildRequestBody(dimensions, 'all')
       }).unwrap();
-
-      // Fetch bar chart data
-      const barResult = await fetchBarChartData({
-        body: buildRequestBody(dimensions,'bar', 'period')
-      }).unwrap();
-
-      // Fetch pie chart data
-      const pieResult = await fetchPieChartData({
-        body: buildRequestBody(dimensions,'pie', 'catfinancialview')
-      }).unwrap();
-
-      // Fetch donut chart data
-      const donutResult = await fetchDonutChartData({
-        body: buildRequestBody(dimensions,'donut', 'cataccountingview')
-      }).unwrap();
-
+      if (!result || !result.success) {
+        throw new Error(result?.message || "Failed to fetch chart data");
+      }
       // Process line chart data
-      const lineData = lineResult.success ? lineResult.data || [] : [];
+      const lineData = result?.charts?.line?.success ? result?.charts?.line?.data || [] : [];
       const lineOpts = lineData.length ? {
         title: { text: "Revenue Trends Over Time" },
         subtitle: { text: "Showing financial metrics by period" },
@@ -290,7 +271,7 @@ const AgChartsPage: React.FC = () => {
       } : null;
 
       // Process bar chart data
-      const barData = barResult.success ? barResult.data || [] : [];
+      const barData = result?.charts?.bar?.success ? result?.charts?.bar?.data || [] : [];
       const barOpts = barData.length ? {
         title: { text: "Revenue vs Expenses" },
         data: barData,
@@ -325,7 +306,7 @@ const AgChartsPage: React.FC = () => {
       } : null;
 
       // Process pie chart data
-      const pieData = pieResult.success ? pieResult.data || [] : [];
+      const pieData = result?.charts?.pie?.success ? result?.charts?.pie?.data || [] : [];
       const pieOpts = pieData.length ? {
         title: { text: "Financial Distribution" },
         data: pieData,
@@ -349,7 +330,7 @@ const AgChartsPage: React.FC = () => {
       } : null;
 
       // Process donut chart data
-      const donutData = donutResult.success ? donutResult.data || [] : [];
+      const donutData = result?.charts?.donut?.success ? result?.charts?.donut?.data || [] : [];
       const donutOpts = donutData.length ? {
         title: { text: "Revenue by Category" },
         data: donutData,
@@ -501,7 +482,7 @@ const AgChartsPage: React.FC = () => {
 
   // Fetch data when dimensions change
   useEffect(() => {
-    fetchAllChartData();
+    fetchAllChartDataHanlde();
   }, [dimensions]);
 
   // Initial data fetch
@@ -537,7 +518,7 @@ const AgChartsPage: React.FC = () => {
             Create Group
           </button>
           <button 
-            onClick={fetchAllChartData} 
+            onClick={fetchAllChartDataHanlde} 
             className="shadow-xl border bg-green-400 p-2 rounded text-white hover:bg-green-500"
           >
             Refresh Data

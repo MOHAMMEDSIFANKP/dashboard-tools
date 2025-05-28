@@ -115,6 +115,15 @@ export const api = createApi({
     }),
 
     // Chart Data Endpoints
+    // New Chart Endpoints
+    fetchChartData: builder.mutation<any, { tableName?: string; body: ChartRequestBody }>({
+      query: ({ tableName = databaseName, body }) => ({
+        url: `dashboard/all-charts?table_name=${tableName}`,
+        method: 'POST',
+        body,
+      }),
+    }),
+    // Remove the old chart endpoints
     fetchLineChartData: builder.mutation<any, { tableName?: string; body: ChartRequestBody }>({
       query: ({ tableName = databaseName, body }) => ({
         url: `dashboard/charts/line-series?table_name=${tableName}`,
@@ -122,7 +131,7 @@ export const api = createApi({
         body,
       }),
     }),
-    
+     // Remove the old chart endpoints
     fetchBarChartData: builder.mutation<any, { tableName?: string; body: ChartRequestBody }>({
       query: ({ tableName = databaseName, body }) => ({
         url: `dashboard/charts/bar-series?table_name=${tableName}`,
@@ -130,7 +139,7 @@ export const api = createApi({
         body,
       }),
     }),
-    
+     // Remove the old chart endpoints
     fetchPieChartData: builder.mutation<any, { tableName?: string; body: ChartRequestBody }>({
       query: ({ tableName = databaseName, body }) => ({
         url: `dashboard/charts/pie-chart?table_name=${tableName}`,
@@ -138,7 +147,7 @@ export const api = createApi({
         body,
       }),
     }),
-    
+     // Remove the old chart endpoints
     fetchDonutChartData: builder.mutation<any, { tableName?: string; body: ChartRequestBody }>({
       query: ({ tableName = databaseName, body }) => ({
         url: `dashboard/charts/donut-chart?table_name=${tableName}`,
@@ -228,6 +237,7 @@ export const {
   useLazyFetchDimensionsDataQuery,
   
   // Chart mutations
+  useFetchChartDataMutation,
   useFetchLineChartDataMutation,
   useFetchBarChartDataMutation,
   useFetchPieChartDataMutation,

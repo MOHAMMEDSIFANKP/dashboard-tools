@@ -13,11 +13,8 @@ import {
   VictoryScatter
 } from "victory";
 import { GroupModal } from "../../components/GroupManagement";
-import { 
-  useFetchLineChartDataMutation,
-  useFetchBarChartDataMutation,
-  useFetchPieChartDataMutation,
-  useFetchDonutChartDataMutation,
+import {
+  useFetchChartDataMutation,
   useFetchDrillDownDataMutation,
   databaseName
 } from "@/lib/services/usersApi";
@@ -89,29 +86,29 @@ const ChartContainer: React.FC<{
     if (!chartElement) return;
 
     const svg = chartElement.querySelector('svg');
-    
+
     if (svg) {
       try {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
         const svgData = new XMLSerializer().serializeToString(svg);
         const img = new Image();
-        
+
         const svgRect = svg.getBoundingClientRect();
         canvas.width = svgRect.width;
         canvas.height = svgRect.height;
-        
-        const svgBlob = new Blob([svgData], {type: 'image/svg+xml;charset=utf-8'});
+
+        const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
         const DOMURL = window.URL || window.webkitURL || window;
         const url = DOMURL.createObjectURL(svgBlob);
-        
-        img.onload = function() {
+
+        img.onload = function () {
           if (ctx) {
             ctx.drawImage(img, 0, 0);
             DOMURL.revokeObjectURL(url);
-            
+
             const imgURI = canvas.toDataURL('image/png').replace('image/png', 'image/octet-stream');
-            
+
             const link = document.createElement('a');
             link.download = `${title.toLowerCase().replace(/\s+/g, '_')}.png`;
             link.href = imgURI;
@@ -120,7 +117,7 @@ const ChartContainer: React.FC<{
             document.body.removeChild(link);
           }
         };
-        
+
         img.src = url;
       } catch (err) {
         console.error("Failed to export chart:", err);
@@ -173,14 +170,11 @@ const VictoryChartsPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isGroupModalOpen, setIsGroupModalOpen] = useState<boolean>(false);
   const [dimensions, setDimensions] = useState<Dimensions | null>(null);
-  
+
   // API Mutations
-  const [fetchLineChartData] = useFetchLineChartDataMutation();
-  const [fetchBarChartData] = useFetchBarChartDataMutation();
-  const [fetchPieChartData] = useFetchPieChartDataMutation();
-  const [fetchDonutChartData] = useFetchDonutChartDataMutation();
+  const [fetchAllChartData] = useFetchChartDataMutation()
   const [fetchDrillDownData] = useFetchDrillDownDataMutation();
-  
+
   // Chart data state
   const [chartData, setChartData] = useState<ChartData>({
     line: [],
@@ -214,37 +208,25 @@ const VictoryChartsPage: React.FC = () => {
   };
 
   // Fetch all chart data using API
-  const fetchAllChartData = async () => {
+  const fetchAllChartDataHanlde = async () => {
     setIsLoading(true);
     setError(null);
 
     try {
       // Fetch line chart data
-      const lineResult = await fetchLineChartData({
-        body: buildRequestBody(dimensions, 'line', 'country')
+      const result = await fetchAllChartData({
+        body: buildRequestBody(dimensions, 'all')
       }).unwrap();
-
-      // Fetch bar chart data
-      const barResult = await fetchBarChartData({
-        body: buildRequestBody(dimensions, 'bar', 'country')
-      }).unwrap();
-
-      // Fetch pie chart data
-      const pieResult = await fetchPieChartData({
-        body: buildRequestBody(dimensions, 'pie', 'catfinancialview')
-      }).unwrap();
-
-      // Fetch donut chart data
-      const donutResult = await fetchDonutChartData({
-        body: buildRequestBody(dimensions, 'donut', 'cataccountingview')
-      }).unwrap();
+      if (!result || !result.success) {
+        throw new Error(result?.message || "Failed to fetch chart data");
+      }
 
       // Process and set chart data
       setChartData({
-        line: lineResult.success ? lineResult.data || [] : [],
-        bar: barResult.success ? barResult.data || [] : [],
-        pie: pieResult.success ? pieResult.data || [] : [],
-        donut: donutResult.success ? donutResult.data || [] : [],
+        line: result?.charts?.line?.success ? result?.charts?.line?.data || [] : [],
+        bar: result?.charts?.bar?.success ? result?.charts?.bar?.data || [] : [],
+        pie: result?.charts?.pie?.success ? result?.charts?.pie?.data || [] : [],
+        donut: result?.charts?.donut?.success ? result?.charts?.donut?.data || [] : [],
         drillDown: []
       });
 
@@ -298,13 +280,13 @@ const VictoryChartsPage: React.FC = () => {
 
   // Fetch data when dimensions change
   useEffect(() => {
-    fetchAllChartData();
+    fetchAllChartDataHanlde();
   }, [dimensions]);
 
   return (
     <section className="p-8 bg-gray-50 min-h-screen">
       <h1 className="text-3xl font-bold text-center mb-8">Financial Dashboard - Victory Charts</h1>
-      
+
       <GroupModal
         isOpen={isGroupModalOpen}
         onClose={() => setIsGroupModalOpen(false)}
@@ -318,20 +300,20 @@ const VictoryChartsPage: React.FC = () => {
           </p>
         )}
         <div className="flex gap-2">
-          <button 
-            onClick={() => setDimensions(null)} 
+          <button
+            onClick={() => setDimensions(null)}
             className="shadow-xl border bg-red-400 p-2 rounded text-white hover:bg-red-500"
           >
             Reset Group
           </button>
-          <button 
-            onClick={() => setIsGroupModalOpen(true)} 
+          <button
+            onClick={() => setIsGroupModalOpen(true)}
             className="shadow-xl border bg-blue-400 p-2 rounded text-white hover:bg-blue-500"
           >
             Create Group
           </button>
-          <button 
-            onClick={fetchAllChartData} 
+          <button
+            onClick={fetchAllChartDataHanlde}
             className="shadow-xl border bg-green-400 p-2 rounded text-white hover:bg-green-500"
           >
             Refresh Data
@@ -345,7 +327,7 @@ const VictoryChartsPage: React.FC = () => {
           <p onClick={() => setError('')} className="cursor-pointer">x</p>
         </div>
       )}
-      
+
       {isLoading && (
         <div className="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded mb-4">
           <p>Loading chart data...</p>
@@ -354,9 +336,9 @@ const VictoryChartsPage: React.FC = () => {
 
       {drillDown.active ? (
         <div className="mb-8">
-          <ChartContainer 
-            title={drillDown.title} 
-            onBack={resetDrillDown} 
+          <ChartContainer
+            title={drillDown.title}
+            onBack={resetDrillDown}
             isDrilled
             data={chartData.drillDown}
           >
@@ -414,7 +396,7 @@ const LineChart: React.FC<{
           { name: "Net Profit", symbol: { fill: "#ff6384" } },
         ]}
       />
-      
+
       {/* Lines for visual representation */}
       <VictoryLine
         data={data} x="period" y="revenue"
@@ -428,7 +410,7 @@ const LineChart: React.FC<{
         data={data} x="period" y="netProfit"
         style={{ data: { stroke: "#ff6384", strokeWidth: 2 } }}
       />
-      
+
       {/* Invisible scatter points for click detection */}
       <VictoryScatter
         data={data} x="period" y="revenue"
@@ -502,7 +484,7 @@ const BarChart: React.FC<{
       />
       <VictoryGroup offset={20} colorScale={["#4bc0c0", "#ff6384"]}>
         <VictoryBar
-        labelComponent={<VictoryTooltip />}
+          labelComponent={<VictoryTooltip />}
           data={data} x="period" y="revenue"
           events={[{
             target: "data",
@@ -563,17 +545,17 @@ const DonutChart: React.FC<{
   onDrillDown: (chartType: string, category: string, value: any, dataType: string) => void;
 }> = ({ data, onDrillDown }) => {
   if (!data?.length) return <div className="text-center text-gray-500">No data available</div>;
-  
+
   // Take top 6 categories for better visibility
   const topCategories = data.slice(0, 6);
-  
+
   return (
     <VictoryPie
       data={topCategories}
-      x="cataccountingview" 
+      x="cataccountingview"
       y="revenue"
       colorScale={["#ffce56", "#4bc0c0", "#9966ff", "#ff9f40", "#36a2eb", "#ff6384"]}
-      innerRadius={70} 
+      innerRadius={70}
       labelRadius={90}
       style={{ labels: { fontSize: 10, fill: "#333" } }}
       labels={({ datum }) => `${datum.cataccountingview}: $${Math.round(datum.revenue / 1000)}k`}
@@ -596,7 +578,7 @@ const DrillDownChart: React.FC<{ data: any[] }> = ({ data }) => {
 
   const firstItem = data[0];
   const keys = Object.keys(firstItem);
-  
+
   // Determine chart type based on data structure
   if (keys.includes('catfinancialview') || keys.includes('cataccountingview')) {
     const categoryKey = keys.find(key => key.includes('cat')) || keys[0];
@@ -605,8 +587,8 @@ const DrillDownChart: React.FC<{ data: any[] }> = ({ data }) => {
         <VictoryAxis tickFormat={x => x} style={{ tickLabels: { fontSize: 10, angle: -45 } }} />
         <VictoryAxis dependentAxis tickFormat={y => `$${Math.round(y / 1000)}k`} />
         <VictoryBar
-          data={data} 
-          x={categoryKey} 
+          data={data}
+          x={categoryKey}
           y="value"
           style={{ data: { fill: "#4bc0c0" } }}
         />
@@ -629,7 +611,7 @@ const DrillDownChart: React.FC<{ data: any[] }> = ({ data }) => {
     return (
       <VictoryPie
         data={data}
-        x={labelKey} 
+        x={labelKey}
         y="value"
         colorScale={["#4bc0c0", "#ff6384", "#36a2eb", "#ffce56", "#9966ff", "#ff9f40"]}
         style={{ labels: { fontSize: 10, fill: "#333" } }}

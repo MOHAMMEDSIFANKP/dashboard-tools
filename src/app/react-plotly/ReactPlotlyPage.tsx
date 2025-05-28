@@ -3,10 +3,7 @@ import React, { useEffect, useState, useRef, useCallback } from "react";
 import Plot from "react-plotly.js";
 import { GroupModal } from "@/components/GroupManagement";
 import { 
-  useFetchLineChartDataMutation,
-  useFetchBarChartDataMutation,
-  useFetchPieChartDataMutation,
-  useFetchDonutChartDataMutation,
+  useFetchChartDataMutation,
   useFetchDrillDownDataMutation,
   databaseName
 } from "@/lib/services/usersApi";
@@ -39,6 +36,8 @@ interface ChartDataPoint {
   netProfit?: number;
   catAccountingView?: string;
   catFinancialView?: string;
+  catfinancialview?: string;
+  cataccountingview?: string;
   label?: string;
   value?: number;
   [key: string]: any;
@@ -188,11 +187,8 @@ export default function ReactPlotlyPage() {
   const [isGroupModalOpen, setIsGroupModalOpen] = useState<boolean>(false);
   const [dimensions, setDimensions] = useState<Dimensions | null>(null);
 
-  // API Mutations
-  const [fetchLineChartData] = useFetchLineChartDataMutation();
-  const [fetchBarChartData] = useFetchBarChartDataMutation();
-  const [fetchPieChartData] = useFetchPieChartDataMutation();
-  const [fetchDonutChartData] = useFetchDonutChartDataMutation();
+  // API Mutations - Using single API like AG Charts
+  const [fetchAllChartData] = useFetchChartDataMutation();
   const [fetchDrillDownData] = useFetchDrillDownDataMutation();
 
   // Chart data states
@@ -240,37 +236,26 @@ export default function ReactPlotlyPage() {
     setDimensions(datas);
   }, []);
 
-  // Fetch all chart data
-  const fetchAllChartData = useCallback(async () => {
+  // Fetch all chart data using single API call
+  const fetchAllChartDataHandle = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
     try {
-      // Fetch line chart data
-      const lineResult = await fetchLineChartData({
-        body: buildRequestBody(dimensions, 'line', 'period')
+      // Fetch all chart data using single API call
+      const result = await fetchAllChartData({
+        body: buildRequestBody(dimensions, 'all')
       }).unwrap();
 
-      // Fetch bar chart data
-      const barResult = await fetchBarChartData({
-        body: buildRequestBody(dimensions, 'bar', 'period')
-      }).unwrap();
+      if (!result || !result.success) {
+        throw new Error(result?.message || "Failed to fetch chart data");
+      }
 
-      // Fetch pie chart data
-      const pieResult = await fetchPieChartData({
-        body: buildRequestBody(dimensions, 'pie', 'catfinancialview')
-      }).unwrap();
-
-      // Fetch donut chart data
-      const donutResult = await fetchDonutChartData({
-        body: buildRequestBody(dimensions, 'donut', 'cataccountingview')
-      }).unwrap();
-
-      // Process and store chart data
-      const lineData = lineResult.success ? lineResult.data || [] : [];
-      const barData = barResult.success ? barResult.data || [] : [];
-      const pieData = pieResult.success ? pieResult.data || [] : [];
-      const donutData = donutResult.success ? donutResult.data || [] : [];
+      // Process and store chart data from single API response
+      const lineData = result?.charts?.line?.success ? result?.charts?.line?.data || [] : [];
+      const barData = result?.charts?.bar?.success ? result?.charts?.bar?.data || [] : [];
+      const pieData = result?.charts?.pie?.success ? result?.charts?.pie?.data || [] : [];
+      const donutData = result?.charts?.donut?.success ? result?.charts?.donut?.data || [] : [];
 
       setChartData({
         line: lineData,
@@ -285,20 +270,20 @@ export default function ReactPlotlyPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [buildRequestBody, fetchLineChartData, fetchBarChartData, fetchPieChartData, fetchDonutChartData]);
+  }, [dimensions, buildRequestBody, fetchAllChartData]);
 
   // Fetch data when dimensions change
   useEffect(() => {
-    fetchAllChartData();
-  }, [fetchAllChartData]);
+    fetchAllChartDataHandle();
+  }, [fetchAllChartDataHandle]);
 
   // Event handlers for chart clicks
   const handleChartClick = useCallback(async (chartType: string, point: any) => {
     if (!point) return;
 
     let category = point.x || point.label;
-    let dataType = point.data?.name?.toLowerCase() || 'revenue' ;
-    let value =  point.value;
+    let dataType = point.data?.name?.toLowerCase() || 'revenue';
+    let value = point.value || point.y;
     await handleDrillDown(chartType, category, dataType, value);
   }, []);
 
@@ -340,13 +325,12 @@ export default function ReactPlotlyPage() {
     const timeoutId = setTimeout(attachHandlers, 100);
     return () => clearTimeout(timeoutId);
     
-  }, [isLoading, drillDown.active,dimensions, handleLineChartClick, handleBarChartClick, handlePieChartClick, handleDonutChartClick]);
+  }, [isLoading, drillDown.active, dimensions, handleLineChartClick, handleBarChartClick, handlePieChartClick, handleDonutChartClick]);
 
   // Generic drill down function using API
   const handleDrillDown = useCallback(async (chartType: string, category: string, dataType: string, value?: any) => {
     setIsLoading(true);
     setError(null);
-    // console.log("Drill down triggered:", chartType, category, dataType, value);
 
     try {
       const result = await fetchDrillDownData({
@@ -495,24 +479,10 @@ export default function ReactPlotlyPage() {
   const getPieChartData = useCallback(() => {
     if (!chartData.pie.length) return { values: [], labels: [] };
     
-    // If API returns aggregated data, use it directly
-    if (chartData.pie.length === 1 && chartData.pie[0].revenue) {
-      const data = chartData.pie[0];
-      return {
-        values: [
-          data.revenue || 0,
-          data.grossMargin || 0,
-          data.netProfit || 0,
-          data.expenses || data.operatingExpenses || 0,
-        ],
-        labels: ["Revenue", "Gross Margin", "Net Profit", "Operating Expenses"]
-      };
-    }
-    
-    // Otherwise, use the data as category breakdown
+    // Use the data as category breakdown
     return {
       values: chartData.pie.map(d => d.revenue || d.value || 0),
-      labels: chartData.pie.map(d => d.catFinancialView || d.label || '')
+      labels: chartData.pie.map(d => d.catfinancialview || d.catFinancialView || d.label || '')
     };
   }, [chartData.pie]);
 
@@ -550,7 +520,7 @@ export default function ReactPlotlyPage() {
             Create Group
           </button>
           <button 
-            onClick={fetchAllChartData} 
+            onClick={fetchAllChartDataHandle} 
             className="shadow-xl border bg-green-400 p-2 rounded text-white hover:bg-green-500"
           >
             Refresh Data
@@ -671,7 +641,7 @@ export default function ReactPlotlyPage() {
                   values: getPieChartData().values,
                   type: "pie",
                   marker: { colors: CHART_COLORS },
-                  labels: chartData.pie.map((item: any) => item.catfinancialview || '')
+                  labels: getPieChartData().labels
                 }]}                
                 layout={{ 
                   title: "Financial Distribution",
@@ -692,9 +662,8 @@ export default function ReactPlotlyPage() {
                 key={`donut-chart-${dimensions?.groupName || 'default'}`}
                 ref={donutPlotRef}
                 data={[{
-                  values: chartData.donut.map(d => d.revenue || ''),
+                  values: chartData.donut.map(d => d.revenue || 0),
                   labels: chartData.donut.map((d: any) => d.cataccountingview || ''),
-
                   type: "pie",
                   hole: 0.5,
                   marker: { colors: CHART_COLORS }

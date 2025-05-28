@@ -17,12 +17,9 @@ import {
 import { Line, Bar, Pie, Doughnut } from "react-chartjs-2";
 import { GroupModal } from "@/components/GroupManagement";
 import { 
-  useFetchLineChartDataMutation,
-  useFetchBarChartDataMutation,
-  useFetchPieChartDataMutation,
-  useFetchDonutChartDataMutation,
-  useFetchDrillDownDataMutation,
-  databaseName
+  useFetchChartDataMutation,
+  databaseName,
+  useFetchDrillDownDataMutation
 } from "@/lib/services/usersApi";
 // Types
 import { Dimensions } from "@/types/Schemas";
@@ -205,10 +202,7 @@ export default function ChartJsPage() {
   const [dimensions, setDimensions] = useState<Dimensions | null>(null);
 
   // API Mutations
-  const [fetchLineChartData] = useFetchLineChartDataMutation();
-  const [fetchBarChartData] = useFetchBarChartDataMutation();
-  const [fetchPieChartData] = useFetchPieChartDataMutation();
-  const [fetchDonutChartData] = useFetchDonutChartDataMutation();
+  const [fetchAllChartData] = useFetchChartDataMutation()
   const [fetchDrillDownData] = useFetchDrillDownDataMutation();
 
   // Chart data states
@@ -261,33 +255,20 @@ export default function ChartJsPage() {
 
 
   // Fetch all chart data
-  const fetchAllChartData = async () => {
+  const fetchAllChartDataHanlde = async () => {
     setIsLoading(true);
     setError(null);
 
     try {
-      // Fetch line chart data
-      const lineResult = await fetchLineChartData({
-        body: buildRequestBody(dimensions,'line', 'period')
-      }).unwrap();
-
-      // Fetch bar chart data
-      const barResult = await fetchBarChartData({
-        body: buildRequestBody(dimensions,'bar', 'period')
-      }).unwrap();
-
-      // Fetch pie chart data
-      const pieResult = await fetchPieChartData({
-        body: buildRequestBody(dimensions,'pie', 'catfinancialview')
-      }).unwrap();
-
-      // Fetch donut chart data
-      const donutResult = await fetchDonutChartData({
-        body: buildRequestBody(dimensions,'donut', 'cataccountingview')
-      }).unwrap();
-
+           // Fetch all chart data
+           const result = await fetchAllChartData({
+             body: buildRequestBody(dimensions, 'all')
+           }).unwrap();
+           if (!result || !result.success) {
+             throw new Error(result?.message || "Failed to fetch chart data");
+           }
       // Process line chart data
-      const lineData = lineResult.success ? lineResult.data || [] : [];
+      const lineData = result?.charts?.line?.success ? result?.charts?.line?.data || [] : [];
       if (lineData.length > 0) {
         setLineChartData({
           labels: lineData.map((item: ChartDataPoint) => item.period || ''),
@@ -315,7 +296,7 @@ export default function ChartJsPage() {
       }
 
       // Process bar chart data
-      const barData = barResult.success ? barResult.data || [] : [];
+      const barData = result?.charts?.bar?.success ? result?.charts?.bar?.data || [] : [];
       if (barData.length > 0) {
         setBarChartData({
           labels: barData.map((item: ChartDataPoint) => item.period || ''),
@@ -335,7 +316,7 @@ export default function ChartJsPage() {
       }
 
       // Process pie chart data
-      const pieData = pieResult.success ? pieResult.data || [] : [];
+      const pieData = result?.charts?.pie?.success ? result?.charts?.pie?.data || [] : [];
       if (pieData.length > 0) {
         console.log("Pie Data:", pieData);
         setPieChartData({
@@ -355,7 +336,7 @@ export default function ChartJsPage() {
       }
 
       // Process donut chart data
-      const donutData = donutResult.success ? donutResult.data || [] : [];
+      const donutData = result?.charts?.donut?.success ? result?.charts?.donut?.data || [] : [];
       if (donutData.length > 0) {
         setDonutChartData({
           labels: donutData.map((item: ChartDataPoint) => item.cataccountingview),
@@ -584,7 +565,7 @@ export default function ChartJsPage() {
 
   // Fetch data when dimensions change
   useEffect(() => {
-    fetchAllChartData();
+    fetchAllChartDataHanlde();
   }, [dimensions]);
 
   const chartOptions: ChartOptions<'line' | 'bar' | 'pie' | 'doughnut'> = {
@@ -628,7 +609,7 @@ export default function ChartJsPage() {
             Create Group
           </button>
           <button 
-            onClick={fetchAllChartData} 
+            onClick={fetchAllChartDataHanlde} 
             className="shadow-xl border bg-green-400 p-2 rounded text-white hover:bg-green-500"
           >
             Refresh Data
