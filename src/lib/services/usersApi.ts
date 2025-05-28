@@ -85,22 +85,6 @@ export const api = createApi({
     fetchSearchInfo: builder.query<SearchInfoResponse, { tableName?: string }>({
       query: ({ tableName = databaseName }) => `duckdb/tables/${tableName}/search-info`,
     }),
-    // // Database Operations
-    // fetchTestTableData: builder.query<FinancialDataResponse, { limit: number; offset: number }>({
-    //   query: ({ limit, offset }) => `duckdb/tables/${databaseName}/data?limit=${limit}&offset=${offset}`,
-    // }),
-    
-    // fetchTableSchema: builder.query<any, string>({
-    //   query: (tableName = databaseName) => `duckdb/tables/${tableName}/schema`,
-    // }),
-    
-    // fetchTableAnalytics: builder.query<any, string>({
-    //   query: (tableName = databaseName) => `duckdb/analytics/${tableName}`,
-    // }),
-    
-    // fetchAllTables: builder.query<any, void>({
-    //   query: () => `duckdb/tables`,
-    // }),
 
     // Dashboard Dimensions
     fetchDimensionsData: builder.query<any, { tableName?: string; dimensions?: string }>({
