@@ -1,7 +1,7 @@
 import { FinancialDataResponse, Post } from "@/types/Schemas";
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
-export const databaseName = "sample_100k";
+export const databaseName = "sample_1m";
 
 // Chart request body interfaces
 interface ChartRequestBody {
