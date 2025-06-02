@@ -63,7 +63,7 @@ interface SearchDataResponse {
 export const api = createApi({
   reducerPath: 'api',
   baseQuery: fetchBaseQuery({
-    baseUrl: 'https://testcase.work.gd/api/',
+    baseUrl: 'https://testcase.mohammedsifankp.online/api/',
   }),
   endpoints: (builder) => ({
      // Table API Endpoints
