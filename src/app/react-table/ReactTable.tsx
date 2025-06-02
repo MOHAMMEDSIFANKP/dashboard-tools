@@ -420,6 +420,7 @@ export default function ReactTable() {
           <option value="10">10 rows</option>
           <option value="20">20 rows</option>
           <option value="50">50 rows</option>
+          <option value="100">100 rows</option>
         </select>
 
         <button
