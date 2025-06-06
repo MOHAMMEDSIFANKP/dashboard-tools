@@ -549,6 +549,9 @@ export default function NivoChartsPage() {
                       itemOpacity: 0.75,
                       symbolSize: 12,
                       symbolShape: "circle",
+                      toggleSerie: true,
+                      // onClick: (datum) => alert(datum.label),
+
                     }
                   ]}
                 />
@@ -602,6 +605,7 @@ export default function NivoChartsPage() {
                       itemDirection: "left-to-right",
                       itemOpacity: 0.85,
                       symbolSize: 20,
+                      toggleSerie: true,
                     }
                   ]}
                 />
@@ -648,7 +652,8 @@ export default function NivoChartsPage() {
                       itemDirection: "left-to-right",
                       itemOpacity: 1,
                       symbolSize: 18,
-                      symbolShape: "circle"
+                      symbolShape: "circle",
+                      toggleSerie: true,
                     }
                   ]}
                 />
@@ -669,6 +674,7 @@ export default function NivoChartsPage() {
                   padAngle={0.7}
                   cornerRadius={3}
                   colors={{ scheme: "nivo" }}
+                  activeOuterRadiusOffset={8}
                   borderWidth={1}
                   borderColor={{ from: "color", modifiers: [["darker", 0.2]] }}
                   arcLinkLabelsSkipAngle={10}
@@ -694,7 +700,8 @@ export default function NivoChartsPage() {
                       itemDirection: "left-to-right",
                       itemOpacity: 1,
                       symbolSize: 18,
-                      symbolShape: "circle"
+                      symbolShape: "circle",
+                      toggleSerie: true,
                     }
                   ]}
                 />
