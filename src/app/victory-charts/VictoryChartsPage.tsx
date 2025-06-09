@@ -22,7 +22,7 @@ import {
   databaseName
 } from "@/lib/services/usersApi";
 import { Dimensions } from "@/types/Schemas";
-import { buildRequestBody } from "@/lib/services/buildWhereClause";
+import { buildRequestBody, handleCrossChartFilteringFunc } from "@/lib/services/buildWhereClause";
 
 // Core data types
 interface ChartDataPoint {
@@ -382,7 +382,9 @@ const VictoryChartsPage: React.FC = () => {
             isDrilled
             data={chartData.drillDown}
           >
-            <DrillDownChart data={chartData.drillDown} />
+           <div style={{height: '500px'}}>
+           <DrillDownChart data={chartData.drillDown} />
+           </div>
           </ChartContainer>
           <p className="mt-2 text-sm text-gray-500 text-center">
             <i>Click the back button to return to main charts</i>
@@ -391,8 +393,8 @@ const VictoryChartsPage: React.FC = () => {
       ) : (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <ChartContainer title="Revenue Trends" data={chartData.line}>
-              <LineChart data={chartData.line} onDrillDown={handleDrillDown} />
+            <ChartContainer title="Revenue Trends with Cross Chart Filter" data={chartData.line}>
+              <LineChart data={chartData.line} setDimensions={setDimensions} onDrillDown={handleDrillDown} />
             </ChartContainer>
 
             <ChartContainer title="Revenue vs Expenses" data={chartData.bar}>
@@ -440,9 +442,10 @@ interface EventHandlerProps {
 interface LineChartProps {
   data: ChartDataPoint[];
   onDrillDown: (chartType: string, category: string, value: any, dataType: string) => void;
+  setDimensions: React.Dispatch<React.SetStateAction<any>>;
 }
 
-const LineChart: React.FC<LineChartProps> = ({ data, onDrillDown }) => {
+const LineChart: React.FC<LineChartProps> = ({ data,setDimensions, onDrillDown }) => {
   if (!data?.length) return <div className="text-center text-gray-500">No data available</div>;
 
   const [visibleSeries, setVisibleSeries] = useState<VisibleLineSeries>({
@@ -499,11 +502,22 @@ const LineChart: React.FC<LineChartProps> = ({ data, onDrillDown }) => {
   const createScatterEvents = useCallback((type: keyof Pick<ChartDataPoint, 'revenue' | 'grossMargin' | 'netProfit'>) => [{
     target: "data" as const,
     eventHandlers: {
-      onClick: (_e: any, { data: chartData, index }: EventHandlerProps) => {
+      onClick: (event: any, { data: chartData, index }: EventHandlerProps) => {
         const clickedPoint = chartData[index];
-        if (clickedPoint?.period) {
-          onDrillDown('line', clickedPoint.period, clickedPoint[type], type);
-        }
+        if (!clickedPoint?.period) return;
+
+        const value = clickedPoint[type];
+          const period = clickedPoint.period;
+
+          if (event.ctrlKey || event.metaKey) {
+            onDrillDown('line', period, value, type);
+          } else {
+            // @ts-ignore
+            setDimensions(handleCrossChartFilteringFunc(period));
+          }
+
+          return null;
+
       }
     }
   }], [onDrillDown]);

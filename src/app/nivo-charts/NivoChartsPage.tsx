@@ -4,14 +4,14 @@ import { ResponsiveBar } from "@nivo/bar";
 import { ResponsivePie } from "@nivo/pie";
 import { ResponsiveLine } from "@nivo/line";
 import { GroupModal } from "../../components/GroupManagement";
-import { 
+import {
   useFetchChartDataMutation,
   useFetchDrillDownDataMutation,
   databaseName
 } from "@/lib/services/usersApi";
 // Types
 import { Dimensions } from "@/types/Schemas";
-import { buildRequestBody } from "@/lib/services/buildWhereClause";
+import { buildRequestBody, handleCrossChartFilteringFunc } from "@/lib/services/buildWhereClause";
 
 // Core data types
 interface ChartDataPoint {
@@ -54,13 +54,13 @@ interface ChartContainerProps {
 }
 
 // Chart Container Component
-const ChartContainer: React.FC<ChartContainerProps> = ({ 
-  title, 
-  children, 
-  data, 
-  isDrilled, 
-  onBack, 
-  onExport 
+const ChartContainer: React.FC<ChartContainerProps> = ({
+  title,
+  children,
+  data,
+  isDrilled,
+  onBack,
+  onExport
 }) => {
   // Export to CSV function
   const exportToCSV = () => {
@@ -74,10 +74,10 @@ const ChartContainer: React.FC<ChartContainerProps> = ({
       const allKeys = Array.from(
         new Set(data.flatMap(item => Object.keys(item)))
       );
-      
+
       // Create headers
       const headers = allKeys.join(',');
-      
+
       // Create CSV rows
       const csvRows = data.map(row => {
         return allKeys.map(key => {
@@ -92,7 +92,7 @@ const ChartContainer: React.FC<ChartContainerProps> = ({
           return stringValue;
         }).join(',');
       });
-      
+
       const csv = `${headers}\n${csvRows.join('\n')}`;
 
       // Create and download file
@@ -143,17 +143,17 @@ export default function NivoChartsPage() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isGroupModalOpen, setIsGroupModalOpen] = useState<boolean>(false);
   const [dimensions, setDimensions] = useState<Dimensions | null>(null);
-  
+
   // API Mutations
   const [fetchAllChartData] = useFetchChartDataMutation()
   const [fetchDrillDownData] = useFetchDrillDownDataMutation();
-  
+
   // Chart data states
   const [lineChartData, setLineChartData] = useState<LineChartSeries[]>([]);
   const [barChartData, setBarChartData] = useState<ChartDataPoint[]>([]);
   const [pieChartData, setPieChartData] = useState<ChartDataPoint[]>([]);
   const [donutChartData, setDonutChartData] = useState<ChartDataPoint[]>([]);
-  
+
   // Raw data for export
   const [rawData, setRawData] = useState<{
     line: ChartDataPoint[],
@@ -168,7 +168,7 @@ export default function NivoChartsPage() {
     donut: [],
     drillDown: []
   });
-  
+
   // Drill down states
   const [drillDown, setDrillDown] = useState<DrillDownState>({
     active: false,
@@ -176,7 +176,7 @@ export default function NivoChartsPage() {
     category: "",
     title: ""
   });
-  
+
   const [drillDownData, setDrillDownData] = useState<ChartDataPoint[]>([]);
 
   // Reset drill down
@@ -202,11 +202,11 @@ export default function NivoChartsPage() {
     try {
       // Fetch all chart data in parallel
       const result = await fetchAllChartData({
-             body: buildRequestBody(dimensions, 'all')
-           }).unwrap();
-           if (!result || !result.success) {
-             throw new Error(result?.message || "Failed to fetch chart data");
-           }
+        body: buildRequestBody(dimensions, 'all')
+      }).unwrap();
+      if (!result || !result.success) {
+        throw new Error(result?.message || "Failed to fetch chart data");
+      }
 
       // Process line chart data
       const lineData = result?.charts?.line?.success ? result?.charts?.line?.data || [] : [];
@@ -306,7 +306,7 @@ export default function NivoChartsPage() {
           ...prev,
           drillDown: drillData
         }));
-        
+
         setDrillDown({
           active: true,
           chartType,
@@ -438,13 +438,13 @@ export default function NivoChartsPage() {
   return (
     <section className="p-8 bg-gray-50">
       <h1 className="text-3xl font-bold text-center mb-8">Financial Dashboard with Nivo Charts</h1>
-      
+
       <GroupModal
         isOpen={isGroupModalOpen}
         onClose={() => setIsGroupModalOpen(false)}
         onCreateGroup={handleCreateGroup}
       />
-      
+
       <div className="flex flex-col mb-4">
         {dimensions?.groupName && (
           <p className="text-sm text-gray-500">
@@ -452,20 +452,20 @@ export default function NivoChartsPage() {
           </p>
         )}
         <div className="flex gap-2">
-          <button 
-            onClick={() => setDimensions(null)} 
+          <button
+            onClick={() => setDimensions(null)}
             className="shadow-xl border bg-red-400 p-2 rounded text-white hover:bg-red-500"
           >
             Reset Group
           </button>
-          <button 
-            onClick={() => setIsGroupModalOpen(true)} 
+          <button
+            onClick={() => setIsGroupModalOpen(true)}
             className="shadow-xl border bg-blue-400 p-2 rounded text-white hover:bg-blue-500"
           >
             Create Group
           </button>
-          <button 
-            onClick={fetchAllChartDataHanlde} 
+          <button
+            onClick={fetchAllChartDataHanlde}
             className="shadow-xl border bg-green-400 p-2 rounded text-white hover:bg-green-500"
           >
             Refresh Data
@@ -479,7 +479,7 @@ export default function NivoChartsPage() {
           <p onClick={() => setError('')} className="cursor-pointer">x</p>
         </div>
       )}
-      
+
       {isLoading && (
         <div className="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded mb-4">
           <p>Loading chart data...</p>
@@ -487,9 +487,9 @@ export default function NivoChartsPage() {
       )}
 
       {drillDown.active ? (
-        <ChartContainer 
-          title={drillDown.title} 
-          isDrilled={true} 
+        <ChartContainer
+          title={drillDown.title}
+          isDrilled={true}
           onBack={resetDrillDown}
           data={rawData.drillDown}
         >
@@ -498,8 +498,8 @@ export default function NivoChartsPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {lineChartData.length > 0 && (
-            <ChartContainer 
-              title="Revenue Trends Over Time" 
+            <ChartContainer
+              title="Revenue Trends Over Time with Cross Chart Filter"
               data={rawData.line}
             >
               <div style={{ height: "400px" }}>
@@ -530,9 +530,14 @@ export default function NivoChartsPage() {
                   pointBorderWidth={2}
                   pointBorderColor={{ from: "serieColor" }}
                   useMesh={true}
-                  onClick={(point) => {
+                  onClick={(point, event) => {
                     if (point.data) {
-                      handleDrillDown('line', point.data.x as string, point.data.y, point.serieId as string);
+                      if (event.ctrlKey || event.metaKey) {
+                        handleDrillDown('line', point.data.x as string, point.data.y, point.serieId as string);
+                      } else {
+                        // @ts-ignore
+                        setDimensions(handleCrossChartFilteringFunc(point.data.x));
+                      }
                     }
                   }}
                   legends={[
@@ -560,7 +565,7 @@ export default function NivoChartsPage() {
           )}
 
           {barChartData.length > 0 && (
-            <ChartContainer 
+            <ChartContainer
               title="Revenue vs Expenses"
               data={rawData.bar}
             >
@@ -614,7 +619,7 @@ export default function NivoChartsPage() {
           )}
 
           {pieChartData.length > 0 && (
-            <ChartContainer 
+            <ChartContainer
               title="Financial Distribution"
               data={rawData.pie}
             >
@@ -662,7 +667,7 @@ export default function NivoChartsPage() {
           )}
 
           {donutChartData.length > 0 && (
-            <ChartContainer 
+            <ChartContainer
               title="Revenue by Category"
               data={rawData.donut}
             >
@@ -710,7 +715,7 @@ export default function NivoChartsPage() {
           )}
         </div>
       )}
-      
+
       {!drillDown.active && (
         <p className="mt-4 text-center text-sm text-gray-500">
           <i>Click on any chart element to drill down into more detailed data</i>

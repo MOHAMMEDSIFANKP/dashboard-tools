@@ -2,14 +2,14 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import Plot from "react-plotly.js";
 import { GroupModal } from "@/components/GroupManagement";
-import { 
+import {
   useFetchChartDataMutation,
   useFetchDrillDownDataMutation,
   databaseName
 } from "@/lib/services/usersApi";
 // Types
 import { Dimensions } from "@/types/Schemas";
-import { buildRequestBody } from "@/lib/services/buildWhereClause";
+import { buildRequestBody, handleCrossChartFilteringFunc } from "@/lib/services/buildWhereClause";
 
 // Constants
 const DEFAULT_CONFIGURATION = {
@@ -289,7 +289,13 @@ export default function ReactPlotlyPage() {
 
   const handleLineChartClick = useCallback((data: any) => {
     if (data?.points?.[0]) {
+      // @ts-ignore   
+        if (data.event?.ctrlKey || data.event?.metaKey) {
       handleChartClick('line', data.points[0]);
+    } else {
+      // @ts-ignore
+      setDimensions(handleCrossChartFilteringFunc(String(data.points[0].x)));
+    }
     }
   }, [handleChartClick]);
 
@@ -324,7 +330,7 @@ export default function ReactPlotlyPage() {
 
     const timeoutId = setTimeout(attachHandlers, 100);
     return () => clearTimeout(timeoutId);
-    
+
   }, [isLoading, drillDown.active, dimensions, handleLineChartClick, handleBarChartClick, handlePieChartClick, handleDonutChartClick]);
 
   // Generic drill down function using API
@@ -478,7 +484,7 @@ export default function ReactPlotlyPage() {
   // Calculate pie chart data from aggregated data
   const getPieChartData = useCallback(() => {
     if (!chartData.pie.length) return { values: [], labels: [] };
-    
+
     // Use the data as category breakdown
     return {
       values: chartData.pie.map(d => d.revenue || d.value || 0),
@@ -499,7 +505,7 @@ export default function ReactPlotlyPage() {
         onClose={() => setIsGroupModalOpen(false)}
         onCreateGroup={handleCreateGroup}
       />
-      
+
       <div className="flex flex-col mb-4">
         {dimensions?.groupName && (
           <p className="text-sm text-gray-500">
@@ -507,20 +513,20 @@ export default function ReactPlotlyPage() {
           </p>
         )}
         <div className="flex gap-2">
-          <button 
-            onClick={() => setDimensions(null)} 
+          <button
+            onClick={() => setDimensions(null)}
             className="shadow-xl border bg-red-400 p-2 rounded text-white hover:bg-red-500"
           >
             Reset Group
           </button>
-          <button 
-            onClick={() => setIsGroupModalOpen(true)} 
+          <button
+            onClick={() => setIsGroupModalOpen(true)}
             className="shadow-xl border bg-blue-400 p-2 rounded text-white hover:bg-blue-500"
           >
             Create Group
           </button>
-          <button 
-            onClick={fetchAllChartDataHandle} 
+          <button
+            onClick={fetchAllChartDataHandle}
             className="shadow-xl border bg-green-400 p-2 rounded text-white hover:bg-green-500"
           >
             Refresh Data
@@ -546,7 +552,7 @@ export default function ReactPlotlyPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {chartData.line.length > 0 && (
             <ChartContainer
-              title="Revenue Trends"
+              title="Revenue Trends with Cross Chart Filter"
               onDownloadCSV={() => handleDownloadCSV(chartData.line, "Revenue_Trends")}
               onDownloadImage={() => handleDownloadImage(linePlotRef, "Revenue_Trends")}
             >
@@ -642,8 +648,8 @@ export default function ReactPlotlyPage() {
                   type: "pie",
                   marker: { colors: CHART_COLORS },
                   labels: getPieChartData().labels
-                }]}                
-                layout={{ 
+                }]}
+                layout={{
                   title: "Financial Distribution",
                   autosize: true
                 }}
@@ -668,7 +674,7 @@ export default function ReactPlotlyPage() {
                   hole: 0.5,
                   marker: { colors: CHART_COLORS }
                 }]}
-                layout={{ 
+                layout={{
                   title: "Revenue by Category",
                   autosize: true
                 }}
@@ -676,7 +682,7 @@ export default function ReactPlotlyPage() {
               />
             </ChartContainer>
           )}
-          
+
           <p className="col-span-1 md:col-span-2 text-sm text-gray-500">
             <i>Click on any chart element to drill down into more detailed data</i>
           </p>

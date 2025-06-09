@@ -9,7 +9,7 @@ import {
 } from "@/lib/services/usersApi";
 // Types
 import { Dimensions } from "@/types/Schemas";
-import { buildRequestBody } from "@/lib/services/buildWhereClause";
+import { buildRequestBody, handleCrossChartFilteringFunc } from "@/lib/services/buildWhereClause";
 
 // Core data types
 interface ChartDataPoint {
@@ -271,7 +271,7 @@ const EChartsPage = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <ChartContainer
-            title="Revenue Trends"
+            title="Revenue Trends with Cross Chart Filter"
             onExportCSV={() => exportToCSV(lineChartData)}
             onExportPNG={() => exportToPNG(lineChartRef)}
           >
@@ -279,6 +279,7 @@ const EChartsPage = () => {
               data={lineChartData}
               onDrillDown={(period, value, dataType) => handleDrillDown('line', period, value, dataType)}
               chartRef={lineChartRef}
+              setDimensions={setDimensions}
             />
           </ChartContainer>
 
@@ -537,11 +538,13 @@ const DrillDownChart: React.FC<{
 const LineChartComponent = ({
   data,
   onDrillDown,
-  chartRef
+  chartRef,
+  setDimensions,
 }: {
   data: LineChartDataPoint[],
   onDrillDown: (period: string, value: number, dataType: string) => void,
-  chartRef: React.RefObject<any>
+  chartRef: React.RefObject<any>,
+  setDimensions: React.Dispatch<React.SetStateAction<any>>;
 }) => {
   if (!data || data.length === 0) return <div>No data available</div>;
 
@@ -600,15 +603,22 @@ const LineChartComponent = ({
   };
 
   const onChartClick = (params: any) => {
-    const { name, seriesName, value } = params;
+    const { name, seriesName, value, event } = params;
+
     let dataType = 'revenue';
     if (seriesName === 'Gross Margin') dataType = 'grossMargin';
     if (seriesName === 'Net Profit') dataType = 'netProfit';
-    onDrillDown(name, value, dataType);
+    if (event?.event?.ctrlKey || event?.event?.metaKey) {
+      onDrillDown(name, value, dataType);
+    } else {
+       // @ts-ignore
+      setDimensions(handleCrossChartFilteringFunc(name));
+    }
+
   };
 
   const onEvents = {
-    'click': onChartClick
+    'click': onChartClick,
   };
 
   return <ReactECharts

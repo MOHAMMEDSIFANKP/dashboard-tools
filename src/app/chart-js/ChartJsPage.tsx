@@ -16,14 +16,14 @@ import {
 } from "chart.js";
 import { Line, Bar, Pie, Doughnut } from "react-chartjs-2";
 import { GroupModal } from "@/components/GroupManagement";
-import { 
+import {
   useFetchChartDataMutation,
   databaseName,
   useFetchDrillDownDataMutation
 } from "@/lib/services/usersApi";
 // Types
 import { Dimensions } from "@/types/Schemas";
-import { buildRequestBody } from "@/lib/services/buildWhereClause";
+import { buildRequestBody, handleCrossChartFilteringFunc } from "@/lib/services/buildWhereClause";
 
 ChartJS.register(
   CategoryScale,
@@ -147,7 +147,7 @@ const DrillDownChart: React.FC<{
   const chartOptions: ChartOptions<'line' | 'bar' | 'pie' | 'doughnut'> = {
     responsive: true,
     maintainAspectRatio: false,
-    plugins: { 
+    plugins: {
       legend: { position: "top" },
       title: {
         display: true,
@@ -160,28 +160,28 @@ const DrillDownChart: React.FC<{
   const renderDrillDownChart = () => {
     switch (drillDownState.chartType) {
       case 'line':
-         // @ts-ignore
+        // @ts-ignore
         return <Line ref={drillChartRef} options={chartOptions} data={drillDownData} />;
       case 'bar':
-         // @ts-ignore
+        // @ts-ignore
         return <Bar ref={drillChartRef} options={chartOptions} data={drillDownData} />;
       case 'pie':
-         // @ts-ignore
+        // @ts-ignore
         return <Pie ref={drillChartRef} options={chartOptions} data={drillDownData} />;
       case 'donut':
-         // @ts-ignore
-        return <Doughnut ref={drillChartRef} options={{...chartOptions, cutout: '50%'}} data={drillDownData} />;
+        // @ts-ignore
+        return <Doughnut ref={drillChartRef} options={{ ...chartOptions, cutout: '50%' }} data={drillDownData} />;
       default:
-         // @ts-ignore
+        // @ts-ignore
         return <Bar ref={drillChartRef} options={chartOptions} data={drillDownData} />;
     }
   };
 
   return (
     <div className="mb-4">
-      <ChartContainer 
-        title={drillDownState.title} 
-        chartRef={drillChartRef} 
+      <ChartContainer
+        title={drillDownState.title}
+        chartRef={drillChartRef}
         data={drillDownData}
         isDrilled={true}
         onBack={onBack}
@@ -260,13 +260,13 @@ export default function ChartJsPage() {
     setError(null);
 
     try {
-           // Fetch all chart data
-           const result = await fetchAllChartData({
-             body: buildRequestBody(dimensions, 'all')
-           }).unwrap();
-           if (!result || !result.success) {
-             throw new Error(result?.message || "Failed to fetch chart data");
-           }
+      // Fetch all chart data
+      const result = await fetchAllChartData({
+        body: buildRequestBody(dimensions, 'all')
+      }).unwrap();
+      if (!result || !result.success) {
+        throw new Error(result?.message || "Failed to fetch chart data");
+      }
       // Process line chart data
       const lineData = result?.charts?.line?.success ? result?.charts?.line?.data || [] : [];
       if (lineData.length > 0) {
@@ -375,7 +375,7 @@ export default function ChartJsPage() {
     setIsLoading(true);
     setError(null);
     console.log("Drill down triggered:", chartType, category, dataType, value);
-    
+
     try {
       const result = await fetchDrillDownData({
         table_name: databaseName,
@@ -464,7 +464,7 @@ export default function ChartJsPage() {
   // Handle drill down for line chart
   const handleLineChartClick = async (event: any) => {
     if (!lineChartRef.current) return;
-    
+
     try {
       const points = lineChartRef.current.getElementsAtEventForMode(
         event,
@@ -474,14 +474,23 @@ export default function ChartJsPage() {
       );
 
       if (points.length === 0) return;
-      
+
       const clickedPoint = points[0];
       const { datasetIndex, index } = clickedPoint;
       const period = lineChartData?.labels?.[index] as string;
       const dataType = lineChartData?.datasets?.[datasetIndex]?.label?.toLowerCase() || '';
       const value = lineChartData?.datasets?.[datasetIndex]?.data?.[index];
-      
-      await handleDrillDown('line', period, dataType, value);
+
+      const nativeEvent = event.native || event;
+
+      if (nativeEvent?.ctrlKey || nativeEvent?.metaKey) {
+        console.log('🔍 Drilling down:', period, dataType);
+        await handleDrillDown('line', period, dataType, value);
+      } else {
+        console.log('🔄 Cross-filtering by:', period);
+        // @ts-ignore
+        setDimensions(handleCrossChartFilteringFunc(period));
+      }
     } catch (error) {
       console.error("Error in line chart click handler:", error);
     }
@@ -490,7 +499,7 @@ export default function ChartJsPage() {
   // Handle drill down for bar chart
   const handleBarChartClick = async (event: any) => {
     if (!barChartRef.current) return;
-    
+
     try {
       const points = barChartRef.current.getElementsAtEventForMode(
         event,
@@ -500,13 +509,13 @@ export default function ChartJsPage() {
       );
 
       if (points.length === 0) return;
-      
+
       const clickedPoint = points[0];
       const { datasetIndex, index } = clickedPoint;
       const period = barChartData?.labels?.[index] as string;
       const dataType = barChartData?.datasets?.[datasetIndex]?.label?.toLowerCase() || '';
       const value = barChartData?.datasets?.[datasetIndex]?.data?.[index];
-      
+
       await handleDrillDown('bar', period, dataType, value);
     } catch (error) {
       console.error("Error in bar chart click handler:", error);
@@ -516,7 +525,7 @@ export default function ChartJsPage() {
   // Handle drill down for pie chart
   const handlePieChartClick = async (event: any) => {
     if (!pieChartRef.current) return;
-    
+
     try {
       const points = pieChartRef.current.getElementsAtEventForMode(
         event,
@@ -526,12 +535,12 @@ export default function ChartJsPage() {
       );
 
       if (points.length === 0) return;
-      
+
       const clickedPoint = points[0];
       const { index } = clickedPoint;
       const category = pieChartData?.labels?.[index] as string;
       const value = pieChartData?.datasets?.[0]?.data?.[index];
-      
+
       await handleDrillDown('pie', category, 'revenue', value);
     } catch (error) {
       console.error("Error in pie chart click handler:", error);
@@ -541,7 +550,7 @@ export default function ChartJsPage() {
   // Handle drill down for donut chart
   const handleDonutChartClick = async (event: any) => {
     if (!donutChartRef.current) return;
-    
+
     try {
       const points = donutChartRef.current.getElementsAtEventForMode(
         event,
@@ -551,12 +560,12 @@ export default function ChartJsPage() {
       );
 
       if (points.length === 0) return;
-      
+
       const clickedPoint = points[0];
       const { index } = clickedPoint;
       const category = donutChartData?.labels?.[index] as string;
       const value = donutChartData?.datasets?.[0]?.data?.[index];
-      
+
       await handleDrillDown('donut', category, 'revenue', value);
     } catch (error) {
       console.error("Error in donut chart click handler:", error);
@@ -571,7 +580,7 @@ export default function ChartJsPage() {
   const chartOptions: ChartOptions<'line' | 'bar' | 'pie' | 'doughnut'> = {
     responsive: true,
     maintainAspectRatio: false,
-    plugins: { 
+    plugins: {
       legend: { position: "top" },
       title: {
         display: true
@@ -582,13 +591,13 @@ export default function ChartJsPage() {
   return (
     <section className="p-5">
       <h1 className="text-2xl font-bold text-center mb-4">Financial Dashboard - Chart.js</h1>
-      
+
       <GroupModal
         isOpen={isGroupModalOpen}
         onClose={() => setIsGroupModalOpen(false)}
         onCreateGroup={handleCreateGroup}
       />
-      
+
       <div className="flex flex-col mb-4">
         {dimensions?.groupName && (
           <p className="text-sm text-gray-500">
@@ -596,20 +605,20 @@ export default function ChartJsPage() {
           </p>
         )}
         <div className="flex gap-2">
-          <button 
-            onClick={() => setDimensions(null)} 
+          <button
+            onClick={() => setDimensions(null)}
             className="shadow-xl border bg-red-400 p-2 rounded text-white hover:bg-red-500"
           >
             Reset Group
           </button>
-          <button 
-            onClick={() => setIsGroupModalOpen(true)} 
+          <button
+            onClick={() => setIsGroupModalOpen(true)}
             className="shadow-xl border bg-blue-400 p-2 rounded text-white hover:bg-blue-500"
           >
             Create Group
           </button>
-          <button 
-            onClick={fetchAllChartDataHanlde} 
+          <button
+            onClick={fetchAllChartDataHanlde}
             className="shadow-xl border bg-green-400 p-2 rounded text-white hover:bg-green-500"
           >
             Refresh Data
@@ -623,7 +632,7 @@ export default function ChartJsPage() {
           <p onClick={() => setError('')} className="cursor-pointer">x</p>
         </div>
       )}
-      
+
       {isLoading && (
         <div className="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded mb-4">
           <p>Loading chart data...</p>
@@ -631,18 +640,18 @@ export default function ChartJsPage() {
       )}
 
       {drillDown.active && drillDownData ? (
-        <DrillDownChart 
-          drillDownState={drillDown} 
-          drillDownData={drillDownData} 
-          onBack={resetDrillDown} 
+        <DrillDownChart
+          drillDownState={drillDown}
+          drillDownData={drillDownData}
+          onBack={resetDrillDown}
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {lineChartData && (
-            <ChartContainer title="Revenue Trends" chartRef={lineChartRef} data={rawChartData.line}>
+            <ChartContainer title="Revenue Trends with Cross Chart Filter" chartRef={lineChartRef} data={rawChartData.line}>
               <Line
                 ref={lineChartRef}
-                 // @ts-ignore
+                // @ts-ignore
                 options={{
                   ...chartOptions,
                   onClick: handleLineChartClick
@@ -655,7 +664,7 @@ export default function ChartJsPage() {
             <ChartContainer title="Revenue vs Expenses" chartRef={barChartRef} data={rawChartData.bar}>
               <Bar
                 ref={barChartRef}
-                 // @ts-ignore
+                // @ts-ignore
                 options={{
                   ...chartOptions,
                   onClick: handleBarChartClick

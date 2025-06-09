@@ -3,14 +3,14 @@ import React, { useState, useEffect, useRef } from "react";
 import { AgCharts } from "ag-charts-react";
 import { AgChartOptions } from "ag-charts-community";
 import { GroupModal } from "../../components/GroupManagement";
-import { 
+import {
   useFetchDrillDownDataMutation,
   databaseName,
   useFetchChartDataMutation
 } from "@/lib/services/usersApi";
 // Types
 import { Dimensions } from "@/types/Schemas";
-import { buildRequestBody } from "@/lib/services/buildWhereClause";
+import { buildRequestBody, handleCrossChartFilteringFunc } from "@/lib/services/buildWhereClause";
 
 // Core data types
 interface ChartDataPoint {
@@ -157,11 +157,11 @@ const AgChartsPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isGroupModalOpen, setIsGroupModalOpen] = useState<boolean>(false);
   const [dimensions, setDimensions] = useState<Dimensions | null>(null);
-  
+
   // API Mutations
   const [fetchAllChartData] = useFetchChartDataMutation();
   const [fetchDrillDownData] = useFetchDrillDownDataMutation();
-  
+
   // Drill down state
   const [drillDown, setDrillDown] = useState<DrillDownState>({
     active: false,
@@ -214,6 +214,11 @@ const AgChartsPage: React.FC = () => {
     setDimensions(datas);
   };
 
+  const handleCrossChartFiltering = (data: string) => {
+    // @ts-ignore   
+    setDimensions(handleCrossChartFilteringFunc(data))
+  }
+
   // Fetch all chart data
   const fetchAllChartDataHanlde = async () => {
     setIsLoading(true);
@@ -262,11 +267,21 @@ const AgChartsPage: React.FC = () => {
         ],
         listeners: {
           // @ts-ignore
-          seriesNodeClick: ({ datum, yKey }) => {
+          seriesNodeClick: (event) => {
+            const { datum, yKey } = event;
+
             if (datum && datum.period) {
-              handleDrillDown("line", datum.period, datum[yKey], yKey);
+              const nativeEvent = event.event;
+              if (nativeEvent?.ctrlKey || nativeEvent?.metaKey) {
+                // Ctrl/Cmd + Click = Drill Down
+                handleDrillDown("line", datum.period, datum[yKey], yKey);
+              } else {
+                // Regular Click = Cross Chart Filter
+                handleCrossChartFiltering(datum.period);
+              }
             }
           },
+
         }
       } : null;
 
@@ -401,7 +416,7 @@ const AgChartsPage: React.FC = () => {
         // Create chart options based on API response
         let options: AgChartOptions;
         const columns = result.columns || Object.keys(drillData[0]);
-        
+
         // Determine chart type based on data structure
         if (columns.includes('catfinancialview') || columns.includes('cataccountingview')) {
           options = {
@@ -505,20 +520,20 @@ const AgChartsPage: React.FC = () => {
           </p>
         )}
         <div className="flex gap-2">
-          <button 
-            onClick={() => setDimensions(null)} 
+          <button
+            onClick={() => setDimensions(null)}
             className="shadow-xl border bg-red-400 p-2 rounded text-white hover:bg-red-500"
           >
             Reset Group
           </button>
-          <button 
-            onClick={() => setIsGroupModalOpen(true)} 
+          <button
+            onClick={() => setIsGroupModalOpen(true)}
             className="shadow-xl border bg-blue-400 p-2 rounded text-white hover:bg-blue-500"
           >
             Create Group
           </button>
-          <button 
-            onClick={fetchAllChartDataHanlde} 
+          <button
+            onClick={fetchAllChartDataHanlde}
             className="shadow-xl border bg-green-400 p-2 rounded text-white hover:bg-green-500"
           >
             Refresh Data
@@ -529,10 +544,10 @@ const AgChartsPage: React.FC = () => {
       {error && (
         <div className="flex justify-between bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
           <p>{error}</p>
-          <p onClick={()=>setError('')} className="cursor-pointer">x</p>
+          <p onClick={() => setError('')} className="cursor-pointer">x</p>
         </div>
       )}
-      
+
       {isLoading && (
         <div className="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded mb-4">
           <p>Loading chart data...</p>
@@ -549,7 +564,7 @@ const AgChartsPage: React.FC = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {chartOptions.line && (
-            <ChartContainer title="Revenue Trends" data={chartData.line}>
+            <ChartContainer title="Revenue Trends with Cross Chart Filter" data={chartData.line}>
               <AgCharts options={chartOptions.line} />
             </ChartContainer>
           )}
