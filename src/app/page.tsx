@@ -3,7 +3,7 @@ import Link from "next/link";
 interface Navigation {
   name: string;
   href: string;
-  type: "table" | "chart";
+  type: "table" | "chart" | "paid-chart";
 }
 
 export default function Home() {
@@ -19,10 +19,13 @@ export default function Home() {
     { name: "Nivo Charts", href: "/nivo-charts", type: "chart" },
     { name: "Victory Charts", href: "/victory-charts", type: "chart" },
     { name: "ECharts", href: "/echarts", type: "chart" },
+
+    { name: "Highcharts", href: "/highcharts", type: "paid-chart" },
   ];
 
   const tables = navigations.filter((nav) => nav.type === "table");
   const charts = navigations.filter((nav) => nav.type === "chart");
+  const paidcharts = navigations.filter((nav) => nav.type === "paid-chart");
 
   return (
     <section className="h-screen w-full grid grid-cols-[280px_1fr]">
@@ -45,9 +48,26 @@ export default function Home() {
 
         {/* Charts */}
         <div>
-          <h2 className="text-lg font-semibold mb-3 border-b pb-1">📊 Charts</h2>
+          <h2 className="text-lg font-semibold mb-3 border-b pb-1">📊 Open Source Charts</h2>
           <nav className="flex flex-col gap-2">
             {charts.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="bg-gray-700 hover:bg-gray-600 transition rounded-xl px-4 py-2 text-sm"
+              >
+                {item.name}
+              </Link>
+            ))}
+          </nav>
+        </div>
+
+
+        {/* Paid Charts */}
+        <div>
+          <h2 className="text-lg font-semibold mb-3 border-b pb-1">📊 Pid Charts</h2>
+          <nav className="flex flex-col gap-2">
+            {paidcharts.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}

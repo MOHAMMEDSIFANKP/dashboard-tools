@@ -66,3 +66,50 @@ export interface FinancialDataResponse {
   offset: number;
   data: FinancialData[];
 }
+
+
+// Data interfaces matching backend response for all charts
+export interface LineChartData {
+  period: string;
+  country: string;
+  revenue: number;
+  grossMargin: number;
+  netProfit: number;
+}
+
+export interface BarChartData {
+  period: string;
+  country: string;
+  revenue: number;
+  expenses: number;
+}
+
+export interface PieChartData {
+  catfinancialview: string;
+  revenue: number;
+}
+
+export interface DonutChartData {
+  cataccountingview: string;
+  country: string;
+  revenue: number;
+}
+
+export interface ChartResponse<T> {
+  success: boolean;
+  chart_type: string;
+  data?: T[];
+  columns?: string[];
+  grouped_by?: string;
+}
+
+export interface ApiResponse {
+  success: boolean;
+  message?: string;
+  charts?: {
+    line?: ChartResponse<LineChartData>;
+    bar?: ChartResponse<BarChartData>;
+    pie?: ChartResponse<PieChartData>;
+    donut?: ChartResponse<DonutChartData>;
+  };
+}
