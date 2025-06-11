@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { AgCharts } from "ag-charts-react";
 import { AgChartOptions } from "ag-charts-community";
 import { GroupModal } from "../../components/GroupManagement";
@@ -8,22 +8,14 @@ import {
   databaseName,
   useFetchChartDataMutation
 } from "@/lib/services/usersApi";
-// Types
-import { Dimensions } from "@/types/Schemas";
-import { buildRequestBody, handleCrossChartFilteringFunc } from "@/lib/services/buildWhereClause";
 
-// Core data types
-interface ChartDataPoint {
-  period?: string;
-  revenue?: number;
-  expenses?: number;
-  grossMargin?: number;
-  netProfit?: number;
-  catAccountingView?: string;
-  label?: string;
-  value?: number;
-  [key: string]: any;
-}
+import { buildRequestBody, handleCrossChartFilteringFunc } from "@/lib/services/buildWhereClause";
+import { ActionButton } from "@/components/ui/action-button";
+import { ErrorAlert, LoadingAlert } from "@/components/ui/status-alerts";
+
+// Types
+import { BarChartData, Dimensions, DonutChartData, LineChartData, PieChartData } from '@/types/Schemas';
+import { ChartSkelten } from "@/components/ui/ChartSkelten";
 
 // Common props for components
 interface CommonProps {
@@ -40,92 +32,6 @@ interface DrillDownState {
   title: string;
 }
 
-// Chart container component
-const ChartContainer: React.FC<CommonProps & {
-  children: React.ReactNode;
-  isDrilled?: boolean;
-  onBack?: () => void;
-}> = ({ title, children, data, isDrilled, onBack }) => {
-  const chartRef = useRef<HTMLDivElement>(null);
-
-  // Export to CSV function
-  const exportToCSV = () => {
-    if (!data || !data.length) return;
-
-    const headers = Object.keys(data[0]).join(',');
-    const rows = data.map(row => Object.values(row).join(',')).join('\n');
-    const csv = `${headers}\n${rows}`;
-
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `chart_data.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  // PNG export function
-  const exportToPNG = () => {
-    const chartElement = chartRef.current;
-    if (!chartElement) return;
-
-    const canvas = chartElement.querySelector('canvas');
-
-    if (canvas) {
-      try {
-        const image = canvas.toDataURL('image/png');
-        const link = document.createElement('a');
-        link.download = 'chart.png';
-        link.href = image;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      } catch (err) {
-        console.error("Failed to export chart:", err);
-        alert("Could not export chart as PNG. Please try again.");
-      }
-    } else {
-      alert("Chart is not ready for export. Please try again.");
-    }
-  };
-
-  return (
-    <div className="bg-white p-6 rounded-lg shadow-md">
-      <div className="flex justify-between items-center mb-2">
-        <div className="flex items-center">
-          <h2 className="text-xl font-semibold">{title}</h2>
-          {isDrilled && (
-            <button
-              onClick={onBack}
-              className="ml-3 px-2 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-sm"
-            >
-              ↩ Back
-            </button>
-          )}
-        </div>
-        <div className="flex space-x-2">
-          <button
-            onClick={exportToPNG}
-            className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
-          >
-            PNG
-          </button>
-          <button
-            onClick={exportToCSV}
-            className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
-          >
-            CSV
-          </button>
-        </div>
-      </div>
-      <div ref={chartRef}>
-        {children}
-      </div>
-    </div>
-  );
-};
 
 // Separated Drill Down Component
 const DrillDownChart: React.FC<{
@@ -133,7 +39,8 @@ const DrillDownChart: React.FC<{
   drillDownData: any[];
   drillDownOptions: AgChartOptions | null;
   onBack: () => void;
-}> = ({ drillDownState, drillDownData, drillDownOptions, onBack }) => {
+  isLoading: boolean;
+}> = ({ drillDownState, drillDownData, drillDownOptions, onBack,isLoading }) => {
   return (
     <div className="mb-4">
       <ChartContainer
@@ -141,6 +48,7 @@ const DrillDownChart: React.FC<{
         data={drillDownData}
         onBack={onBack}
         isDrilled={true}
+        isLoading={isLoading}
       >
         {drillDownOptions && <AgCharts options={drillDownOptions} />}
       </ChartContainer>
@@ -172,10 +80,10 @@ const AgChartsPage: React.FC = () => {
 
   // Chart data states
   const [chartData, setChartData] = useState<{
-    line: ChartDataPoint[],
-    bar: ChartDataPoint[],
-    pie: ChartDataPoint[],
-    donut: ChartDataPoint[],
+    line: LineChartData[];
+    bar: BarChartData[];
+    pie: PieChartData[];
+    donut: DonutChartData[];
     drillDown: any[]
   }>({
     line: [],
@@ -208,10 +116,6 @@ const AgChartsPage: React.FC = () => {
       category: "",
       title: ""
     });
-  };
-
-  const handleCreateGroup = (datas: any) => {
-    setDimensions(datas);
   };
 
   const handleCrossChartFiltering = (data: string) => {
@@ -387,7 +291,7 @@ const AgChartsPage: React.FC = () => {
 
     } catch (err: any) {
       setError(err?.data?.detail || err.message || "Failed to fetch chart data");
-      console.error("Error fetching chart data:", err);
+      console.log("Error fetching chart data:", err);
     } finally {
       setIsLoading(false);
     }
@@ -397,8 +301,6 @@ const AgChartsPage: React.FC = () => {
   const handleDrillDown = async (chartType: string, category: string, value: any, dataType: string) => {
     setIsLoading(true);
     setError(null);
-    // console.log("Drill down triggered:", chartType, category, value, dataType);
-    // console.log("Drill down data:", chartData, chartOptions);
 
     try {
       const result = await fetchDrillDownData({
@@ -500,17 +402,34 @@ const AgChartsPage: React.FC = () => {
     fetchAllChartDataHanlde();
   }, [dimensions]);
 
-  // Initial data fetch
-  // useEffect(() => {
-  //   fetchAllChartData();
-  // }, []);
+  // Event handlers
+  const handleCreateGroup = useCallback((data: Dimensions): void => {
+    setDimensions(data);
+  }, []);
+
+  const handleResetGroup = useCallback((): void => {
+    setDimensions(null);
+  }, []);
+
+  const handleCloseModal = useCallback((): void => {
+    setIsGroupModalOpen(false);
+  }, []);
+
+  const handleOpenModal = useCallback((): void => {
+    setIsGroupModalOpen(true);
+  }, []);
+
+  const handleDismissError = useCallback((): void => {
+    setError(null);
+  }, []);
 
   return (
     <section className="p-5">
       <h1 className="text-2xl font-bold text-center mb-4">Financial Dashboard - Ag Charts</h1>
       <GroupModal
         isOpen={isGroupModalOpen}
-        onClose={() => setIsGroupModalOpen(false)}
+        onClose={handleCloseModal}
+        // @ts-ignore
         onCreateGroup={handleCreateGroup}
       />
       <div className="flex flex-col mb-4">
@@ -520,39 +439,35 @@ const AgChartsPage: React.FC = () => {
           </p>
         )}
         <div className="flex gap-2">
-          <button
-            onClick={() => setDimensions(null)}
-            className="shadow-xl border bg-red-400 p-2 rounded text-white hover:bg-red-500"
+          <ActionButton
+            onClick={handleResetGroup}
+            className="bg-red-400 hover:bg-red-500"
+            disabled={isLoading}
           >
             Reset Group
-          </button>
-          <button
-            onClick={() => setIsGroupModalOpen(true)}
-            className="shadow-xl border bg-blue-400 p-2 rounded text-white hover:bg-blue-500"
+          </ActionButton>
+
+          <ActionButton
+            onClick={handleOpenModal}
+            className="bg-blue-400 hover:bg-blue-500"
+            disabled={isLoading}
           >
             Create Group
-          </button>
-          <button
+          </ActionButton>
+
+          <ActionButton
             onClick={fetchAllChartDataHanlde}
-            className="shadow-xl border bg-green-400 p-2 rounded text-white hover:bg-green-500"
+            className="bg-green-400 hover:bg-green-500"
+            disabled={isLoading}
           >
-            Refresh Data
-          </button>
+            {isLoading ? 'Loading...' : 'Refresh Data'}
+          </ActionButton>
         </div>
       </div>
 
-      {error && (
-        <div className="flex justify-between bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          <p>{error}</p>
-          <p onClick={() => setError('')} className="cursor-pointer">x</p>
-        </div>
-      )}
+      {error && (<ErrorAlert message={error} onDismiss={handleDismissError} />)}
 
-      {isLoading && (
-        <div className="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded mb-4">
-          <p>Loading chart data...</p>
-        </div>
-      )}
+      {isLoading && <LoadingAlert />}
 
       {drillDown.active ? (
         <DrillDownChart
@@ -560,35 +475,132 @@ const AgChartsPage: React.FC = () => {
           drillDownData={chartData.drillDown}
           drillDownOptions={chartOptions.drillDown}
           onBack={resetDrillDown}
+          isLoading={isLoading}
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {chartOptions.line && (
-            <ChartContainer title="Revenue Trends with Cross Chart Filter" data={chartData.line}>
-              <AgCharts options={chartOptions.line} />
-            </ChartContainer>
-          )}
-          {chartOptions.bar && (
-            <ChartContainer title="Revenue vs Expenses" data={chartData.bar}>
-              <AgCharts options={chartOptions.bar} />
-            </ChartContainer>
-          )}
-          {chartOptions.pie && (
-            <ChartContainer title="Financial Distribution" data={chartData.pie}>
-              <AgCharts options={chartOptions.pie} />
-            </ChartContainer>
-          )}
-          {chartOptions.donut && (
-            <ChartContainer title="Revenue by Category" data={chartData.donut}>
-              <AgCharts options={chartOptions.donut} />
-            </ChartContainer>
-          )}
+          <ChartContainer title="Revenue Trends with Cross Chart Filter" isLoading={isLoading} data={chartData.line}>
+            <AgCharts options={chartOptions.line || {}} />
+          </ChartContainer>
+          <ChartContainer title="Revenue vs Expenses" isLoading={isLoading} data={chartData.bar}>
+            <AgCharts options={chartOptions.bar || {}} />
+          </ChartContainer>
+          <ChartContainer title="Financial Distribution" isLoading={isLoading} data={chartData.pie}>
+            <AgCharts options={chartOptions.pie || {}} />
+          </ChartContainer>
+          <ChartContainer title="Revenue by Category" isLoading={isLoading} data={chartData.donut}>
+            <AgCharts options={chartOptions.donut || {}} />
+          </ChartContainer>
           <p className="col-span-1 md:col-span-2 text-sm text-gray-500">
             <i>Click on any chart element to drill down into more detailed data</i>
           </p>
         </div>
       )}
     </section>
+  );
+};
+
+// Chart container component
+const ChartContainer: React.FC<CommonProps & {
+  children: React.ReactNode;
+  isDrilled?: boolean;
+  onBack?: () => void;
+  isLoading: boolean;
+}> = ({ title, children, data, isDrilled, onBack, isLoading }) => {
+  const chartRef = useRef<HTMLDivElement>(null);
+
+  const hasData = data && data.length > 0;
+
+  // Export to CSV function
+  const exportToCSV = () => {
+    if (!hasData) return;
+
+    const headers = Object.keys(data[0]).join(',');
+    const rows = data.map(row => Object.values(row).join(',')).join('\n');
+    const csv = `${headers}\n${rows}`;
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `chart_data.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // PNG export function
+  const exportToPNG = () => {
+    if (!hasData) return;
+    const chartElement = chartRef.current;
+    if (!chartElement) return;
+
+    const canvas = chartElement.querySelector('canvas');
+
+    if (canvas) {
+      try {
+        const image = canvas.toDataURL('image/png');
+        const link = document.createElement('a');
+        link.download = 'chart.png';
+        link.href = image;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } catch (err) {
+        console.error("Failed to export chart:", err);
+        alert("Could not export chart as PNG. Please try again.");
+      }
+    } else {
+      alert("Chart is not ready for export. Please try again.");
+    }
+  };
+
+  return (
+    <div className="bg-white p-6 rounded-lg shadow-lg border border-gray-100 hover:shadow-xl transition-shadow duration-200">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold text-gray-800">{title}</h3>
+        {isLoading && (
+          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
+        )}
+      </div>
+      {hasData ? (
+        <>
+          <div className="flex justify-between items-center mb-2">
+            <div className="flex items-center">
+
+              {isDrilled && (
+                <button
+                  onClick={onBack}
+                  className="ml-3 px-2 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-sm"
+                >
+                  ↩ Back
+                </button>
+              )}
+            </div>
+            <div className="flex space-x-2">
+              <button
+                onClick={exportToPNG}
+                className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
+              >
+                PNG
+              </button>
+              <button
+                onClick={exportToCSV}
+                className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
+              >
+                CSV
+              </button>
+            </div>
+          </div>
+          <div ref={chartRef}>
+            {children}
+          </div>
+        </>
+      ) : (
+        <ChartSkelten />
+      )}
+
+    </div>
   );
 };
 

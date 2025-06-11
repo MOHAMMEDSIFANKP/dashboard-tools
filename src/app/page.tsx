@@ -28,7 +28,7 @@ export default function Home() {
   const paidcharts = navigations.filter((nav) => nav.type === "paid-chart");
 
   return (
-    <section className="h-screen w-full grid grid-cols-[280px_1fr]">
+    <section className="h-screen w-full grid sm:grid-cols-[280px_1fr]">
       <aside className="p-6 bg-gray-900 text-white space-y-8">
         {/* Tables */}
         <div>
@@ -81,9 +81,11 @@ export default function Home() {
       </aside>
 
       {/* Main Content */}
-      <main className="p-10 flex items-center justify-center text-gray-500 text-xl">
+     <main className="hidden sm:block">
+       <div className="p-10 flex items-center justify-center text-gray-500 text-xl">
         Select a section from the left
-      </main>
+      </div>
+     </main>
     </section>
   );
 }
