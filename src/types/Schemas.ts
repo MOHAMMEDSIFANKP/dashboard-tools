@@ -71,7 +71,7 @@ export interface FinancialDataResponse {
 // Data interfaces matching backend response for all charts
 export interface LineChartData {
   period: string;
-  country: string;
+  // country: string;
   revenue: number;
   grossMargin: number;
   netProfit: number;
