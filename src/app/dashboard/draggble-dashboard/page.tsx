@@ -10,7 +10,12 @@ import {
     Target,
     Grip,
     Plus,
-    X
+    X,
+    Globe,
+    Calendar,
+    Building,
+    Filter,
+    Layers
 } from "lucide-react";
 
 import { AgCharts } from 'ag-charts-react';
@@ -36,10 +41,11 @@ interface FinancialData {
 }
 
 interface ChartAttribute {
-    key: keyof Omit<FinancialData, 'fiscalyear' | 'period' | 'cataccountingview' | 'catfinancialview' | 'country' | 'continent'>;
+    key: string;
     label: string;
     color: string;
     iconName: string;
+    type: 'measure' | 'dimension';
 }
 
 interface ChartType {
@@ -48,9 +54,16 @@ interface ChartType {
     iconName: string;
 }
 
+interface ChartConfig {
+    measures: ChartAttribute[];
+    dimensions: ChartAttribute[];
+    groupBy?: string;
+    filters: Record<string, string[]>;
+}
+
 interface ChartConfigurations {
-    line: ChartAttribute[];
-    bar: ChartAttribute[];
+    line: ChartConfig;
+    bar: ChartConfig;
 }
 
 interface DraggableAttributeProps {
@@ -60,75 +73,121 @@ interface DraggableAttributeProps {
 
 interface ChartDropZoneProps {
     chartType: ChartType;
-    selectedAttributes: ChartAttribute[];
-    onAttributeDrop: (chartType: string, attribute: ChartAttribute) => void;
-    onAttributeRemove: (chartType: string, attributeKey: string) => void;
+    config: ChartConfig;
+    onAttributeDrop: (chartType: string, attribute: ChartAttribute, dropZone: 'measures' | 'dimensions') => void;
+    onAttributeRemove: (chartType: string, attributeKey: string, attributeType: 'measure' | 'dimension') => void;
+    onGroupByChange: (chartType: string, dimensionKey: string | undefined) => void;
+    onFilterChange: (chartType: string, dimension: string, values: string[]) => void;
     data: FinancialData[];
 }
 
 // Mock data for demonstration
 const mockFinancialData: FinancialData[] = [
     {
-        fiscalyear: 2025,
-        period: "202501",
+        fiscalyear: 2017,
+        period: "201710",
+        cataccountingview: "Charges",
+        catfinancialview: "Financier",
+        revenue: 811581.46,
+        otherincome: 6680.1,
+        grossmargin: 397398.95,
+        operatingexpenses: 181977.82,
+        operatingprofit: 327840.45,
+        financialresult: -849.67,
+        earningsbeforetax: 13390.61,
+        nonrecurringresult: 11211.21,
+        netprofit: 77046.86,
+        country: "India",
+        continent: "Asia"
+    },
+    {
+        fiscalyear: 2017,
+        period: "201711",
         cataccountingview: "Operations",
         catfinancialview: "Revenue",
-        revenue: 150000,
+        revenue: 750000,
         otherincome: 5000,
-        grossmargin: 120000,
-        operatingexpenses: 80000,
-        operatingprofit: 40000,
-        financialresult: 2000,
-        earningsbeforetax: 42000,
+        grossmargin: 350000,
+        operatingexpenses: 170000,
+        operatingprofit: 180000,
+        financialresult: 1000,
+        earningsbeforetax: 181000,
         nonrecurringresult: 0,
-        netprofit: 35000,
+        netprofit: 140000,
         country: "USA",
         continent: "North America"
     },
     {
-        fiscalyear: 2025,
-        period: "2025Q2",
-        cataccountingview: "Operations",
-        catfinancialview: "Revenue",
-        revenue: 180000,
-        otherincome: 7000,
-        grossmargin: 140000,
-        operatingexpenses: 85000,
-        operatingprofit: 55000,
-        financialresult: 3000,
-        earningsbeforetax: 58000,
-        nonrecurringresult: 0,
-        netprofit: 48000,
-        country: "USA",
-        continent: "North America"
-    },
-    {
-        fiscalyear: 2025,
-        period: "2025Q3",
-        cataccountingview: "Operations",
-        catfinancialview: "Revenue",
-        revenue: 200000,
+        fiscalyear: 2017,
+        period: "201712",
+        cataccountingview: "Charges",
+        catfinancialview: "Financier",
+        revenue: 890000,
         otherincome: 8000,
-        grossmargin: 160000,
-        operatingexpenses: 90000,
-        operatingprofit: 70000,
-        financialresult: 4000,
-        earningsbeforetax: 74000,
+        grossmargin: 420000,
+        operatingexpenses: 195000,
+        operatingprofit: 225000,
+        financialresult: 2000,
+        earningsbeforetax: 227000,
+        nonrecurringresult: 5000,
+        netprofit: 180000,
+        country: "Germany",
+        continent: "Europe"
+    },
+    {
+        fiscalyear: 2018,
+        period: "201801",
+        cataccountingview: "Operations",
+        catfinancialview: "Revenue",
+        revenue: 920000,
+        otherincome: 12000,
+        grossmargin: 450000,
+        operatingexpenses: 200000,
+        operatingprofit: 250000,
+        financialresult: 3000,
+        earningsbeforetax: 253000,
         nonrecurringresult: 0,
-        netprofit: 62000,
+        netprofit: 200000,
+        country: "India",
+        continent: "Asia"
+    },
+    {
+        fiscalyear: 2018,
+        period: "201802",
+        cataccountingview: "Charges",
+        catfinancialview: "Financier",
+        revenue: 680000,
+        otherincome: 4000,
+        grossmargin: 320000,
+        operatingexpenses: 160000,
+        operatingprofit: 160000,
+        financialresult: -500,
+        earningsbeforetax: 159500,
+        nonrecurringresult: 8000,
+        netprofit: 120000,
         country: "USA",
         continent: "North America"
     }
 ];
 
-// Available chart attributes for dragging
-const availableAttributes: ChartAttribute[] = [
-    { key: 'revenue', label: 'Revenue', color: '#3B82F6', iconName: 'DollarSign' },
-    { key: 'grossmargin', label: 'Gross Margin', color: '#10B981', iconName: 'TrendingUp' },
-    { key: 'operatingprofit', label: 'Operating Profit', color: '#8B5CF6', iconName: 'Banknote' },
-    { key: 'netprofit', label: 'Net Profit', color: '#F59E0B', iconName: 'Target' },
-    { key: 'operatingexpenses', label: 'Operating Expenses', color: '#EF4444', iconName: 'Receipt' },
-    { key: 'otherincome', label: 'Other Income', color: '#06B6D4', iconName: 'Plus' },
+// Available measures
+const availableMeasures: ChartAttribute[] = [
+    { key: 'revenue', label: 'Revenue', color: '#3B82F6', iconName: 'DollarSign', type: 'measure' },
+    { key: 'grossmargin', label: 'Gross Margin', color: '#10B981', iconName: 'TrendingUp', type: 'measure' },
+    { key: 'operatingprofit', label: 'Operating Profit', color: '#8B5CF6', iconName: 'Banknote', type: 'measure' },
+    { key: 'netprofit', label: 'Net Profit', color: '#F59E0B', iconName: 'Target', type: 'measure' },
+    { key: 'operatingexpenses', label: 'Operating Expenses', color: '#EF4444', iconName: 'Receipt', type: 'measure' },
+    { key: 'otherincome', label: 'Other Income', color: '#06B6D4', iconName: 'Plus', type: 'measure' },
+];
+
+// Available dimensions
+const availableDimensions: ChartAttribute[] = [
+    { key: 'country', label: 'Country', color: '#EC4899', iconName: 'Globe', type: 'dimension' },
+    { key: 'continent', label: 'Continent', color: '#8B5CF6', iconName: 'Globe', type: 'dimension' },
+    { key: 'fiscalyear', label: 'Fiscal Year', color: '#10B981', iconName: 'Calendar', type: 'dimension' },
+    { key: 'period', label: 'Period', color: '#F59E0B', iconName: 'Calendar', type: 'dimension' },
+    { key: 'cataccountingview', label: 'Accounting View', color: '#EF4444', iconName: 'Building', type: 'dimension' },
+    { key: 'catfinancialview', label: 'Financial View', color: '#06B6D4', iconName: 'Layers', type: 'dimension' },
 ];
 
 // Chart types
@@ -149,6 +208,11 @@ const getIcon = (iconName: string, size: number = 16) => {
         case 'Plus': return <Plus {...iconProps} />;
         case 'Activity': return <Activity {...iconProps} />;
         case 'BarChart3': return <BarChart3 {...iconProps} />;
+        case 'Globe': return <Globe {...iconProps} />;
+        case 'Calendar': return <Calendar {...iconProps} />;
+        case 'Building': return <Building {...iconProps} />;
+        case 'Layers': return <Layers {...iconProps} />;
+        case 'Filter': return <Filter {...iconProps} />;
         default: return <BarChart3 {...iconProps} />;
     }
 };
@@ -169,13 +233,16 @@ const DraggableAttribute: React.FC<DraggableAttributeProps> = ({ attribute, isUs
         e.dataTransfer.effectAllowed = 'copy';
     };
 
+    const bgColor = attribute.type === 'measure' ? 'bg-blue-50 border-blue-200' : 'bg-purple-50 border-purple-200';
+    const hoverColor = attribute.type === 'measure' ? 'hover:bg-blue-100' : 'hover:bg-purple-100';
+
     return (
         <div
             draggable={!isUsed}
             onDragStart={handleDragStart}
             className={`flex items-center gap-2 p-3 rounded-lg border-2 border-dashed transition-all duration-200 cursor-move ${isUsed
                     ? 'border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed'
-                    : 'border-gray-300 bg-white hover:border-blue-400 hover:bg-blue-50'
+                    : `${bgColor} ${hoverColor}`
                 }`}
         >
             <Grip size={16} className="text-gray-400" />
@@ -185,6 +252,10 @@ const DraggableAttribute: React.FC<DraggableAttributeProps> = ({ attribute, isUs
             <span className={`text-sm font-medium ${isUsed ? 'text-gray-400' : 'text-gray-700'}`}>
                 {attribute.label}
             </span>
+            <span className={`text-xs px-2 py-1 rounded-full ${attribute.type === 'measure' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'
+                }`}>
+                {attribute.type}
+            </span>
         </div>
     );
 };
@@ -192,59 +263,92 @@ const DraggableAttribute: React.FC<DraggableAttributeProps> = ({ attribute, isUs
 // Chart Container with Drop Zone
 const ChartDropZone: React.FC<ChartDropZoneProps> = ({
     chartType,
-    selectedAttributes,
+    config,
     onAttributeDrop,
     onAttributeRemove,
+    onGroupByChange,
+    onFilterChange,
     data
 }) => {
-    const [isDragOver, setIsDragOver] = useState<boolean>(false);
+    const [isDragOverMeasures, setIsDragOverMeasures] = useState<boolean>(false);
+    const [isDragOverDimensions, setIsDragOverDimensions] = useState<boolean>(false);
 
-    const handleDragOver = (e: React.DragEvent<HTMLDivElement>): void => {
+    const handleDragOver = (e: React.DragEvent<HTMLDivElement>, zone: 'measures' | 'dimensions'): void => {
         e.preventDefault();
         e.dataTransfer.dropEffect = 'copy';
-        setIsDragOver(true);
+        if (zone === 'measures') {
+            setIsDragOverMeasures(true);
+        } else {
+            setIsDragOverDimensions(true);
+        }
     };
 
-    const handleDragLeave = (): void => {
-        setIsDragOver(false);
+    const handleDragLeave = (zone: 'measures' | 'dimensions'): void => {
+        if (zone === 'measures') {
+            setIsDragOverMeasures(false);
+        } else {
+            setIsDragOverDimensions(false);
+        }
     };
 
-    const handleDrop = (e: React.DragEvent<HTMLDivElement>): void => {
+    const handleDrop = (e: React.DragEvent<HTMLDivElement>, zone: 'measures' | 'dimensions'): void => {
         e.preventDefault();
-        setIsDragOver(false);
+        setIsDragOverMeasures(false);
+        setIsDragOverDimensions(false);
 
         try {
             const attributeData: ChartAttribute = JSON.parse(e.dataTransfer.getData('text/plain'));
-            onAttributeDrop(chartType.key, attributeData);
+            onAttributeDrop(chartType.key, attributeData, zone);
         } catch (error) {
             console.error('Error parsing dropped data:', error);
         }
     };
-    // @ts-ignore
+
+    // Process data based on filters and grouping
+    const processedData = useMemo(() => {
+        let filteredData = data;
+
+        // Apply filters
+        Object.entries(config.filters).forEach(([dimension, values]) => {
+            if (values.length > 0) {
+                filteredData = filteredData.filter(item =>
+                    values.includes((item as any)[dimension]?.toString())
+                );
+            }
+        });
+
+        return filteredData;
+    }, [data, config.filters]);
+
+    // Get unique values for dimension filters
+    const getDimensionValues = (dimensionKey: string) => {
+        return [...new Set(data.map(item => (item as any)[dimensionKey]?.toString()))].filter(Boolean);
+    };
+
     const chartOptions: AgChartOptions = useMemo(() => {
-        if (selectedAttributes.length === 0) {
+        if (config.measures.length === 0) {
             return {};
         }
 
-        const series = selectedAttributes.map(attr => ({
-            type: chartType.key === 'bar' ? 'bar' : 'line',
-            xKey: 'period',
-            yKey: attr.key,
-            yName: attr.label,
-            stroke: attr.color,
-            fill: attr.color,
+        const series = config.measures.map(measure => ({
+            type: chartType.key,
+            xKey: config.groupBy || 'period',
+            yKey: measure.key,
+            yName: measure.label,
+            stroke: measure.color,
+            fill: measure.color,
             tooltip: { enabled: true },
         }));
 
         return {
-            title: { text: `${chartType.label} - Financial Metrics` },
-            data: data,
+            title: { text: `${chartType.label} - Financial Analysis` },
+            data: processedData,
             series: series,
             axes: [
                 {
                     type: 'category',
                     position: 'bottom',
-                    title: { text: 'Period' },
+                    title: { text: config.groupBy ? availableDimensions.find(d => d.key === config.groupBy)?.label || 'Group' : 'Period' },
                     label: { rotation: -45 }
                 },
                 {
@@ -258,7 +362,7 @@ const ChartDropZone: React.FC<ChartDropZoneProps> = ({
             ],
             legend: { enabled: true, position: 'bottom' },
         };
-    }, [selectedAttributes, chartType, data]);
+    }, [config, chartType, processedData]);
 
     return (
         <div className="bg-white rounded-xl shadow-lg border-2 border-gray-200 overflow-hidden">
@@ -268,42 +372,138 @@ const ChartDropZone: React.FC<ChartDropZoneProps> = ({
                     {getIcon(chartType.iconName, 16)}
                     <h3 className="font-semibold text-gray-800">{chartType.label}</h3>
                 </div>
-                <div className="flex items-center gap-2">
-                    {selectedAttributes.map((attr) => (
-                        <div
-                            key={attr.key}
-                            className="flex items-center gap-1 px-2 py-1 bg-white rounded-md border text-xs"
-                        >
-                            <div style={{ color: attr.color }}>
-                                {getIcon(attr.iconName, 12)}
-                            </div>
-                            <span>{attr.label}</span>
-                            <button
-                                onClick={() => onAttributeRemove(chartType.key, attr.key)}
-                                className="ml-1 text-gray-400 hover:text-red-500"
-                            >
-                                <X size={12} />
-                            </button>
-                        </div>
-                    ))}
-                </div>
             </div>
 
-            {/* Drop Zone Area */}
-            <div
-                className={`h-80 transition-all duration-200 ${isDragOver
-                        ? 'bg-blue-50 border-4 border-dashed border-blue-400'
-                        : 'bg-white'
-                    }`}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-            >
-                {selectedAttributes.length === 0 ? (
+            {/* Configuration Area */}
+            <div className="p-4 bg-gray-50 border-b">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {/* Measures Drop Zone */}
+                    <div
+                        className={`border-2 border-dashed rounded-lg p-3 transition-all duration-200 ${isDragOverMeasures ? 'border-blue-400 bg-blue-50' : 'border-blue-200 bg-blue-25'
+                            }`}
+                        onDragOver={(e) => handleDragOver(e, 'measures')}
+                        onDragLeave={() => handleDragLeave('measures')}
+                        onDrop={(e) => handleDrop(e, 'measures')}
+                    >
+                        <div className="flex items-center gap-2 mb-2">
+                            <DollarSign size={16} className="text-blue-600" />
+                            <span className="font-medium text-blue-800">Measures</span>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            {config.measures.length === 0 ? (
+                                <span className="text-sm text-gray-500">Drag measures here</span>
+                            ) : (
+                                config.measures.map((measure) => (
+                                    <div
+                                        key={measure.key}
+                                        className="flex items-center gap-1 px-2 py-1 bg-white rounded-md border text-xs"
+                                    >
+                                        <div style={{ color: measure.color }}>
+                                            {getIcon(measure.iconName, 12)}
+                                        </div>
+                                        <span>{measure.label}</span>
+                                        <button
+                                            onClick={() => onAttributeRemove(chartType.key, measure.key, 'measure')}
+                                            className="ml-1 text-gray-400 hover:text-red-500"
+                                        >
+                                            <X size={12} />
+                                        </button>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Dimensions Drop Zone */}
+                    <div
+                        className={`border-2 border-dashed rounded-lg p-3 transition-all duration-200 ${isDragOverDimensions ? 'border-purple-400 bg-purple-50' : 'border-purple-200 bg-purple-25'
+                            }`}
+                        onDragOver={(e) => handleDragOver(e, 'dimensions')}
+                        onDragLeave={() => handleDragLeave('dimensions')}
+                        onDrop={(e) => handleDrop(e, 'dimensions')}
+                    >
+                        <div className="flex items-center gap-2 mb-2">
+                            <Filter size={16} className="text-purple-600" />
+                            <span className="font-medium text-purple-800">Dimensions</span>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            {config.dimensions.length === 0 ? (
+                                <span className="text-sm text-gray-500">Drag dimensions here</span>
+                            ) : (
+                                config.dimensions.map((dimension) => (
+                                    <div
+                                        key={dimension.key}
+                                        className="flex items-center gap-1 px-2 py-1 bg-white rounded-md border text-xs"
+                                    >
+                                        <div style={{ color: dimension.color }}>
+                                            {getIcon(dimension.iconName, 12)}
+                                        </div>
+                                        <span>{dimension.label}</span>
+                                        <button
+                                            onClick={() => onAttributeRemove(chartType.key, dimension.key, 'dimension')}
+                                            className="ml-1 text-gray-400 hover:text-red-500"
+                                        >
+                                            <X size={12} />
+                                        </button>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Group By and Filters */}
+                {config.dimensions.length > 0 && (
+                    <div className="mt-4 space-y-3">
+                        {/* Group By Selection */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Group By:</label>
+                            <select
+                                value={config.groupBy || ''}
+                                onChange={(e) => onGroupByChange(chartType.key, e.target.value || undefined)}
+                                className="px-3 py-2 border border-gray-300 rounded-md text-sm"
+                            >
+                                <option value="">Select dimension...</option>
+                                {config.dimensions.map((dim) => (
+                                    <option key={dim.key} value={dim.key}>{dim.label}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* Filters */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            {config.dimensions.map((dimension) => (
+                                <div key={dimension.key}>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Filter by {dimension.label}:
+                                    </label>
+                                    <select
+                                        multiple
+                                        value={config.filters[dimension.key] || []}
+                                        onChange={(e) => {
+                                            const selectedValues = Array.from(e.target.selectedOptions, option => option.value);
+                                            onFilterChange(chartType.key, dimension.key, selectedValues);
+                                        }}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm h-20"
+                                    >
+                                        {getDimensionValues(dimension.key).map((value) => (
+                                            <option key={value} value={value}>{value}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* Chart Area */}
+            <div className="h-96">
+                {config.measures.length === 0 ? (
                     <div className="flex items-center justify-center h-full text-gray-500">
                         <div className="text-center">
                             <BarChart3 size={48} className="mx-auto mb-2 opacity-50" />
-                            <p className="text-sm">Drag attributes here to create a chart</p>
+                            <p className="text-sm">Add measures and dimensions to create a chart</p>
                         </div>
                     </div>
                 ) : (
@@ -321,28 +521,76 @@ const ChartDropZone: React.FC<ChartDropZoneProps> = ({
 
 const EnhancedDashboard: React.FC = () => {
     const [chartConfigurations, setChartConfigurations] = useState<ChartConfigurations>({
-        line: [],
-        bar: []
+        line: {
+            measures: [],
+            dimensions: [],
+            filters: {}
+        },
+        bar: {
+            measures: [],
+            dimensions: [],
+            filters: {}
+        }
     });
 
-    const handleAttributeDrop = (chartType: string, attribute: ChartAttribute): void => {
+    const handleAttributeDrop = (chartType: string, attribute: ChartAttribute, dropZone: 'measures' | 'dimensions'): void => {
+        if ((dropZone === 'measures' && attribute.type !== 'measure') ||
+            (dropZone === 'dimensions' && attribute.type !== 'dimension')) {
+            return; // Prevent dropping wrong type
+        }
+
         setChartConfigurations(prev => ({
             ...prev,
-            [chartType]: [...prev[chartType as keyof ChartConfigurations].filter(attr => attr.key !== attribute.key), attribute]
+            [chartType]: {
+                ...prev[chartType as keyof ChartConfigurations],
+                [dropZone]: [
+                    ...prev[chartType as keyof ChartConfigurations][dropZone].filter(attr => attr.key !== attribute.key),
+                    attribute
+                ]
+            }
         }));
     };
 
-    const handleAttributeRemove = (chartType: string, attributeKey: string): void => {
+    const handleAttributeRemove = (chartType: string, attributeKey: string, attributeType: 'measure' | 'dimension'): void => {
+        const arrayKey = attributeType === 'measure' ? 'measures' : 'dimensions';
         setChartConfigurations(prev => ({
             ...prev,
-            [chartType]: prev[chartType as keyof ChartConfigurations].filter(attr => attr.key !== attributeKey)
+            [chartType]: {
+                ...prev[chartType as keyof ChartConfigurations],
+                [arrayKey]: prev[chartType as keyof ChartConfigurations][arrayKey].filter(attr => attr.key !== attributeKey)
+            }
+        }));
+    };
+
+    const handleGroupByChange = (chartType: string, dimensionKey: string | undefined): void => {
+        setChartConfigurations(prev => ({
+            ...prev,
+            [chartType]: {
+                ...prev[chartType as keyof ChartConfigurations],
+                groupBy: dimensionKey
+            }
+        }));
+    };
+
+    const handleFilterChange = (chartType: string, dimension: string, values: string[]): void => {
+        setChartConfigurations(prev => ({
+            ...prev,
+            [chartType]: {
+                ...prev[chartType as keyof ChartConfigurations],
+                filters: {
+                    ...prev[chartType as keyof ChartConfigurations].filters,
+                    [dimension]: values
+                }
+            }
         }));
     };
 
     const usedAttributeKeys = useMemo<Set<string>>(() => {
         return new Set([
-            ...chartConfigurations.line.map(attr => attr.key),
-            ...chartConfigurations.bar.map(attr => attr.key)
+            ...chartConfigurations.line.measures.map(attr => attr.key),
+            ...chartConfigurations.line.dimensions.map(attr => attr.key),
+            ...chartConfigurations.bar.measures.map(attr => attr.key),
+            ...chartConfigurations.bar.dimensions.map(attr => attr.key)
         ]);
     }, [chartConfigurations]);
 
@@ -352,35 +600,92 @@ const EnhancedDashboard: React.FC = () => {
                 {/* Header */}
                 <div className="mb-8">
                     <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                        Interactive Financial Dashboard
+                        Advanced Financial Analytics Dashboard
                     </h1>
                     <p className="text-gray-600">
-                        Drag and drop attributes to create custom charts
+                        Create interactive charts with measures and dimensions
                     </p>
                 </div>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 bg-white rounded-xl shadow-lg p-6 mb-5">
+                    {/* Measures Section */}
+                    <div className="mb-6">
+                        <h3 className="font-semibold text-blue-800 mb-4 flex items-center gap-2">
+                            <DollarSign size={16} />
+                            Measures
+                        </h3>
+                        <div className="grid grid-cols-2 gap-4">
+                            {availableMeasures.map((attribute) => (
+                                <DraggableAttribute
+                                    key={attribute.key}
+                                    attribute={attribute}
+                                    isUsed={usedAttributeKeys.has(attribute.key)}
+                                />
+                            ))}
+                        </div>
+                    </div>
 
+                    {/* Dimensions Section */}
+                    <div className="mb-6">
+                        <h3 className="font-semibold text-purple-800 mb-4 flex items-center gap-2">
+                            <Filter size={16} />
+                            Dimensions
+                        </h3>
+                        <div className="grid grid-cols-2 gap-4">
+                            {availableDimensions.map((attribute) => (
+                                <DraggableAttribute
+                                    key={attribute.key}
+                                    attribute={attribute}
+                                    isUsed={usedAttributeKeys.has(attribute.key)}
+                                />
+                            ))}
+                        </div>
+                    </div>
+                </div>
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                     {/* Sidebar - Available Attributes */}
                     <div className="lg:col-span-1">
                         <div className="bg-white rounded-xl shadow-lg p-6 sticky top-6">
-                            <h3 className="font-semibold text-gray-800 mb-4">Available Attributes</h3>
-                            <div className="space-y-3">
-                                {availableAttributes.map((attribute) => (
-                                    <DraggableAttribute
-                                        key={attribute.key}
-                                        attribute={attribute}
-                                        isUsed={usedAttributeKeys.has(attribute.key)}
-                                    />
-                                ))}
-                            </div>
+                            {/* Measures Section */}
+                            {/* <div className="mb-6">
+                                <h3 className="font-semibold text-blue-800 mb-4 flex items-center gap-2">
+                                    <DollarSign size={16} />
+                                    Measures
+                                </h3>
+                                <div className="space-y-3">
+                                    {availableMeasures.map((attribute) => (
+                                        <DraggableAttribute
+                                            key={attribute.key}
+                                            attribute={attribute}
+                                            isUsed={usedAttributeKeys.has(attribute.key)}
+                                        />
+                                    ))}
+                                </div>
+                            </div> */}
 
-                            <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-                                <h4 className="font-medium text-blue-900 mb-2">How to use:</h4>
-                                <ol className="text-sm text-blue-800 space-y-1">
-                                    <li>1. Drag attributes from the list</li>
-                                    <li>2. Drop them onto chart areas</li>
-                                    <li>3. Charts update automatically</li>
-                                    <li>4. Click X to remove attributes</li>
+                            {/* Dimensions Section */}
+                            {/* <div className="mb-6">
+                                <h3 className="font-semibold text-purple-800 mb-4 flex items-center gap-2">
+                                    <Filter size={16} />
+                                    Dimensions
+                                </h3>
+                                <div className="space-y-3">
+                                    {availableDimensions.map((attribute) => (
+                                        <DraggableAttribute
+                                            key={attribute.key}
+                                            attribute={attribute}
+                                            isUsed={usedAttributeKeys.has(attribute.key)}
+                                        />
+                                    ))}
+                                </div>
+                            </div> */}
+
+                            <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg">
+                                <h4 className="font-medium text-gray-900 mb-2">How to use:</h4>
+                                <ol className="text-sm text-gray-700 space-y-1">
+                                    <li>1. Drag measures to quantify data</li>
+                                    <li>2. Add dimensions for grouping</li>
+                                    <li>3. Set group-by and filters</li>
+                                    <li>4. Analyze your insights!</li>
                                 </ol>
                             </div>
                         </div>
@@ -388,46 +693,19 @@ const EnhancedDashboard: React.FC = () => {
 
                     {/* Main Chart Area */}
                     <div className="lg:col-span-3">
-                        <div className="grid grid-cols-1 xl:grid-cols-1 gap-6">
+                        <div className="space-y-6">
                             {chartTypes.map((chartType) => (
                                 <ChartDropZone
                                     key={chartType.key}
                                     chartType={chartType}
-                                    selectedAttributes={chartConfigurations[chartType.key]}
+                                    config={chartConfigurations[chartType.key]}
                                     onAttributeDrop={handleAttributeDrop}
                                     onAttributeRemove={handleAttributeRemove}
+                                    onGroupByChange={handleGroupByChange}
+                                    onFilterChange={handleFilterChange}
                                     data={mockFinancialData}
                                 />
                             ))}
-                        </div>
-
-                        {/* Usage Statistics */}
-                        <div className="mt-6 bg-white rounded-xl shadow-lg p-6">
-                            <h3 className="font-semibold text-gray-800 mb-4">Chart Configuration Status</h3>
-                            <div className="grid grid-cols-1 gap-4">
-                                {chartTypes.map((chartType) => (
-                                    <div key={chartType.key} className="bg-gray-50 rounded-lg p-4">
-                                        <div className="flex items-center gap-2 mb-2">
-                                            {getIcon(chartType.iconName, 16)}
-                                            <span className="font-medium">{chartType.label}</span>
-                                        </div>
-                                        <div className="text-sm text-gray-600">
-                                            {chartConfigurations[chartType.key].length} attributes selected
-                                        </div>
-                                        <div className="flex flex-wrap gap-1 mt-2">
-                                            {chartConfigurations[chartType.key].map((attr) => (
-                                                <span
-                                                    key={attr.key}
-                                                    className="px-2 py-1 bg-white rounded text-xs border"
-                                                    style={{ borderColor: attr.color }}
-                                                >
-                                                    {attr.label}
-                                                </span>
-                                            ))}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
                         </div>
                     </div>
                 </div>
