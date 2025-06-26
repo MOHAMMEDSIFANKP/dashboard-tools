@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useRef, forwardRef } from "react";
+import React, { useState, useEffect, useRef, forwardRef, useCallback } from "react";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -22,8 +22,9 @@ import {
   useFetchDrillDownDataMutation
 } from "@/lib/services/usersApi";
 // Types
-import { Dimensions } from "@/types/Schemas";
+import { BarChartData, Dimensions, DonutChartData, LineChartData, PieChartData } from "@/types/Schemas";
 import { buildRequestBody, handleCrossChartFilteringFunc } from "@/lib/services/buildWhereClause";
+import { ActionButton } from "@/components/ui/action-button";
 
 ChartJS.register(
   CategoryScale,
@@ -38,18 +39,6 @@ ChartJS.register(
 );
 
 // Core data types
-interface ChartDataPoint {
-  period?: string;
-  revenue?: number;
-  expenses?: number;
-  grossMargin?: number;
-  netProfit?: number;
-  catAccountingView?: string;
-  catFinancialView?: string;
-  label?: string;
-  value?: number;
-  [key: string]: any;
-}
 
 // Interface for drill-down state
 interface DrillDownState {
@@ -109,7 +98,7 @@ const ChartContainer = forwardRef<HTMLDivElement, ChartContainerProps>(
       <div className="bg-white p-6 rounded-lg shadow-md">
         <div className="flex flex-row justify-between items-center">
           <div className="flex items-center">
-            <h2 className="text-xl font-semibold mb-4">{title}</h2>
+            <h2 className="text-[16px] lg:text-xl font-semibold mb-4 me-2">{title}</h2>
             {isDrilled && (
               <button
                 onClick={onBack}
@@ -120,10 +109,10 @@ const ChartContainer = forwardRef<HTMLDivElement, ChartContainerProps>(
             )}
           </div>
           <div className="flex gap-2 mb-4">
-            <button onClick={handleDownloadImage} className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+            <button onClick={handleDownloadImage} className="px-2 lg:px-4 py-1 lg:py-2 text-sm lg:text-[16px] bg-blue-500 text-white rounded hover:bg-blue-600">
               PNG
             </button>
-            <button onClick={handleDownloadCSV} className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">
+            <button onClick={handleDownloadCSV} className="px-2 lg:px-4 py-1 lg:py-2 text-sm lg:text-[16px] bg-green-500 text-white rounded hover:bg-green-600">
               CSV
             </button>
           </div>
@@ -213,10 +202,10 @@ export default function ChartJsPage() {
 
   // Raw data for CSV export
   const [rawChartData, setRawChartData] = useState<{
-    line: ChartDataPoint[],
-    bar: ChartDataPoint[],
-    pie: ChartDataPoint[],
-    donut: ChartDataPoint[]
+    line: LineChartData[],
+    bar: BarChartData[],
+    pie: PieChartData[],
+    donut: DonutChartData[]
   }>({
     line: [],
     bar: [],
@@ -271,23 +260,23 @@ export default function ChartJsPage() {
       const lineData = result?.charts?.line?.success ? result?.charts?.line?.data || [] : [];
       if (lineData.length > 0) {
         setLineChartData({
-          labels: lineData.map((item: ChartDataPoint) => item.period || ''),
+          labels: lineData.map((item: LineChartData) => item.period || ''),
           datasets: [
             {
               label: "Revenue",
-              data: lineData.map((item: ChartDataPoint) => item.revenue || 0),
+              data: lineData.map((item: LineChartData) => item.revenue || 0),
               borderColor: "rgb(75, 192, 192)",
               backgroundColor: "rgba(75, 192, 192, 0.5)",
             },
             {
               label: "grossMargin",
-              data: lineData.map((item: ChartDataPoint) => item.grossMargin || 0),
+              data: lineData.map((item: LineChartData) => item.grossMargin || 0),
               borderColor: "rgb(53, 162, 235)",
               backgroundColor: "rgba(53, 162, 235, 0.5)",
             },
             {
               label: "netProfit",
-              data: lineData.map((item: ChartDataPoint) => item.netProfit || 0),
+              data: lineData.map((item: LineChartData) => item.netProfit || 0),
               borderColor: "rgb(255, 99, 132)",
               backgroundColor: "rgba(255, 99, 132, 0.5)",
             }
@@ -299,16 +288,16 @@ export default function ChartJsPage() {
       const barData = result?.charts?.bar?.success ? result?.charts?.bar?.data || [] : [];
       if (barData.length > 0) {
         setBarChartData({
-          labels: barData.map((item: ChartDataPoint) => item.period || ''),
+          labels: barData.map((item: BarChartData) => item.period || ''),
           datasets: [
             {
               label: "Revenue",
-              data: barData.map((item: ChartDataPoint) => item.revenue || 0),
+              data: barData.map((item: BarChartData) => item.revenue || 0),
               backgroundColor: "rgba(75, 192, 192, 0.6)",
             },
             {
               label: "Expenses",
-              data: barData.map((item: ChartDataPoint) => item.expenses || 0),
+              data: barData.map((item: BarChartData) => item.expenses || 0),
               backgroundColor: "rgba(255, 99, 132, 0.6)",
             }
           ]
@@ -320,9 +309,9 @@ export default function ChartJsPage() {
       if (pieData.length > 0) {
         console.log("Pie Data:", pieData);
         setPieChartData({
-          labels: pieData.map((item: ChartDataPoint) => item.catfinancialview),
+          labels: pieData.map((item: PieChartData) => item.catfinancialview),
           datasets: [{
-            data: pieData.map((item: ChartDataPoint) => item.revenue || item.value || 0),
+            data: pieData.map((item: PieChartData) => item.revenue || 0),
             backgroundColor: [
               "rgba(75, 192, 192, 0.6)",
               "rgba(255, 99, 132, 0.6)",
@@ -339,9 +328,9 @@ export default function ChartJsPage() {
       const donutData = result?.charts?.donut?.success ? result?.charts?.donut?.data || [] : [];
       if (donutData.length > 0) {
         setDonutChartData({
-          labels: donutData.map((item: ChartDataPoint) => item.cataccountingview),
+          labels: donutData.map((item: DonutChartData) => item.cataccountingview),
           datasets: [{
-            data: donutData.map((item: ChartDataPoint) => item.revenue || item.value || 0),
+            data: donutData.map((item: DonutChartData) => item.revenue || 0),
             backgroundColor: [
               "rgba(255, 206, 86, 0.6)",
               "rgba(75, 192, 192, 0.6)",
@@ -588,6 +577,22 @@ export default function ChartJsPage() {
     }
   };
 
+    const handleResetGroup = useCallback((): void => {
+      setDimensions(null);
+    }, []);
+  
+    const handleCloseModal = useCallback((): void => {
+      setIsGroupModalOpen(false);
+    }, []);
+  
+    const handleOpenModal = useCallback((): void => {
+      setIsGroupModalOpen(true);
+    }, []);
+  
+    const handleDismissError = useCallback((): void => {
+      setError(null);
+    }, []);
+
   return (
     <section className="p-5">
       <h1 className="text-2xl font-bold text-center mb-4">Financial Dashboard - Chart.js</h1>
@@ -599,32 +604,37 @@ export default function ChartJsPage() {
       />
 
       <div className="flex flex-col mb-4">
-        {dimensions?.groupName && (
-          <p className="text-sm text-gray-500">
-            Current Group Name: <span className="capitalize font-bold">{dimensions.groupName}</span>
-          </p>
-        )}
-        <div className="flex gap-2">
-          <button
-            onClick={() => setDimensions(null)}
-            className="shadow-xl border bg-red-400 p-2 rounded text-white hover:bg-red-500"
-          >
-            Reset Group
-          </button>
-          <button
-            onClick={() => setIsGroupModalOpen(true)}
-            className="shadow-xl border bg-blue-400 p-2 rounded text-white hover:bg-blue-500"
-          >
-            Create Group
-          </button>
-          <button
-            onClick={fetchAllChartDataHanlde}
-            className="shadow-xl border bg-green-400 p-2 rounded text-white hover:bg-green-500"
-          >
-            Refresh Data
-          </button>
-        </div>
-      </div>
+              {dimensions?.groupName && (
+                <p className="text-sm text-gray-500">
+                  Current Group Name: <span className="capitalize font-bold">{dimensions.groupName}</span>
+                </p>
+              )}
+              <div className="flex gap-2">
+                <ActionButton
+                  onClick={handleResetGroup}
+                  className="bg-red-400 hover:bg-red-500"
+                  disabled={isLoading}
+                >
+                  Reset Group
+                </ActionButton>
+      
+                <ActionButton
+                  onClick={handleOpenModal}
+                  className="bg-blue-400 hover:bg-blue-500"
+                  disabled={isLoading}
+                >
+                  Create Group
+                </ActionButton>
+      
+                <ActionButton
+                  onClick={fetchAllChartDataHanlde}
+                  className="bg-green-400 hover:bg-green-500"
+                  disabled={isLoading}
+                >
+                  {isLoading ? 'Loading...' : 'Refresh Data'}
+                </ActionButton>
+              </div>
+            </div>
 
       {error && (
         <div className="flex justify-between bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">

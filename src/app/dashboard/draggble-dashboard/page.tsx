@@ -15,7 +15,10 @@ import {
     Calendar,
     Building,
     Filter,
-    Layers
+    Layers,
+    Smartphone,
+    ChevronUp,
+    ChevronDown
 } from "lucide-react";
 
 import { AgCharts } from 'ag-charts-react';
@@ -241,8 +244,8 @@ const DraggableAttribute: React.FC<DraggableAttributeProps> = ({ attribute, isUs
             draggable={!isUsed}
             onDragStart={handleDragStart}
             className={`flex items-center gap-2 p-3 rounded-lg border-2 border-dashed transition-all duration-200 cursor-move ${isUsed
-                    ? 'border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed'
-                    : `${bgColor} ${hoverColor}`
+                ? 'border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed'
+                : `${bgColor} ${hoverColor}`
                 }`}
         >
             <Grip size={16} className="text-gray-400" />
@@ -532,6 +535,16 @@ const EnhancedDashboard: React.FC = () => {
             filters: {}
         }
     });
+    const [mobileConfig, setMobileConfig] = useState<{
+        selectedMeasures: Set<string>;
+        selectedDimensions: Set<string>;
+        groupBy?: string;
+        filters: Record<string, string[]>;
+    }>({
+        selectedMeasures: new Set(),
+        selectedDimensions: new Set(),
+        filters: {}
+    });
 
     const handleAttributeDrop = (chartType: string, attribute: ChartAttribute, dropZone: 'measures' | 'dimensions'): void => {
         if ((dropZone === 'measures' && attribute.type !== 'measure') ||
@@ -594,9 +607,45 @@ const EnhancedDashboard: React.FC = () => {
         ]);
     }, [chartConfigurations]);
 
+    // Mobile handlers
+    const handleMobileAttributeToggle = (attributeKey: string, type: 'measure' | 'dimension') => {
+        setMobileConfig(prev => {
+            const key = type === 'measure' ? 'selectedMeasures' : 'selectedDimensions';
+            const newSet = new Set(prev[key]);
+
+            if (newSet.has(attributeKey)) {
+                newSet.delete(attributeKey);
+            } else {
+                newSet.add(attributeKey);
+            }
+
+            return {
+                ...prev,
+                [key]: newSet
+            };
+        });
+    };
+
+    const handleMobileGroupByChange = (dimensionKey: string | undefined) => {
+        setMobileConfig(prev => ({
+            ...prev,
+            groupBy: dimensionKey
+        }));
+    };
+
+    const handleMobileFilterChange = (dimension: string, values: string[]) => {
+        setMobileConfig(prev => ({
+            ...prev,
+            filters: {
+                ...prev.filters,
+                [dimension]: values
+            }
+        }));
+    };
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white p-6">
-            <div className="max-w-7xl mx-auto">
+            <div className="max-w-7xl mx-auto hidden lg:block">
                 {/* Header */}
                 <div className="mb-8">
                     <h1 className="text-3xl font-bold text-gray-900 mb-2">
@@ -645,40 +694,6 @@ const EnhancedDashboard: React.FC = () => {
                     {/* Sidebar - Available Attributes */}
                     <div className="lg:col-span-1">
                         <div className="bg-white rounded-xl shadow-lg p-6 sticky top-6">
-                            {/* Measures Section */}
-                            {/* <div className="mb-6">
-                                <h3 className="font-semibold text-blue-800 mb-4 flex items-center gap-2">
-                                    <DollarSign size={16} />
-                                    Measures
-                                </h3>
-                                <div className="space-y-3">
-                                    {availableMeasures.map((attribute) => (
-                                        <DraggableAttribute
-                                            key={attribute.key}
-                                            attribute={attribute}
-                                            isUsed={usedAttributeKeys.has(attribute.key)}
-                                        />
-                                    ))}
-                                </div>
-                            </div> */}
-
-                            {/* Dimensions Section */}
-                            {/* <div className="mb-6">
-                                <h3 className="font-semibold text-purple-800 mb-4 flex items-center gap-2">
-                                    <Filter size={16} />
-                                    Dimensions
-                                </h3>
-                                <div className="space-y-3">
-                                    {availableDimensions.map((attribute) => (
-                                        <DraggableAttribute
-                                            key={attribute.key}
-                                            attribute={attribute}
-                                            isUsed={usedAttributeKeys.has(attribute.key)}
-                                        />
-                                    ))}
-                                </div>
-                            </div> */}
-
                             <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg">
                                 <h4 className="font-medium text-gray-900 mb-2">How to use:</h4>
                                 <ol className="text-sm text-gray-700 space-y-1">
@@ -710,8 +725,323 @@ const EnhancedDashboard: React.FC = () => {
                     </div>
                 </div>
             </div>
+            <MobileDashboard
+                availableMeasures={availableMeasures}
+                availableDimensions={availableDimensions}
+                mobileConfig={mobileConfig}
+                onAttributeToggle={handleMobileAttributeToggle}
+                onGroupByChange={handleMobileGroupByChange}
+                onFilterChange={handleMobileFilterChange}
+                data={mockFinancialData}
+            />
+            {/* Mobile Dashboard */}
         </div>
     );
 };
 
 export default EnhancedDashboard;
+
+interface MobileDashboardProps {
+    availableMeasures: ChartAttribute[];
+    availableDimensions: ChartAttribute[];
+    mobileConfig: {
+        selectedMeasures: Set<string>;
+        selectedDimensions: Set<string>;
+        groupBy?: string;
+        filters: Record<string, string[]>;
+    };
+    onAttributeToggle: (attributeKey: string, type: 'measure' | 'dimension') => void;
+    onGroupByChange: (dimensionKey: string | undefined) => void;
+    onFilterChange: (dimension: string, values: string[]) => void;
+    data: FinancialData[];
+}
+
+
+const MobileDashboard: React.FC<MobileDashboardProps> = ({ 
+    availableMeasures, 
+    availableDimensions, 
+    mobileConfig,
+    onAttributeToggle,
+    onGroupByChange,
+    onFilterChange,
+    data
+}) => {
+    const [isExpanded, setIsExpanded] = useState<string | null>(null);
+    const [showFilters, setShowFilters] = useState(false);
+    
+    
+    // Get selected attributes for chart
+    const selectedMeasureObjects = availableMeasures.filter(m => mobileConfig.selectedMeasures.has(m.key));
+    const selectedDimensionObjects = availableDimensions.filter(d => mobileConfig.selectedDimensions.has(d.key));
+
+    // Auto-show chart when measures are selected
+    const showChart = selectedMeasureObjects.length > 0;
+
+
+    // Process data for mobile chart
+    const processedData = useMemo(() => {
+        let filteredData = data;
+        
+        Object.entries(mobileConfig.filters).forEach(([dimension, values]) => {
+            if (values.length > 0) {
+                filteredData = filteredData.filter(item =>
+                    values.includes((item as any)[dimension]?.toString())
+                );
+            }
+        });
+        
+        return filteredData;
+    }, [data, mobileConfig.filters]);
+
+    // Chart options for mobile
+    const mobileChartOptions: AgChartOptions = useMemo(() => {
+        if (selectedMeasureObjects.length === 0) return {};
+
+        const series = selectedMeasureObjects.map(measure => ({
+            type: 'line' as const,
+            xKey: mobileConfig.groupBy || 'period',
+            yKey: measure.key,
+            yName: measure.label,
+            stroke: measure.color,
+            fill: measure.color,
+            tooltip: { enabled: true },
+        }));
+
+        return {
+            title: { text: 'Financial Analysis', fontSize: 14 },
+            data: processedData,
+            series: series,
+            axes: [
+                {
+                    type: 'category',
+                    position: 'bottom',
+                    title: { 
+                        text: mobileConfig.groupBy ? 
+                            availableDimensions.find(d => d.key === mobileConfig.groupBy)?.label || 'Group' : 
+                            'Period',
+                        fontSize: 10
+                    },
+                    label: { rotation: -45, fontSize: 10 }
+                },
+                {
+                    type: 'number',
+                    position: 'left',
+                    title: { text: 'Amount ($)', fontSize: 10 },
+                    label: {
+                        formatter: (params: any) => formatCurrency(params.value),
+                        fontSize: 10
+                    }
+                },
+            ],
+            legend: { enabled: true, position: 'bottom', fontSize: 10 },
+        };
+    }, [selectedMeasureObjects, mobileConfig, processedData, availableDimensions]);
+
+    // Get unique values for filters
+    const getDimensionValues = (dimensionKey: string) => {
+        return [...new Set(data.map(item => (item as any)[dimensionKey]?.toString()))].filter(Boolean);
+    };
+
+    const ListingValues = [
+        { 
+            title: 'Measures', 
+            iconName: "DollarSign", 
+            color: '#3B82F6', 
+            attributes: availableMeasures, 
+            type: 'measures' as const,
+            selectedCount: mobileConfig.selectedMeasures.size
+        },
+        { 
+            title: 'Dimensions',
+            iconName: "Filter", 
+            color: '#805ad5', 
+            attributes: availableDimensions, 
+            type: 'dimensions' as const,
+            selectedCount: mobileConfig.selectedDimensions.size
+        }
+    ];
+
+    return (
+        <div className='lg:hidden pt-16'>
+            <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                    <Smartphone size={20} className="text-blue-600" />
+                    <h1 className="text-lg font-bold text-gray-900">Financial Analytics</h1>
+                </div>
+                
+                {/* Action buttons */}
+                <div className="flex gap-2">
+                    {selectedDimensionObjects.length > 0 && (
+                        <button
+                            onClick={() => setShowFilters(!showFilters)}
+                            className="px-3 py-1.5 bg-purple-600 text-white rounded-lg text-sm font-medium flex items-center gap-1"
+                        >
+                            <Filter size={14} />
+                            Filters
+                        </button>
+                    )}
+                </div>
+            </div>
+
+            {/* Chart Section - Auto-shows when measures selected */}
+            {showChart && (
+                <div className="mb-4 bg-white rounded-lg border shadow-sm">
+                    <div className="p-3 border-b bg-gray-50">
+                        <h3 className="font-medium text-gray-900">Chart View</h3>
+                    </div>
+                    <div className="h-64 p-2">
+                        <AgCharts
+                            className="w-full h-full"
+                            options={mobileChartOptions}
+                        />
+                    </div>
+                </div>
+            )}
+
+            {/* Filters Section */}
+            {showFilters && selectedDimensionObjects.length > 0 && (
+                <div className="mb-4 bg-white rounded-lg border shadow-sm">
+                    <div className="p-3 border-b bg-gray-50 flex justify-between items-center">
+                        <h3 className="font-medium text-gray-900">Filters & Grouping</h3>
+                        <button
+                            onClick={() => setShowFilters(false)}
+                            className="text-gray-400 hover:text-gray-600"
+                        >
+                            <X size={16} />
+                        </button>
+                    </div>
+                    <div className="p-3 space-y-3">
+                        {/* Group By */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Group By:</label>
+                            <select
+                                value={mobileConfig.groupBy || ''}
+                                onChange={(e) => onGroupByChange(e.target.value || undefined)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                            >
+                                <option value="">Select dimension...</option>
+                                {selectedDimensionObjects.map((dim) => (
+                                    <option key={dim.key} value={dim.key}>{dim.label}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* Dimension Filters */}
+                        {selectedDimensionObjects.map((dimension) => (
+                            <div key={dimension.key}>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Filter by {dimension.label}:
+                                </label>
+                                <div className="max-h-32 overflow-y-auto border border-gray-300 rounded-md">
+                                    {getDimensionValues(dimension.key).map((value) => (
+                                        <label key={value} className="flex items-center p-2 hover:bg-gray-50">
+                                            <input
+                                                type="checkbox"
+                                                checked={(mobileConfig.filters[dimension.key] || []).includes(value)}
+                                                onChange={(e) => {
+                                                    const currentValues = mobileConfig.filters[dimension.key] || [];
+                                                    const newValues = e.target.checked
+                                                        ? [...currentValues, value]
+                                                        : currentValues.filter(v => v !== value);
+                                                    onFilterChange(dimension.key, newValues);
+                                                }}
+                                                className="mr-2"
+                                            />
+                                            <span className="text-sm">{value}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Attributes Selection */}
+            <div className="flex flex-col gap-2">
+                {ListingValues.map(({ title, iconName, color, attributes, type, selectedCount }) => (
+                    <div
+                        key={title}
+                        className='rounded-lg border shadow-sm overflow-hidden bg-white'>
+                        <button
+                            onClick={() => setIsExpanded(isExpanded === type ? null : type)}
+                            className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors">
+                            <div className="flex items-center gap-2">
+                                {type === 'measures' ? 
+                                    <DollarSign size={16} className="text-blue-600" /> : 
+                                    <Filter size={16} className="text-purple-600" />
+                                }
+                                <span className="font-medium text-gray-900">{title}</span>
+                                <span className={`text-xs px-2 py-1 rounded-full ${
+                                    selectedCount > 0 ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'
+                                }`}>
+                                    {selectedCount}
+                                </span>
+                            </div>
+                            {isExpanded === type ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                        </button>
+                        
+                        {isExpanded === type && (
+                            <div className="border-t bg-gray-50">
+                                <div className="p-3 space-y-2">
+                                    {attributes.map((attribute) => {
+                                        const isSelected = type === 'measures' ? 
+                                            mobileConfig.selectedMeasures.has(attribute.key) : 
+                                            mobileConfig.selectedDimensions.has(attribute.key);
+                                        
+                                        return (
+                                            <button
+                                                key={attribute.key}
+                                                onClick={() => onAttributeToggle(attribute.key, attribute.type)}
+                                                className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
+                                                    isSelected
+                                                        ? 'border-blue-300 bg-blue-50'
+                                                        : 'border-gray-200 bg-white hover:border-gray-300'
+                                                }`}
+                                            >
+                                                <div style={{ color: attribute.color }}>
+                                                    {getIcon(attribute.iconName, 16)}
+                                                </div>
+                                                <div className="flex-1 text-left">
+                                                    <span className="text-sm font-medium block">
+                                                        {attribute.label}
+                                                    </span>
+                                                    <span className={`text-xs px-2 py-0.5 rounded-full ${
+                                                        attribute.type === 'measure' ? 
+                                                        'bg-blue-100 text-blue-700' : 
+                                                        'bg-purple-100 text-purple-700'
+                                                    }`}>
+                                                        {attribute.type}
+                                                    </span>
+                                                </div>
+                                                {isSelected && (
+                                                    <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
+                                                        <X size={12} className="text-white" />
+                                                    </div>
+                                                )}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                ))}
+            </div>
+
+            {/* Summary Card */}
+            {(selectedMeasureObjects.length > 0 || selectedDimensionObjects.length > 0) && (
+                <div className="mt-4 p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border">
+                    <h4 className="font-medium text-gray-900 mb-2 text-sm">Selection Summary</h4>
+                    <div className="text-xs text-gray-600 space-y-1">
+                        <div>Measures: {selectedMeasureObjects.map(m => m.label).join(', ') || 'None'}</div>
+                        <div>Dimensions: {selectedDimensionObjects.map(d => d.label).join(', ') || 'None'}</div>
+                        {mobileConfig.groupBy && (
+                            <div>Grouped by: {availableDimensions.find(d => d.key === mobileConfig.groupBy)?.label}</div>
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
