@@ -757,9 +757,9 @@ interface MobileDashboardProps {
 }
 
 
-const MobileDashboard: React.FC<MobileDashboardProps> = ({ 
-    availableMeasures, 
-    availableDimensions, 
+const MobileDashboard: React.FC<MobileDashboardProps> = ({
+    availableMeasures,
+    availableDimensions,
     mobileConfig,
     onAttributeToggle,
     onGroupByChange,
@@ -768,8 +768,8 @@ const MobileDashboard: React.FC<MobileDashboardProps> = ({
 }) => {
     const [isExpanded, setIsExpanded] = useState<string | null>(null);
     const [showFilters, setShowFilters] = useState(false);
-    
-    
+
+
     // Get selected attributes for chart
     const selectedMeasureObjects = availableMeasures.filter(m => mobileConfig.selectedMeasures.has(m.key));
     const selectedDimensionObjects = availableDimensions.filter(d => mobileConfig.selectedDimensions.has(d.key));
@@ -781,7 +781,7 @@ const MobileDashboard: React.FC<MobileDashboardProps> = ({
     // Process data for mobile chart
     const processedData = useMemo(() => {
         let filteredData = data;
-        
+
         Object.entries(mobileConfig.filters).forEach(([dimension, values]) => {
             if (values.length > 0) {
                 filteredData = filteredData.filter(item =>
@@ -789,7 +789,7 @@ const MobileDashboard: React.FC<MobileDashboardProps> = ({
                 );
             }
         });
-        
+
         return filteredData;
     }, [data, mobileConfig.filters]);
 
@@ -815,9 +815,9 @@ const MobileDashboard: React.FC<MobileDashboardProps> = ({
                 {
                     type: 'category',
                     position: 'bottom',
-                    title: { 
-                        text: mobileConfig.groupBy ? 
-                            availableDimensions.find(d => d.key === mobileConfig.groupBy)?.label || 'Group' : 
+                    title: {
+                        text: mobileConfig.groupBy ?
+                            availableDimensions.find(d => d.key === mobileConfig.groupBy)?.label || 'Group' :
                             'Period',
                         fontSize: 10
                     },
@@ -843,19 +843,19 @@ const MobileDashboard: React.FC<MobileDashboardProps> = ({
     };
 
     const ListingValues = [
-        { 
-            title: 'Measures', 
-            iconName: "DollarSign", 
-            color: '#3B82F6', 
-            attributes: availableMeasures, 
+        {
+            title: 'Measures',
+            iconName: "DollarSign",
+            color: '#3B82F6',
+            attributes: availableMeasures,
             type: 'measures' as const,
             selectedCount: mobileConfig.selectedMeasures.size
         },
-        { 
+        {
             title: 'Dimensions',
-            iconName: "Filter", 
-            color: '#805ad5', 
-            attributes: availableDimensions, 
+            iconName: "Filter",
+            color: '#805ad5',
+            attributes: availableDimensions,
             type: 'dimensions' as const,
             selectedCount: mobileConfig.selectedDimensions.size
         }
@@ -868,7 +868,7 @@ const MobileDashboard: React.FC<MobileDashboardProps> = ({
                     <Smartphone size={20} className="text-blue-600" />
                     <h1 className="text-lg font-bold text-gray-900">Financial Analytics</h1>
                 </div>
-                
+
                 {/* Action buttons */}
                 <div className="flex gap-2">
                     {selectedDimensionObjects.length > 0 && (
@@ -953,7 +953,18 @@ const MobileDashboard: React.FC<MobileDashboardProps> = ({
                                 </div>
                             </div>
                         ))}
+                        <button
+                            onClick={() => {
+                                selectedDimensionObjects.forEach(dim => {
+                                    onFilterChange(dim.key, []);
+                                });
+                            }}
+                            className="text-sm text-blue-600 hover:text-blue-800"
+                        >
+                            Clear All Filters
+                        </button>
                     </div>
+
                 </div>
             )}
 
@@ -967,37 +978,35 @@ const MobileDashboard: React.FC<MobileDashboardProps> = ({
                             onClick={() => setIsExpanded(isExpanded === type ? null : type)}
                             className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors">
                             <div className="flex items-center gap-2">
-                                {type === 'measures' ? 
-                                    <DollarSign size={16} className="text-blue-600" /> : 
+                                {type === 'measures' ?
+                                    <DollarSign size={16} className="text-blue-600" /> :
                                     <Filter size={16} className="text-purple-600" />
                                 }
                                 <span className="font-medium text-gray-900">{title}</span>
-                                <span className={`text-xs px-2 py-1 rounded-full ${
-                                    selectedCount > 0 ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'
-                                }`}>
+                                <span className={`text-xs px-2 py-1 rounded-full ${selectedCount > 0 ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'
+                                    }`}>
                                     {selectedCount}
                                 </span>
                             </div>
                             {isExpanded === type ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                         </button>
-                        
+
                         {isExpanded === type && (
                             <div className="border-t bg-gray-50">
                                 <div className="p-3 space-y-2">
                                     {attributes.map((attribute) => {
-                                        const isSelected = type === 'measures' ? 
-                                            mobileConfig.selectedMeasures.has(attribute.key) : 
+                                        const isSelected = type === 'measures' ?
+                                            mobileConfig.selectedMeasures.has(attribute.key) :
                                             mobileConfig.selectedDimensions.has(attribute.key);
-                                        
+
                                         return (
                                             <button
                                                 key={attribute.key}
                                                 onClick={() => onAttributeToggle(attribute.key, attribute.type)}
-                                                className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
-                                                    isSelected
+                                                className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${isSelected
                                                         ? 'border-blue-300 bg-blue-50'
                                                         : 'border-gray-200 bg-white hover:border-gray-300'
-                                                }`}
+                                                    }`}
                                             >
                                                 <div style={{ color: attribute.color }}>
                                                     {getIcon(attribute.iconName, 16)}
@@ -1006,11 +1015,10 @@ const MobileDashboard: React.FC<MobileDashboardProps> = ({
                                                     <span className="text-sm font-medium block">
                                                         {attribute.label}
                                                     </span>
-                                                    <span className={`text-xs px-2 py-0.5 rounded-full ${
-                                                        attribute.type === 'measure' ? 
-                                                        'bg-blue-100 text-blue-700' : 
-                                                        'bg-purple-100 text-purple-700'
-                                                    }`}>
+                                                    <span className={`text-xs px-2 py-0.5 rounded-full ${attribute.type === 'measure' ?
+                                                            'bg-blue-100 text-blue-700' :
+                                                            'bg-purple-100 text-purple-700'
+                                                        }`}>
                                                         {attribute.type}
                                                     </span>
                                                 </div>
