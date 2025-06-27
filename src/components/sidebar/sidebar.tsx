@@ -32,6 +32,7 @@ const SideBarLayout: React.FC<SideBarLayoutProps> = ({ children }) => {
     const sidebarItems = [
         { icon: Home, label: 'Dashboard', href: '/dashboard', active: pathname === '/dashboard' },
         { icon: Package, label: 'Draggable Dashboard', href: '/dashboard/draggble-dashboard', active: pathname === '/dashboard/draggble-dashboard' },
+        { icon: Package, label: 'Draggable Dashboard DnD', href: '/dashboard/draggble-dashboard-dnd', active: pathname === '/dashboard/draggble-dashboard-dnd' },
         // { icon: ShoppingCart, label: 'Demo', href: '/dashboard', active: pathname === '/dashboard/demo' },
         // { icon: Users, label: 'Customers', href: '/dashboard', active: pathname === '/dashboard/customers' },
         // { icon: BarChart3, label: 'Analytics', href: '/dashboard' , active: pathname === '/dashboard/analytics' },
