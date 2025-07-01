@@ -23,6 +23,12 @@ import {
 } from "@/lib/services/usersApi";
 import { Dimensions } from "@/types/Schemas";
 import { buildRequestBody, handleCrossChartFilteringFunc } from "@/lib/services/buildWhereClause";
+import { ActionButton } from "@/components/ui/action-button";
+import { ErrorAlert } from "@/components/ui/status-alerts";
+import { ChartSkelten } from "@/components/ui/ChartSkelten";
+
+import ReusableChartDrawer from "@/components/ChartDrawer";
+import { useChartDrawer } from "@/components/ChartDrawer";
 
 // Core data types
 interface ChartDataPoint {
@@ -45,14 +51,6 @@ interface ChartData {
   pie: ChartDataPoint[];
   donut: ChartDataPoint[];
   drillDown: any[];
-}
-
-// Drill-down state interface
-interface DrillDownState {
-  active: boolean;
-  chartType: string;
-  category: string;
-  title: string;
 }
 
 // Update the VictoryLegendProps interface to use the imported type
@@ -99,8 +97,11 @@ const ChartContainer: React.FC<{
   onBack?: () => void;
   isDrilled?: boolean;
   data?: any[];
-}> = ({ title, children, onBack, isDrilled, data }) => {
+  isLoading?: boolean;
+}> = ({ title, children, onBack, isDrilled, data, isLoading }) => {
   const chartRef = useRef<HTMLDivElement>(null);
+
+  const hasData = data && data.length > 0;
 
   // Export to CSV function
   const exportToCSV = () => {
@@ -169,37 +170,51 @@ const ChartContainer: React.FC<{
   };
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md">
-      <div className="flex justify-between items-center mb-4">
-        <div className="flex items-center">
-          <h2 className="text-xl font-semibold">{title}</h2>
-          {isDrilled && onBack && (
-            <button
-              onClick={onBack}
-              className="ml-3 px-3 py-1 bg-gray-500 text-white rounded hover:bg-gray-600 text-sm"
-            >
-              ← Back
-            </button>
-          )}
-        </div>
-        <div className="flex space-x-2">
-          <button
-            onClick={exportToPNG}
-            className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
-            disabled={!data || data.length === 0}
-          >
-            PNG
-          </button>
-          <button
-            onClick={exportToCSV}
-            className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
-            disabled={!data || data.length === 0}
-          >
-            CSV
-          </button>
-        </div>
+    <div className="bg-white p-6 rounded-lg shadow-lg border border-gray-100 hover:shadow-xl transition-shadow duration-200">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold text-gray-800">{title}</h3>
+        {isLoading && (
+          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
+        )}
       </div>
-      <div className="w-full" ref={chartRef}>{children}</div>
+      {hasData ? (
+        <>
+          <div className="flex justify-between items-center mb-2">
+            <div className="flex items-center">
+
+              {isDrilled && (
+                <button
+                  onClick={onBack}
+                  className="ml-3 px-2 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-sm"
+                >
+                  ↩ Back
+                </button>
+              )}
+            </div>
+            <div className="flex space-x-2">
+              <button
+                onClick={exportToPNG}
+                className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
+                disabled={!data || data.length === 0}
+              >
+                PNG
+              </button>
+              <button
+                onClick={exportToCSV}
+                className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
+                disabled={!data || data.length === 0}
+              >
+                CSV
+              </button>
+            </div>
+          </div>
+          <div className="w-full" ref={chartRef}>
+            {children}
+          </div>
+        </>
+      ) : (
+        <ChartSkelten />
+      )}
     </div>
   );
 };
@@ -225,23 +240,7 @@ const VictoryChartsPage: React.FC = () => {
   });
 
   // Drill down state
-  const [drillDown, setDrillDown] = useState<DrillDownState>({
-    active: false,
-    chartType: "",
-    category: "",
-    title: ""
-  });
-
-  // Reset drill down
-  const resetDrillDown = () => {
-    setDrillDown({
-      active: false,
-      chartType: "",
-      category: "",
-      title: ""
-    });
-    setChartData(prev => ({ ...prev, drillDown: [] }));
-  };
+  const { drillDownState, openDrawer, closeDrawer, isOpen } = useChartDrawer();
 
   const handleCreateGroup = (datas: any) => {
     setDimensions(datas);
@@ -301,12 +300,13 @@ const VictoryChartsPage: React.FC = () => {
           drillDown: drillData
         }));
 
-        setDrillDown({
-          active: true,
-          chartType,
-          category,
-          title
-        });
+        openDrawer({
+        chartType,
+        category,
+        title,
+        dataType
+      });
+
       } else {
         setError("No data available for this selection");
       }
@@ -322,6 +322,22 @@ const VictoryChartsPage: React.FC = () => {
   useEffect(() => {
     fetchAllChartDataHanlde();
   }, [dimensions]);
+  // Handle reset group and modal actions
+  const handleResetGroup = useCallback((): void => {
+    setDimensions(null);
+  }, []);
+
+  const handleCloseModal = useCallback((): void => {
+    setIsGroupModalOpen(false);
+  }, []);
+
+  const handleOpenModal = useCallback((): void => {
+    setIsGroupModalOpen(true);
+  }, []);
+
+  const handleDismissError = useCallback((): void => {
+    setError(null);
+  }, []);
 
   return (
     <section className="p-8 bg-gray-50 min-h-screen">
@@ -329,7 +345,8 @@ const VictoryChartsPage: React.FC = () => {
 
       <GroupModal
         isOpen={isGroupModalOpen}
-        onClose={() => setIsGroupModalOpen(false)}
+        onClose={handleCloseModal}
+        // @ts-ignore
         onCreateGroup={handleCreateGroup}
       />
 
@@ -340,72 +357,61 @@ const VictoryChartsPage: React.FC = () => {
           </p>
         )}
         <div className="flex gap-2">
-          <button
-            onClick={() => setDimensions(null)}
-            className="shadow-xl border bg-red-400 p-2 rounded text-white hover:bg-red-500"
+          <ActionButton
+            onClick={handleResetGroup}
+            className="bg-red-400 hover:bg-red-500"
+            disabled={isLoading}
           >
             Reset Group
-          </button>
-          <button
-            onClick={() => setIsGroupModalOpen(true)}
-            className="shadow-xl border bg-blue-400 p-2 rounded text-white hover:bg-blue-500"
+          </ActionButton>
+
+          <ActionButton
+            onClick={handleOpenModal}
+            className="bg-blue-400 hover:bg-blue-500"
+            disabled={isLoading}
           >
             Create Group
-          </button>
-          <button
+          </ActionButton>
+
+          <ActionButton
             onClick={fetchAllChartDataHanlde}
-            className="shadow-xl border bg-green-400 p-2 rounded text-white hover:bg-green-500"
+            className="bg-green-400 hover:bg-green-500"
+            disabled={isLoading}
           >
-            Refresh Data
-          </button>
+            {isLoading ? 'Loading...' : 'Refresh Data'}
+          </ActionButton>
         </div>
       </div>
 
-      {error && (
-        <div className="flex justify-between bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          <p>{error}</p>
-          <p onClick={() => setError('')} className="cursor-pointer">x</p>
-        </div>
-      )}
+      {error && (<ErrorAlert message={error} onDismiss={handleDismissError} />)}
 
-      {isLoading && (
-        <div className="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded mb-4">
-          <p>Loading chart data...</p>
-        </div>
-      )}
-
-      {drillDown.active ? (
-        <div className="mb-8">
-          <ChartContainer
-            title={drillDown.title}
-            onBack={resetDrillDown}
-            isDrilled
-            data={chartData.drillDown}
-          >
-           <div style={{height: '500px'}}>
-           <DrillDownChart data={chartData.drillDown} />
-           </div>
-          </ChartContainer>
-          <p className="mt-2 text-sm text-gray-500 text-center">
-            <i>Click the back button to return to main charts</i>
-          </p>
-        </div>
-      ) : (
+       <ReusableChartDrawer
+      isOpen={isOpen}
+      drillDownState={drillDownState}
+      onBack={closeDrawer}
+      isLoading={isLoading}
+      showBackButton={true}
+      showCloseButton={true}
+    >
+      <div style={{ height: '500px' }}>
+        <DrillDownChart data={chartData.drillDown} />
+      </div>
+    </ReusableChartDrawer>
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <ChartContainer title="Revenue Trends with Cross Chart Filter" data={chartData.line}>
+            <ChartContainer isLoading={isLoading} title="Revenue Trends with Cross Chart Filter" data={chartData.line}>
               <LineChart data={chartData.line} setDimensions={setDimensions} onDrillDown={handleDrillDown} />
             </ChartContainer>
 
-            <ChartContainer title="Revenue vs Expenses" data={chartData.bar}>
+            <ChartContainer isLoading={isLoading} title="Revenue vs Expenses" data={chartData.bar}>
               <BarChart data={chartData.bar} onDrillDown={handleDrillDown} />
             </ChartContainer>
 
-            <ChartContainer title="Financial Distribution" data={chartData.pie}>
+            <ChartContainer isLoading={isLoading} title="Financial Distribution" data={chartData.pie}>
               <PieChart data={chartData.pie} onDrillDown={handleDrillDown} />
             </ChartContainer>
 
-            <ChartContainer title="Revenue by Category" data={chartData.donut}>
+            <ChartContainer isLoading={isLoading} title="Revenue by Category" data={chartData.donut}>
               <DonutChart data={chartData.donut} onDrillDown={handleDrillDown} />
             </ChartContainer>
           </div>
@@ -413,7 +419,6 @@ const VictoryChartsPage: React.FC = () => {
             <i>Click on any chart element to drill down into more detailed data</i>
           </p>
         </>
-      )}
     </section>
   );
 };
@@ -445,7 +450,7 @@ interface LineChartProps {
   setDimensions: React.Dispatch<React.SetStateAction<any>>;
 }
 
-const LineChart: React.FC<LineChartProps> = ({ data,setDimensions, onDrillDown }) => {
+const LineChart: React.FC<LineChartProps> = ({ data, setDimensions, onDrillDown }) => {
   if (!data?.length) return <div className="text-center text-gray-500">No data available</div>;
 
   const [visibleSeries, setVisibleSeries] = useState<VisibleLineSeries>({
@@ -475,7 +480,7 @@ const LineChart: React.FC<LineChartProps> = ({ data,setDimensions, onDrillDown }
       onClick: (_e: any, { datum }: { datum: any }) => {
         const name = datum.name.toLowerCase().replace(' ', '');
         let mappedKey: keyof VisibleLineSeries;
-        
+
         switch (name) {
           case 'grossmargin':
             mappedKey = 'grossMargin';
@@ -489,7 +494,7 @@ const LineChart: React.FC<LineChartProps> = ({ data,setDimensions, onDrillDown }
           default:
             return null;
         }
-        
+
         setVisibleSeries(prev => ({
           ...prev,
           [mappedKey]: !prev[mappedKey]
@@ -507,16 +512,16 @@ const LineChart: React.FC<LineChartProps> = ({ data,setDimensions, onDrillDown }
         if (!clickedPoint?.period) return;
 
         const value = clickedPoint[type];
-          const period = clickedPoint.period;
+        const period = clickedPoint.period;
 
-          if (event.ctrlKey || event.metaKey) {
-            onDrillDown('line', period, value, type);
-          } else {
-            // @ts-ignore
-            setDimensions(handleCrossChartFilteringFunc(period));
-          }
+        if (event.ctrlKey || event.metaKey) {
+          onDrillDown('line', period, value, type);
+        } else {
+          // @ts-ignore
+          setDimensions(handleCrossChartFilteringFunc(period));
+        }
 
-          return null;
+        return null;
 
       }
     }
@@ -533,20 +538,20 @@ const LineChart: React.FC<LineChartProps> = ({ data,setDimensions, onDrillDown }
 
   return (
     <VictoryChart theme={VictoryTheme.clean} domainPadding={20} height={350} width={800}>
-      <VictoryAxis 
-        tickFormat={(x: any) => x} 
-        style={{ tickLabels: { fontSize: 10, angle: -65 } }} 
+      <VictoryAxis
+        tickFormat={(x: any) => x}
+        style={{ tickLabels: { fontSize: 10, angle: -65 } }}
       />
-      <VictoryAxis 
-        dependentAxis 
-        tickFormat={(y: number) => `$${Math.round(y / 1000)}k`} 
+      <VictoryAxis
+        dependentAxis
+        tickFormat={(y: number) => `$${Math.round(y / 1000)}k`}
       />
-     
+
       <VictoryLegend
         x={50} y={10} orientation="horizontal" gutter={20}
-        style={{ 
-          labels: { fontSize: 12, cursor: "pointer" }, 
-          data: { cursor: "pointer" } 
+        style={{
+          labels: { fontSize: 12, cursor: "pointer" },
+          data: { cursor: "pointer" }
         }}
         data={legendData}
         events={legendEvents}
@@ -556,8 +561,8 @@ const LineChart: React.FC<LineChartProps> = ({ data,setDimensions, onDrillDown }
       {series.map(s => visibleSeries[s.key] && (
         <VictoryLine
           key={`line-${s.key}`}
-          data={data} 
-          x="period" 
+          data={data}
+          x="period"
           y={s.key}
           style={{ data: { stroke: s.color, strokeWidth: 2 } }}
         />
@@ -567,8 +572,8 @@ const LineChart: React.FC<LineChartProps> = ({ data,setDimensions, onDrillDown }
       {series.map(s => visibleSeries[s.key] && (
         <VictoryScatter
           key={`scatter-${s.key}`}
-          data={data} 
-          x="period" 
+          data={data}
+          x="period"
           y={s.key}
           size={4}
           style={{ data: { fill: s.color } }}
@@ -597,21 +602,21 @@ interface BarChartProps {
 
 const BarChart: React.FC<BarChartProps> = ({ data, onDrillDown }) => {
   if (!data?.length) return <div className="text-center text-gray-500">No data available</div>;
-  
-  const [visibleSeries, setVisibleSeries] = useState<VisibleSeries>({ 
-    revenue: true, 
-    expenses: true 
+
+  const [visibleSeries, setVisibleSeries] = useState<VisibleSeries>({
+    revenue: true,
+    expenses: true
   });
-  
+
   const series = useMemo<SeriesConfig[]>(() => [
     { key: 'revenue', name: 'Revenue', color: '#4bc0c0' },
     { key: 'expenses', name: 'Expenses', color: '#ff6384' }
   ], []);
 
-  const legendData = useMemo<LegendDataItem[]>(() => 
+  const legendData = useMemo<LegendDataItem[]>(() =>
     series.map(s => ({
       name: s.name,
-      symbol: { 
+      symbol: {
         fill: visibleSeries[s.key] ? s.color : '#cccccc',
         opacity: visibleSeries[s.key] ? 1 : 0.5
       }
@@ -634,39 +639,39 @@ const BarChart: React.FC<BarChartProps> = ({ data, onDrillDown }) => {
   const createBarEvents = useCallback((type: keyof Pick<ChartDataPoint, 'revenue' | 'expenses'>) => [{
     target: "data" as const,
     eventHandlers: {
-      onClick: (_e: any, { datum }: EventHandlerProps) => 
+      onClick: (_e: any, { datum }: EventHandlerProps) =>
         onDrillDown('bar', datum.period, datum[type], type)
     }
   }], [onDrillDown]);
 
   return (
     <VictoryChart theme={VictoryTheme.clean} domainPadding={10} height={350} width={800}>
-      <VictoryAxis 
-        tickFormat={(x: any) => x} 
-        style={{ tickLabels: { fontSize: 10, angle: -45 } }} 
+      <VictoryAxis
+        tickFormat={(x: any) => x}
+        style={{ tickLabels: { fontSize: 10, angle: -45 } }}
       />
-      <VictoryAxis 
-        dependentAxis 
-        tickFormat={(y: number) => `$${Math.round(y / 1000)}k`} 
+      <VictoryAxis
+        dependentAxis
+        tickFormat={(y: number) => `$${Math.round(y / 1000)}k`}
       />
-      
+
       <VictoryLegend
         x={50} y={10} orientation="horizontal" gutter={20}
-        style={{ 
-          labels: { fontSize: 12, cursor: "pointer" }, 
-          data: { cursor: "pointer" } 
+        style={{
+          labels: { fontSize: 12, cursor: "pointer" },
+          data: { cursor: "pointer" }
         }}
         data={legendData}
         events={legendEvents}
       />
-      
+
       <VictoryGroup offset={20}>
         {series.map(s => visibleSeries[s.key] && (
           <VictoryBar
             key={s.key}
             labelComponent={<VictoryTooltip />}
-            data={data} 
-            x="period" 
+            data={data}
+            x="period"
             y={s.key}
             style={{ data: { fill: s.color } }}
             events={createBarEvents(s.key)}
@@ -684,10 +689,10 @@ const PieChart: React.FC<{
   if (!data?.length) return <div className="text-center text-gray-500">No data available</div>;
 
   const colorScale = ["#4bc0c0", "#ff6384", "#36a2eb", "#ffce56", "#9966ff", "#ff9f40"];
-  
+
   // State to track visible categories
-  const [visibleCategories, setVisibleCategories] = useState<{[key: string]: boolean}>(() => {
-    const initial: {[key: string]: boolean} = {};
+  const [visibleCategories, setVisibleCategories] = useState<{ [key: string]: boolean }>(() => {
+    const initial: { [key: string]: boolean } = {};
     data.forEach(item => {
       if (item.catfinancialview) {
         initial[item.catfinancialview] = true;
@@ -697,18 +702,18 @@ const PieChart: React.FC<{
   });
 
   // Filter data based on visible categories
-  const filteredData = useMemo(() => 
+  const filteredData = useMemo(() =>
     data.filter(item => item.catfinancialview && visibleCategories[item.catfinancialview]),
     [data, visibleCategories]
   );
 
   // Create legend data
-  const legendData = useMemo<LegendDataItem[]>(() => 
+  const legendData = useMemo<LegendDataItem[]>(() =>
     data.map((item, index) => ({
       name: item.catfinancialview || '',
-      symbol: { 
-        fill: item.catfinancialview && visibleCategories[item.catfinancialview] 
-          ? colorScale[index % colorScale.length] 
+      symbol: {
+        fill: item.catfinancialview && visibleCategories[item.catfinancialview]
+          ? colorScale[index % colorScale.length]
           : '#cccccc',
         opacity: item.catfinancialview && visibleCategories[item.catfinancialview] ? 1 : 0.5
       }
@@ -732,9 +737,9 @@ const PieChart: React.FC<{
     <div style={{ position: 'relative' }}>
       <VictoryLegend
         x={50} y={10} orientation="horizontal" gutter={15}
-        style={{ 
-          labels: { fontSize: 11, cursor: "pointer" }, 
-          data: { cursor: "pointer" } 
+        style={{
+          labels: { fontSize: 11, cursor: "pointer" },
+          data: { cursor: "pointer" }
         }}
         height={50}
         data={legendData}
@@ -777,10 +782,10 @@ const DonutChart: React.FC<{
   // Take top 6 categories for better visibility
   const topCategories = data.slice(0, 6);
   const colorScale = ["#ffce56", "#4bc0c0", "#9966ff", "#ff9f40", "#36a2eb", "#ff6384"];
-  
+
   // State to track visible categories
-  const [visibleCategories, setVisibleCategories] = useState<{[key: string]: boolean}>(() => {
-    const initial: {[key: string]: boolean} = {};
+  const [visibleCategories, setVisibleCategories] = useState<{ [key: string]: boolean }>(() => {
+    const initial: { [key: string]: boolean } = {};
     topCategories.forEach(item => {
       initial[item.cataccountingview] = true;
     });
@@ -788,16 +793,16 @@ const DonutChart: React.FC<{
   });
 
   // Filter data based on visible categories
-  const filteredData = useMemo(() => 
+  const filteredData = useMemo(() =>
     topCategories.filter(item => visibleCategories[item.cataccountingview]),
     [topCategories, visibleCategories]
   );
 
   // Create legend data
-  const legendData = useMemo<LegendDataItem[]>(() => 
+  const legendData = useMemo<LegendDataItem[]>(() =>
     topCategories.map((item, index) => ({
       name: item.cataccountingview,
-      symbol: { 
+      symbol: {
         fill: visibleCategories[item.cataccountingview] ? colorScale[index % colorScale.length] : '#cccccc',
         opacity: visibleCategories[item.cataccountingview] ? 1 : 0.5
       }
@@ -822,9 +827,9 @@ const DonutChart: React.FC<{
       <VictoryLegend
         x={50} y={10} orientation="horizontal" gutter={15}
         height={50}
-        style={{ 
-          labels: { fontSize: 11, cursor: "pointer" }, 
-          data: { cursor: "pointer" } 
+        style={{
+          labels: { fontSize: 11, cursor: "pointer" },
+          data: { cursor: "pointer" }
         }}
         data={legendData}
         events={[{

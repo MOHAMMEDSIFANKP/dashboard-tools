@@ -16,6 +16,8 @@ import { ErrorAlert, LoadingAlert } from "@/components/ui/status-alerts";
 // Types
 import { BarChartData, Dimensions, DonutChartData, LineChartData, PieChartData } from '@/types/Schemas';
 import { ChartSkelten } from "@/components/ui/ChartSkelten";
+import ChartDrawer, { useChartDrawer } from "@/components/ChartDrawer";
+import ReusableChartDrawer from "@/components/ChartDrawer";
 
 // Common props for components
 interface CommonProps {
@@ -23,41 +25,6 @@ interface CommonProps {
   data?: any[];
   onDrillDown?: (type: string, category: string, value: any, dataType: string) => void;
 }
-
-// Drill-down state interface
-interface DrillDownState {
-  active: boolean;
-  chartType: string;
-  category: string;
-  title: string;
-}
-
-
-// Separated Drill Down Component
-const DrillDownChart: React.FC<{
-  drillDownState: DrillDownState;
-  drillDownData: any[];
-  drillDownOptions: AgChartOptions | null;
-  onBack: () => void;
-  isLoading: boolean;
-}> = ({ drillDownState, drillDownData, drillDownOptions, onBack,isLoading }) => {
-  return (
-    <div className="mb-4">
-      <ChartContainer
-        title={drillDownState.title}
-        data={drillDownData}
-        onBack={onBack}
-        isDrilled={true}
-        isLoading={isLoading}
-      >
-        {drillDownOptions && <AgCharts options={drillDownOptions} />}
-      </ChartContainer>
-      <p className="mt-2 text-sm text-gray-500">
-        <i>Click any data point for further drill-down, or use the back button to return</i>
-      </p>
-    </div>
-  );
-};
 
 // Main AG Charts Page Component
 const AgChartsPage: React.FC = () => {
@@ -70,13 +37,6 @@ const AgChartsPage: React.FC = () => {
   const [fetchAllChartData] = useFetchChartDataMutation();
   const [fetchDrillDownData] = useFetchDrillDownDataMutation();
 
-  // Drill down state
-  const [drillDown, setDrillDown] = useState<DrillDownState>({
-    active: false,
-    chartType: "",
-    category: "",
-    title: ""
-  });
 
   // Chart data states
   const [chartData, setChartData] = useState<{
@@ -108,15 +68,9 @@ const AgChartsPage: React.FC = () => {
     drillDown: null
   });
 
-  // Reset drill down
-  const resetDrillDown = () => {
-    setDrillDown({
-      active: false,
-      chartType: "",
-      category: "",
-      title: ""
-    });
-  };
+  const { drillDownState, openDrawer, closeDrawer, isOpen } = useChartDrawer();
+
+
 
   const handleCrossChartFiltering = (data: string) => {
     // @ts-ignore   
@@ -380,12 +334,13 @@ const AgChartsPage: React.FC = () => {
           drillDown: options
         }));
 
-        setDrillDown({
-          active: true,
+        openDrawer({
           chartType,
           category,
-          title
+          title,
+          dataType
         });
+
       } else {
         setError("No data available for this selection");
       }
@@ -468,16 +423,19 @@ const AgChartsPage: React.FC = () => {
       {error && (<ErrorAlert message={error} onDismiss={handleDismissError} />)}
 
       {isLoading && <LoadingAlert />}
-
-      {drillDown.active ? (
-        <DrillDownChart
-          drillDownState={drillDown}
-          drillDownData={chartData.drillDown}
-          drillDownOptions={chartOptions.drillDown}
-          onBack={resetDrillDown}
-          isLoading={isLoading}
-        />
-      ) : (
+       <ReusableChartDrawer
+        isOpen={isOpen}
+        drillDownState={drillDownState}
+        onBack={closeDrawer}
+        isLoading={isLoading}
+        showBackButton={true}
+        showCloseButton={true}
+      >
+        {chartOptions.drillDown && (
+          <AgCharts options={chartOptions.drillDown} />
+        )}
+      </ReusableChartDrawer>
+    
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <ChartContainer title="Revenue Trends with Cross Chart Filter" isLoading={isLoading} data={chartData.line}>
             <AgCharts options={chartOptions.line || {}} />
@@ -495,7 +453,6 @@ const AgChartsPage: React.FC = () => {
             <i>Click on any chart element to drill down into more detailed data</i>
           </p>
         </div>
-      )}
     </section>
   );
 };
@@ -599,7 +556,6 @@ const ChartContainer: React.FC<CommonProps & {
       ) : (
         <ChartSkelten />
       )}
-
     </div>
   );
 };

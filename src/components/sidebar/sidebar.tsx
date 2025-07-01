@@ -1,5 +1,6 @@
 'use client'
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import {
     Search,
     Bell,
@@ -13,7 +14,16 @@ import {
     ChevronLeft,
     ChevronRight,
     Menu,
-    X
+    X,
+    Grid3X3,
+    Layout,
+    Table,
+    PieChart,
+    LineChart,
+    TrendingUp,
+    Activity,
+    Zap,
+    DollarSign,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { usePathname } from 'next/navigation';
@@ -30,14 +40,25 @@ const SideBarLayout: React.FC<SideBarLayoutProps> = ({ children }) => {
     const [searchValue, setSearchValue] = useState('');
 
     const sidebarItems = [
-        { icon: Home, label: 'Dashboard', href: '/dashboard', active: pathname === '/dashboard' },
-        { icon: Package, label: 'Draggable Dashboard', href: '/dashboard/draggble-dashboard', active: pathname === '/dashboard/draggble-dashboard' },
-        { icon: Package, label: 'Draggable Dashboard DnD', href: '/dashboard/draggble-dashboard-dnd', active: pathname === '/dashboard/draggble-dashboard-dnd' },
-        // { icon: ShoppingCart, label: 'Demo', href: '/dashboard', active: pathname === '/dashboard/demo' },
-        // { icon: Users, label: 'Customers', href: '/dashboard', active: pathname === '/dashboard/customers' },
-        // { icon: BarChart3, label: 'Analytics', href: '/dashboard' , active: pathname === '/dashboard/analytics' },
-        // { icon: Settings, label: 'Settings', href: '/dashboard' , active: pathname === '/dashboard/settings' },
+        { icon: Home, label: 'Dashboard', href: '/', active: pathname === '/', section: 'Dashboards' },
+        { icon: Layout, label: 'Draggable Dashboard', href: '/dashboard/draggble-dashboard', active: pathname === '/dashboard/draggble-dashboard', section: 'Dashboards' },
+        { icon: Grid3X3, label: 'DnD Draggable ', href: '/dashboard/draggble-dashboard-dnd', active: pathname === '/dashboard/draggble-dashboard-dnd', section: 'Dashboards' },
+
+        { icon: Table, label: 'Redux + RTK + RTK Query', href: '/redux', active: pathname === '/redux', section: 'Tables' },
+        { icon: Table, label: 'AG List', href: '/ag-table', active: pathname === '/ag-table', section: 'Tables' },
+        { icon: Table, label: 'TanStack Table', href: '/tanStack-table', active: pathname === '/tanStack-table', section: 'Tables' },
+        { icon: Table, label: 'React Table', href: '/react-table', active: pathname === '/react-table', section: 'Tables' },
+
+        { icon: BarChart3, label: 'AG Charts', href: '/ag-charts', active: pathname === '/ag-charts', section: 'Open Source Charts' },
+        { icon: PieChart, label: 'Chart JS', href: '/chart-js', active: pathname === '/chart-js', section: 'Open Source Charts' },
+        { icon: LineChart, label: 'React Plotly', href: '/react-plotly', active: pathname === '/react-plotly', section: 'Open Source Charts' },
+        { icon: TrendingUp, label: 'Nivo Charts', href: '/nivo-charts', active: pathname === '/nivo-charts', section: 'Open Source Charts' },
+        { icon: Activity, label: 'Victory Charts', href: '/victory-charts', active: pathname === '/victory-charts', section: 'Open Source Charts' },
+        { icon: Zap, label: 'ECharts', href: '/echarts', active: pathname === '/echarts', section: 'Open Source Charts' },
+
+        { icon: DollarSign, label: 'Highcharts', href: '/highcharts', active: pathname === '/highcharts', section: 'Paid Charts' },
     ];
+
 
     // Close mobile menu when pathname changes
     useEffect(() => {
@@ -65,7 +86,7 @@ const SideBarLayout: React.FC<SideBarLayoutProps> = ({ children }) => {
     };
 
     const SidebarContent = ({ isMobile = false }: { isMobile?: boolean }) => (
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-[93vh] bg-white shadow-md transition-all duration-300 ease-in-out overflow-y-auto">
             {/* Mobile Header */}
             {isMobile && (
                 <div className="flex items-center justify-between p-4 border-b border-gray-200">
@@ -81,35 +102,46 @@ const SideBarLayout: React.FC<SideBarLayoutProps> = ({ children }) => {
 
             {/* Navigation Items */}
             <nav className="flex-1 px-4 py-4 space-y-2">
-                {sidebarItems.map((item, index) => {
-                    const Icon = item.icon;
-                    return (
-                        <a
-                            key={index}
-                            href={item.href}
-                            className={`flex items-center px-3 py-2 text-sm font-medium rounded-lg transition duration-150 ease-in-out group ${
-                                item.active
-                                    ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-700'
-                                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                            }`}
-                        >
-                            <Icon className={`h-5 w-5 ${
-                                isMobile || isExpanded ? 'mr-3' : 'mx-auto'
-                            } transition-all duration-300 ease-in-out`} />
-                            {(isMobile || isExpanded) && (
-                                <span className="transition-opacity duration-300 ease-in-out">
-                                    {item.label}
-                                </span>
-                            )}
-                            {!isMobile && !isExpanded && (
-                                <div className="absolute left-16 bg-gray-900 text-white px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50 whitespace-nowrap">
-                                    {item.label}
-                                </div>
-                            )}
-                        </a>
-                    );
-                })}
+                {(() => {
+                    let lastSection = '';
+                    return sidebarItems.map((item, index) => {
+                        const Icon = item.icon;
+                        const showSectionHeader = item.section !== lastSection;
+                        lastSection = item.section;
+
+                        return (
+                            <React.Fragment key={index}>
+                                {showSectionHeader && isExpanded && (
+                                    <div className="text-xs text-white font-bold uppercase mt-4 mb-1 pl-2 bg-[#0b2545] py-1 rounded-[10px]">
+                                        {item.section}
+                                    </div>
+                                )}
+                                <Link
+                                    href={item.href}
+                                    className={`flex items-center px-3 py-2 text-sm font-medium rounded-lg transition duration-150 ease-in-out group ${item.active
+                                            ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-700'
+                                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                                        }`}
+                                >
+                                    <Icon className={`h-5 w-5 ${isMobile || isExpanded ? 'mr-3' : 'mx-auto'
+                                        } transition-all duration-300 ease-in-out`} />
+                                    {(isMobile || isExpanded) && (
+                                        <span className="transition-opacity duration-300 ease-in-out">
+                                            {item.label}
+                                        </span>
+                                    )}
+                                    {!isMobile && !isExpanded && (
+                                        <div className="absolute left-16 bg-gray-900 text-white px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50 whitespace-nowrap">
+                                            {item.label}
+                                        </div>
+                                    )}
+                                </Link>
+                            </React.Fragment>
+                        );
+                    });
+                })()}
             </nav>
+
 
             {/* Bottom Section */}
             <div className="p-4 border-t border-gray-200">
@@ -136,21 +168,21 @@ const SideBarLayout: React.FC<SideBarLayoutProps> = ({ children }) => {
                     <div className="flex justify-between h-16">
                         <div className="flex items-center gap-2">
                             {/* Desktop Sidebar Toggle */}
-                            <button 
+                            <button
                                 className='hidden md:block transition duration-150 ease-in-out cursor-pointer p-1 hover:bg-gray-100 rounded'
                                 onClick={toggleDesktopSidebar}
                             >
                                 {isExpanded ? <ChevronLeft className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
                             </button>
-                            
+
                             {/* Mobile Menu Toggle */}
-                            <button 
+                            <button
                                 className='md:hidden transition duration-150 ease-in-out cursor-pointer p-1 hover:bg-gray-100 rounded'
                                 onClick={toggleMobileMenu}
                             >
                                 <Menu className="h-5 w-5" />
                             </button>
-                            
+
                             <div className="flex-shrink-0">
                                 <h1 className="text-xl font-bold text-gray-900">Dashboard</h1>
                             </div>
@@ -197,32 +229,29 @@ const SideBarLayout: React.FC<SideBarLayoutProps> = ({ children }) => {
 
             {/* Mobile Overlay */}
             {isMobileMenuOpen && (
-                <div 
+                <div
                     className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
                     onClick={toggleMobileMenu}
                 />
             )}
 
             {/* Mobile Sidebar */}
-            <aside className={`md:hidden fixed left-0 top-16 z-50 w-64 bg-white border-r border-gray-200 h-[calc(100vh-4rem)] transform transition-transform duration-300 ease-in-out ${
-                isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
-            }`}>
+            <aside className={`md:hidden fixed left-0 top-16 z-50 w-64 bg-white border-r border-gray-200 h-[calc(100vh-4rem)] transform transition-transform duration-300 ease-in-out ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+                }`}>
                 <SidebarContent isMobile={true} />
             </aside>
 
             {/* Desktop Layout */}
             <div className="pt-16 hidden md:flex">
                 {/* Desktop Sidebar */}
-                <aside className={`${
-                    isExpanded ? 'w-64' : 'w-20'
-                } bg-white border-r border-gray-200 min-h-screen transition-all duration-300 ease-in-out fixed left-0 top-16 z-40`}>
+                <aside className={`${isExpanded ? 'w-64' : 'w-20'
+                    } bg-white border-r border-gray-200 min-h-screen transition-all duration-300 ease-in-out fixed left-0 top-16 z-40`}>
                     <SidebarContent />
                 </aside>
 
                 {/* Desktop Main Content */}
-                <main className={`flex-1 ${
-                    isExpanded ? 'ml-64' : 'ml-20'
-                } transition-all duration-300 ease-in-out`}>
+                <main className={`flex-1 ${isExpanded ? 'ml-64' : 'ml-20'
+                    } transition-all duration-300 ease-in-out`}>
                     {children}
                 </main>
             </div>

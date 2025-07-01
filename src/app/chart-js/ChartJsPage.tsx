@@ -25,6 +25,9 @@ import {
 import { BarChartData, Dimensions, DonutChartData, LineChartData, PieChartData } from "@/types/Schemas";
 import { buildRequestBody, handleCrossChartFilteringFunc } from "@/lib/services/buildWhereClause";
 import { ActionButton } from "@/components/ui/action-button";
+import ReusableChartDrawer, { useChartDrawer } from "@/components/ChartDrawer";
+import { ChartSkelten } from "@/components/ui/ChartSkelten";
+import { ErrorAlert } from "@/components/ui/status-alerts";
 
 ChartJS.register(
   CategoryScale,
@@ -38,29 +41,21 @@ ChartJS.register(
   Legend
 );
 
-// Core data types
-
-// Interface for drill-down state
-interface DrillDownState {
-  active: boolean;
-  chartType: string;
-  category: string;
-  title: string;
-  dataType?: string;
-}
-
 interface ChartContainerProps {
   title: string;
   chartRef: React.RefObject<any>;
   data: any;
-  onChartClick?: (event: any) => void;
   children: React.ReactNode;
   isDrilled?: boolean;
   onBack?: () => void;
+  isLoading?: boolean;
 }
 
 const ChartContainer = forwardRef<HTMLDivElement, ChartContainerProps>(
-  ({ title, chartRef, data, onChartClick, children, isDrilled, onBack }, ref) => {
+  ({ title, chartRef, data, children, isDrilled, onBack, isLoading }, ref) => {
+
+    const hasData = data && data.length > 0;
+
     const handleDownloadImage = () => {
       if (chartRef.current) {
         const url = chartRef.current.toBase64Image();
@@ -95,94 +90,57 @@ const ChartContainer = forwardRef<HTMLDivElement, ChartContainerProps>(
     };
 
     return (
-      <div className="bg-white p-6 rounded-lg shadow-md">
-        <div className="flex flex-row justify-between items-center">
-          <div className="flex items-center">
-            <h2 className="text-[16px] lg:text-xl font-semibold mb-4 me-2">{title}</h2>
-            {isDrilled && (
-              <button
-                onClick={onBack}
-                className="ml-3 px-2 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-sm mb-4"
-              >
-                ↩ Back
-              </button>
+      <>
+        <div className="bg-white p-6 rounded-lg shadow-lg border border-gray-100 hover:shadow-xl transition-shadow duration-200">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-800">{title}</h3>
+            {isLoading && (
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
             )}
           </div>
-          <div className="flex gap-2 mb-4">
-            <button onClick={handleDownloadImage} className="px-2 lg:px-4 py-1 lg:py-2 text-sm lg:text-[16px] bg-blue-500 text-white rounded hover:bg-blue-600">
-              PNG
-            </button>
-            <button onClick={handleDownloadCSV} className="px-2 lg:px-4 py-1 lg:py-2 text-sm lg:text-[16px] bg-green-500 text-white rounded hover:bg-green-600">
-              CSV
-            </button>
-          </div>
+          {hasData ? (
+            <>
+              <div className="flex justify-between items-center mb-2">
+                <div className="flex items-center">
+
+                  {isDrilled && (
+                    <button
+                      onClick={onBack}
+                      className="ml-3 px-2 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-sm"
+                    >
+                      ↩ Back
+                    </button>
+                  )}
+                </div>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={handleDownloadImage}
+                    className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
+                  >
+                    PNG
+                  </button>
+                  <button
+                    onClick={handleDownloadCSV}
+                    className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
+                  >
+                    CSV
+                  </button>
+                </div>
+              </div>
+              <div className="h-64" ref={chartRef}>
+                {children}
+              </div>
+            </>
+          ) : (
+            <ChartSkelten />
+          )}
         </div>
-        <div className="h-64">{children}</div>
-      </div>
+      </>
     );
   }
 );
 
 ChartContainer.displayName = "ChartContainer";
-
-// Drill Down Chart Component
-const DrillDownChart: React.FC<{
-  drillDownState: DrillDownState;
-  drillDownData: ChartData<'bar' | 'line' | 'pie' | 'doughnut'>;
-  onBack: () => void;
-}> = ({ drillDownState, drillDownData, onBack }) => {
-  const drillChartRef = useRef<any>(null);
-
-  const chartOptions: ChartOptions<'line' | 'bar' | 'pie' | 'doughnut'> = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: { position: "top" },
-      title: {
-        display: true,
-        text: drillDownState.title
-      }
-    }
-  };
-
-  // Render appropriate chart type based on drill-down data
-  const renderDrillDownChart = () => {
-    switch (drillDownState.chartType) {
-      case 'line':
-        // @ts-ignore
-        return <Line ref={drillChartRef} options={chartOptions} data={drillDownData} />;
-      case 'bar':
-        // @ts-ignore
-        return <Bar ref={drillChartRef} options={chartOptions} data={drillDownData} />;
-      case 'pie':
-        // @ts-ignore
-        return <Pie ref={drillChartRef} options={chartOptions} data={drillDownData} />;
-      case 'donut':
-        // @ts-ignore
-        return <Doughnut ref={drillChartRef} options={{ ...chartOptions, cutout: '50%' }} data={drillDownData} />;
-      default:
-        // @ts-ignore
-        return <Bar ref={drillChartRef} options={chartOptions} data={drillDownData} />;
-    }
-  };
-
-  return (
-    <div className="mb-4">
-      <ChartContainer
-        title={drillDownState.title}
-        chartRef={drillChartRef}
-        data={drillDownData}
-        isDrilled={true}
-        onBack={onBack}
-      >
-        {renderDrillDownChart()}
-      </ChartContainer>
-      <p className="mt-2 text-sm text-gray-500">
-        <i>Click any data point for further drill-down, or use the back button to return</i>
-      </p>
-    </div>
-  );
-};
 
 export default function ChartJsPage() {
   const [error, setError] = useState<string | null>(null);
@@ -195,10 +153,12 @@ export default function ChartJsPage() {
   const [fetchDrillDownData] = useFetchDrillDownDataMutation();
 
   // Chart data states
-  const [lineChartData, setLineChartData] = useState<ChartData<'line'> | null>(null);
-  const [barChartData, setBarChartData] = useState<ChartData<'bar'> | null>(null);
-  const [pieChartData, setPieChartData] = useState<ChartData<'pie'> | null>(null);
-  const [donutChartData, setDonutChartData] = useState<ChartData<'doughnut'> | null>(null);
+  const emptyChartData = { labels: [], datasets: [] };
+
+  const [lineChartData, setLineChartData] = useState<ChartData<'line'>>(emptyChartData);
+  const [barChartData, setBarChartData] = useState<ChartData<'bar'>>(emptyChartData);
+  const [pieChartData, setPieChartData] = useState<ChartData<'pie'>>(emptyChartData);
+  const [donutChartData, setDonutChartData] = useState<ChartData<'doughnut'>>(emptyChartData);
 
   // Raw data for CSV export
   const [rawChartData, setRawChartData] = useState<{
@@ -213,35 +173,17 @@ export default function ChartJsPage() {
     donut: []
   });
 
-  // Drill down state
-  const [drillDown, setDrillDown] = useState<DrillDownState>({
-    active: false,
-    chartType: "",
-    category: "",
-    title: ""
-  });
-  const [drillDownData, setDrillDownData] = useState<ChartData<'bar' | 'line' | 'pie' | 'doughnut'> | null>(null);
+  const { drillDownState, openDrawer, closeDrawer, isOpen } = useChartDrawer();
+  const [drillDownChartData, setDrillDownChartData] = useState<ChartData<'bar' | 'line' | 'pie' | 'doughnut'> | null>(null);
 
   const lineChartRef = useRef<any>(null);
   const barChartRef = useRef<any>(null);
   const pieChartRef = useRef<any>(null);
   const donutChartRef = useRef<any>(null);
 
-  // Reset drill down state
-  const resetDrillDown = () => {
-    setDrillDown({
-      active: false,
-      chartType: "",
-      category: "",
-      title: ""
-    });
-    setDrillDownData(null);
-  };
-
-  const handleCreateGroup = (datas: any) => {
+  const handleCreateGroup = (datas: Dimensions) => {
     setDimensions(datas);
   };
-
 
   // Fetch all chart data
   const fetchAllChartDataHanlde = async () => {
@@ -249,13 +191,14 @@ export default function ChartJsPage() {
     setError(null);
 
     try {
-      // Fetch all chart data
       const result = await fetchAllChartData({
         body: buildRequestBody(dimensions, 'all')
       }).unwrap();
+
       if (!result || !result.success) {
         throw new Error(result?.message || "Failed to fetch chart data");
       }
+
       // Process line chart data
       const lineData = result?.charts?.line?.success ? result?.charts?.line?.data || [] : [];
       if (lineData.length > 0) {
@@ -307,7 +250,6 @@ export default function ChartJsPage() {
       // Process pie chart data
       const pieData = result?.charts?.pie?.success ? result?.charts?.pie?.data || [] : [];
       if (pieData.length > 0) {
-        console.log("Pie Data:", pieData);
         setPieChartData({
           labels: pieData.map((item: PieChartData) => item.catfinancialview),
           datasets: [{
@@ -359,11 +301,43 @@ export default function ChartJsPage() {
     }
   };
 
-  // Generic drill down function using API
+  const renderDrillDownChart = () => {
+    if (!drillDownChartData) return null;
+
+    const chartOptions: ChartOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: "top" as const },
+        title: {
+          display: true,
+          text: drillDownState.title
+        }
+      }
+    };
+
+    switch (drillDownState.chartType) {
+      case 'line':
+        // @ts-ignore
+        return <Line options={chartOptions} data={drillDownChartData} />;
+      case 'bar':
+        // @ts-ignore
+        return <Bar options={chartOptions} data={drillDownChartData} />;
+      case 'pie':
+        // @ts-ignore
+        return <Pie options={chartOptions} data={drillDownChartData} />;
+      case 'doughnut':
+        // @ts-ignore
+        return <Doughnut options={{ ...chartOptions, cutout: '50%' }} data={drillDownChartData} />;
+      default:
+        // @ts-ignore
+        return <Bar options={chartOptions} data={drillDownChartData} />;
+    }
+  };
+
   const handleDrillDown = async (chartType: string, category: string, dataType: string, value?: any) => {
     setIsLoading(true);
     setError(null);
-    console.log("Drill down triggered:", chartType, category, dataType, value);
 
     try {
       const result = await fetchDrillDownData({
@@ -379,13 +353,10 @@ export default function ChartJsPage() {
         const title = result.title || `${dataType} Breakdown for ${category}`;
         const columns = result.columns || Object.keys(drillData[0]);
 
-        // Convert API response to Chart.js format
         let formattedData: ChartData<'bar' | 'line' | 'pie' | 'doughnut'>;
         let drillChartType: 'bar' | 'line' | 'pie' | 'doughnut' = 'bar';
 
-        // Determine chart type and format data based on API response structure
         if (columns.includes('period')) {
-          // Time series data - use line chart
           drillChartType = 'line';
           formattedData = {
             labels: drillData.map((d: any) => d.period),
@@ -397,7 +368,6 @@ export default function ChartJsPage() {
             }]
           };
         } else if (columns.includes('catfinancialview') || columns.includes('cataccountingview')) {
-          // Category data - use bar chart
           drillChartType = 'bar';
           // @ts-ignore
           const labelKey = columns.find(col => col.includes('cat')) || columns[0];
@@ -410,7 +380,6 @@ export default function ChartJsPage() {
             }]
           };
         } else {
-          // Default to pie chart for other data
           drillChartType = 'pie';
           // @ts-ignore
           const labelKey = columns.find(key => key !== 'value') || columns[0];
@@ -430,15 +399,14 @@ export default function ChartJsPage() {
           };
         }
 
-        // Set drill-down data and state
-        setDrillDownData(formattedData);
-        setDrillDown({
-          active: true,
+        setDrillDownChartData(formattedData);
+        openDrawer({
           chartType: drillChartType,
           category,
           title,
           dataType
         });
+
       } else {
         setError("No data available for this selection");
       }
@@ -450,7 +418,6 @@ export default function ChartJsPage() {
     }
   };
 
-  // Handle drill down for line chart
   const handleLineChartClick = async (event: any) => {
     if (!lineChartRef.current) return;
 
@@ -473,10 +440,8 @@ export default function ChartJsPage() {
       const nativeEvent = event.native || event;
 
       if (nativeEvent?.ctrlKey || nativeEvent?.metaKey) {
-        console.log('🔍 Drilling down:', period, dataType);
         await handleDrillDown('line', period, dataType, value);
       } else {
-        console.log('🔄 Cross-filtering by:', period);
         // @ts-ignore
         setDimensions(handleCrossChartFilteringFunc(period));
       }
@@ -485,7 +450,6 @@ export default function ChartJsPage() {
     }
   };
 
-  // Handle drill down for bar chart
   const handleBarChartClick = async (event: any) => {
     if (!barChartRef.current) return;
 
@@ -511,7 +475,6 @@ export default function ChartJsPage() {
     }
   };
 
-  // Handle drill down for pie chart
   const handlePieChartClick = async (event: any) => {
     if (!pieChartRef.current) return;
 
@@ -536,7 +499,6 @@ export default function ChartJsPage() {
     }
   };
 
-  // Handle drill down for donut chart
   const handleDonutChartClick = async (event: any) => {
     if (!donutChartRef.current) return;
 
@@ -577,21 +539,21 @@ export default function ChartJsPage() {
     }
   };
 
-    const handleResetGroup = useCallback((): void => {
-      setDimensions(null);
-    }, []);
-  
-    const handleCloseModal = useCallback((): void => {
-      setIsGroupModalOpen(false);
-    }, []);
-  
-    const handleOpenModal = useCallback((): void => {
-      setIsGroupModalOpen(true);
-    }, []);
-  
-    const handleDismissError = useCallback((): void => {
-      setError(null);
-    }, []);
+  const handleResetGroup = useCallback((): void => {
+    setDimensions(null);
+  }, []);
+
+  const handleCloseModal = useCallback((): void => {
+    setIsGroupModalOpen(false);
+  }, []);
+
+  const handleOpenModal = useCallback((): void => {
+    setIsGroupModalOpen(true);
+  }, []);
+
+  const handleDismissError = useCallback((): void => {
+    setError(null);
+  }, []);
 
   return (
     <section className="p-5">
@@ -599,120 +561,117 @@ export default function ChartJsPage() {
 
       <GroupModal
         isOpen={isGroupModalOpen}
-        onClose={() => setIsGroupModalOpen(false)}
+        onClose={handleCloseModal}
+        // @ts-ignore
         onCreateGroup={handleCreateGroup}
       />
 
       <div className="flex flex-col mb-4">
-              {dimensions?.groupName && (
-                <p className="text-sm text-gray-500">
-                  Current Group Name: <span className="capitalize font-bold">{dimensions.groupName}</span>
-                </p>
-              )}
-              <div className="flex gap-2">
-                <ActionButton
-                  onClick={handleResetGroup}
-                  className="bg-red-400 hover:bg-red-500"
-                  disabled={isLoading}
-                >
-                  Reset Group
-                </ActionButton>
-      
-                <ActionButton
-                  onClick={handleOpenModal}
-                  className="bg-blue-400 hover:bg-blue-500"
-                  disabled={isLoading}
-                >
-                  Create Group
-                </ActionButton>
-      
-                <ActionButton
-                  onClick={fetchAllChartDataHanlde}
-                  className="bg-green-400 hover:bg-green-500"
-                  disabled={isLoading}
-                >
-                  {isLoading ? 'Loading...' : 'Refresh Data'}
-                </ActionButton>
-              </div>
-            </div>
-
-      {error && (
-        <div className="flex justify-between bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          <p>{error}</p>
-          <p onClick={() => setError('')} className="cursor-pointer">x</p>
-        </div>
-      )}
-
-      {isLoading && (
-        <div className="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded mb-4">
-          <p>Loading chart data...</p>
-        </div>
-      )}
-
-      {drillDown.active && drillDownData ? (
-        <DrillDownChart
-          drillDownState={drillDown}
-          drillDownData={drillDownData}
-          onBack={resetDrillDown}
-        />
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {lineChartData && (
-            <ChartContainer title="Revenue Trends with Cross Chart Filter" chartRef={lineChartRef} data={rawChartData.line}>
-              <Line
-                ref={lineChartRef}
-                // @ts-ignore
-                options={{
-                  ...chartOptions,
-                  onClick: handleLineChartClick
-                }}
-                data={lineChartData}
-              />
-            </ChartContainer>
-          )}
-          {barChartData && (
-            <ChartContainer title="Revenue vs Expenses" chartRef={barChartRef} data={rawChartData.bar}>
-              <Bar
-                ref={barChartRef}
-                // @ts-ignore
-                options={{
-                  ...chartOptions,
-                  onClick: handleBarChartClick
-                }}
-                data={barChartData}
-              />
-            </ChartContainer>
-          )}
-          {pieChartData && (
-            <ChartContainer title="Financial Distribution" chartRef={pieChartRef} data={rawChartData.pie}>
-              <Pie
-                ref={pieChartRef}
-                options={{
-                  ...chartOptions,
-                  onClick: handlePieChartClick
-                }}
-                data={pieChartData}
-              />
-            </ChartContainer>
-          )}
-          {donutChartData && (
-            <ChartContainer title="Revenue by Category" chartRef={donutChartRef} data={rawChartData.donut}>
-              <Doughnut
-                ref={donutChartRef}
-                options={{
-                  ...chartOptions,
-                  cutout: "50%",
-                  onClick: handleDonutChartClick
-                }}
-                data={donutChartData}
-              />
-            </ChartContainer>
-          )}
-          <p className="col-span-1 md:col-span-2 text-sm text-gray-500">
-            <i>Click on any chart element to drill down into more detailed data</i>
+        {dimensions?.groupName && (
+          <p className="text-sm text-gray-500">
+            Current Group Name: <span className="capitalize font-bold">{dimensions.groupName}</span>
           </p>
+        )}
+        <div className="flex gap-2">
+          <ActionButton
+            onClick={handleResetGroup}
+            className="bg-red-400 hover:bg-red-500"
+            disabled={isLoading}
+          >
+            Reset Group
+          </ActionButton>
+
+          <ActionButton
+            onClick={handleOpenModal}
+            className="bg-blue-400 hover:bg-blue-500"
+            disabled={isLoading}
+          >
+            Create Group
+          </ActionButton>
+
+          <ActionButton
+            onClick={fetchAllChartDataHanlde}
+            className="bg-green-400 hover:bg-green-500"
+            disabled={isLoading}
+          >
+            {isLoading ? 'Loading...' : 'Refresh Data'}
+          </ActionButton>
         </div>
-      )}
+      </div>
+
+      {error && (<ErrorAlert message={error} onDismiss={handleDismissError} />)}
+
+      <ReusableChartDrawer
+        isOpen={isOpen}
+        drillDownState={drillDownState}
+        onBack={() => {
+          closeDrawer();
+          setDrillDownChartData(null);
+        }}
+        isLoading={isLoading}
+        showBackButton={true}
+        showCloseButton={true}
+      >
+        {renderDrillDownChart()}
+      </ReusableChartDrawer>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {lineChartData && (
+          <ChartContainer title="Revenue Trends with Cross Chart Filter" isLoading={isLoading} chartRef={lineChartRef} data={rawChartData.line}>
+            <Line
+              ref={lineChartRef}
+              // @ts-ignore
+              options={{
+                ...chartOptions,
+                onClick: handleLineChartClick
+              }}
+              data={lineChartData}
+            />
+          </ChartContainer>
+        )}
+
+        {barChartData && (
+          <ChartContainer title="Revenue vs Expenses" isLoading={isLoading} chartRef={barChartRef} data={rawChartData.bar}>
+            <Bar
+              ref={barChartRef}
+              // @ts-ignore
+              options={{
+                ...chartOptions,
+                onClick: handleBarChartClick
+              }}
+              data={barChartData}
+            />
+          </ChartContainer>
+        )}
+        {pieChartData && (
+          <ChartContainer title="Financial Distribution" isLoading={isLoading} chartRef={pieChartRef} data={rawChartData.pie}>
+            <Pie
+              ref={pieChartRef}
+              options={{
+                ...chartOptions,
+                onClick: handlePieChartClick
+              }}
+              data={pieChartData}
+            />
+          </ChartContainer>
+        )}
+        {donutChartData && (
+          <ChartContainer title="Revenue by Category" isLoading={isLoading} chartRef={donutChartRef} data={rawChartData.donut}>
+            <Doughnut
+              ref={donutChartRef}
+              options={{
+                ...chartOptions,
+                cutout: "50%",
+                onClick: handleDonutChartClick
+              }}
+              data={donutChartData}
+            />
+          </ChartContainer>
+        )}
+        <p className="col-span-1 md:col-span-2 text-sm text-gray-500">
+          <i>Click on any chart element to drill down into more detailed data</i>
+        </p>
+      </div>
     </section>
   );
 }

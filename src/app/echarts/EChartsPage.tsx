@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import ReactECharts from "echarts-for-react";
 import { GroupModal } from "../../components/GroupManagement";
 import {
@@ -10,20 +10,13 @@ import {
 // Types
 import { Dimensions } from "@/types/Schemas";
 import { buildRequestBody, handleCrossChartFilteringFunc } from "@/lib/services/buildWhereClause";
+import { ActionButton } from "@/components/ui/action-button";
+import { ChartSkelten } from "@/components/ui/ChartSkelten";
 
-// Core data types
-interface ChartDataPoint {
-  period?: string;
-  revenue?: number;
-  expenses?: number;
-  grossMargin?: number;
-  netProfit?: number;
-  catAccountingView?: string;
-  catfinancialview?: string;
-  label?: string;
-  value?: number;
-  [key: string]: any;
-}
+import { useChartDrawer } from "@/components/ChartDrawer";
+import ReusableChartDrawer from "@/components/ChartDrawer";
+import { ErrorAlert } from "@/components/ui/status-alerts";
+
 
 // Define TypeScript interfaces for chart data
 interface ChartContainerProps {
@@ -33,6 +26,8 @@ interface ChartContainerProps {
   onExportPNG?: () => void;
   isDrilled?: boolean;
   onBack?: () => void;
+  isLoading?: boolean;
+  hasData?: number;
 }
 
 interface LineChartDataPoint {
@@ -92,13 +87,8 @@ const EChartsPage = () => {
   const drillDownChartRef = useRef(null);
 
   // Drill down state
-  const [drillDown, setDrillDown] = useState<DrillDownState>({
-    active: false,
-    chartType: "",
-    category: "",
-    title: "",
-    dataType: ""
-  });
+  const { drillDownState, openDrawer, closeDrawer, isOpen } = useChartDrawer();
+
 
   // Fetch all chart data using APIs
   const fetchAllChartDataHanlde = async () => {
@@ -132,7 +122,6 @@ const EChartsPage = () => {
 
       // Process donut chart data
       const donutData = result?.charts?.donut?.success ? result?.charts?.donut?.data || [] : [];
-      console.log(donutData, 'logsssss');
 
       setDonutChartData(donutData);
 
@@ -148,18 +137,6 @@ const EChartsPage = () => {
   useEffect(() => {
     fetchAllChartDataHanlde();
   }, [dimensions]);
-
-  // Reset drill down
-  const resetDrillDown = () => {
-    setDrillDown({
-      active: false,
-      chartType: "",
-      category: "",
-      title: "",
-      dataType: ""
-    });
-    setDrillDownData([]);
-  };
 
   const handleCreateGroup = (datas: any) => {
     setDimensions(datas);
@@ -184,13 +161,13 @@ const EChartsPage = () => {
         const title = result.title || `${dataType} Breakdown for ${category}`;
 
         setDrillDownData(drillData);
-        setDrillDown({
-          active: true,
+        openDrawer({
           chartType,
           category,
           title,
           dataType
         });
+
       } else {
         setError("No data available for this selection");
       }
@@ -220,22 +197,31 @@ const EChartsPage = () => {
     document.body.removeChild(link);
   };
 
-  if (error) {
-    return (
-      <div className="flex justify-between bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-        <p>{error}</p>
-        <p onClick={() => setError('')} className="cursor-pointer">x</p>
-      </div>
-    );
-  }
+  // if (error) {
+  //   return (
+  //     <div className="flex justify-between bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+  //       <p>{error}</p>
+  //       <p onClick={() => setError('')} className="cursor-pointer">x</p>
+  //     </div>
+  //   );
+  // }
 
-  if (isLoading) {
-    return (
-      <div className="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded mb-4">
-        <p>Loading chart data...</p>
-      </div>
-    );
-  }
+  // Event handlers
+  const handleResetGroup = useCallback((): void => {
+    setDimensions(null);
+  }, []);
+
+  const handleCloseModal = useCallback((): void => {
+    setIsGroupModalOpen(false);
+  }, []);
+
+  const handleOpenModal = useCallback((): void => {
+    setIsGroupModalOpen(true);
+  }, []);
+
+  const handleDismissError = useCallback((): void => {
+    setError(null);
+  }, []);
 
   return (
     <section className="p-8 bg-gray-50">
@@ -243,89 +229,128 @@ const EChartsPage = () => {
         Financial Dashboard ECharts
       </h1>
 
-      {!drillDown.active && (
-        <>
-          <GroupModal
-            isOpen={isGroupModalOpen}
-            onClose={() => setIsGroupModalOpen(false)}
-            onCreateGroup={handleCreateGroup}
-          />
-          <div className="flex flex-col mb-4">
-            {dimensions?.groupName && <p className="text-sm text-gray-500">Current Group Name: <span className="capitalize font-bold">{dimensions.groupName}</span></p>}
-            <div className="flex gap-2">
-              <button onClick={() => setDimensions(null)} className="shadow-xl border bg-red-400 p-2 rounded text-white hover:bg-red-500">Reset Group</button>
-              <button onClick={() => setIsGroupModalOpen(true)} className="shadow-xl border bg-blue-400 p-2 rounded text-white hover:bg-blue-500">Create Group</button>
-              <button onClick={fetchAllChartDataHanlde} className="shadow-xl border bg-green-400 p-2 rounded text-white hover:bg-green-500">Refresh Data</button>
-            </div>
-          </div>
-        </>
-      )}
-
-      {drillDown.active ? (
-        <DrillDownChart
-          drillDownState={drillDown}
-          drillDownData={drillDownData}
-          onBack={resetDrillDown}
-          chartRef={drillDownChartRef}
-        />
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <ChartContainer
-            title="Revenue Trends with Cross Chart Filter"
-            onExportCSV={() => exportToCSV(lineChartData)}
-            onExportPNG={() => exportToPNG(lineChartRef)}
+      <GroupModal
+        isOpen={isGroupModalOpen}
+        onClose={handleCloseModal}
+        // @ts-ignore
+        onCreateGroup={handleCreateGroup}
+      />
+      <div className="flex flex-col mb-4">
+        {dimensions?.groupName && (
+          <p className="text-sm text-gray-500">
+            Current Group Name: <span className="capitalize font-bold">{dimensions.groupName}</span>
+          </p>
+        )}
+        <div className="flex gap-2">
+          <ActionButton
+            onClick={handleResetGroup}
+            className="bg-red-400 hover:bg-red-500"
+            disabled={isLoading}
           >
-            <LineChartComponent
-              data={lineChartData}
-              onDrillDown={(period, value, dataType) => handleDrillDown('line', period, value, dataType)}
-              chartRef={lineChartRef}
-              setDimensions={setDimensions}
-            />
-          </ChartContainer>
+            Reset Group
+          </ActionButton>
 
-          <ChartContainer
-            title="Revenue vs Expenses"
-            onExportCSV={() => exportToCSV(barChartData)}
-            onExportPNG={() => exportToPNG(barChartRef)}
+          <ActionButton
+            onClick={handleOpenModal}
+            className="bg-blue-400 hover:bg-blue-500"
+            disabled={isLoading}
           >
-            <BarChartComponent
-              data={barChartData}
-              onDrillDown={(period, value, dataType) => handleDrillDown('bar', period, value, dataType)}
-              chartRef={barChartRef}
-            />
-          </ChartContainer>
+            Create Group
+          </ActionButton>
 
-          <ChartContainer
-            title="Financial Distribution"
-            onExportCSV={() => exportToCSV(pieChartData)}
-            onExportPNG={() => exportToPNG(pieChartRef)}
+          <ActionButton
+            onClick={fetchAllChartDataHanlde}
+            className="bg-green-400 hover:bg-green-500"
+            disabled={isLoading}
           >
-            <PieChartComponent
-              data={pieChartData}
-              onDrillDown={(category, value) => handleDrillDown('pie', category, value, 'revenue')}
-              chartRef={pieChartRef}
-            />
-          </ChartContainer>
-
-          <ChartContainer
-            title="Revenue by Category"
-            onExportCSV={() => exportToCSV(donutChartData)}
-            onExportPNG={() => exportToPNG(donutChartRef)}
-          >
-            <DonutChartComponent
-              data={donutChartData}
-              onDrillDown={(category, value) => handleDrillDown('donut', category, value, 'revenue')}
-              chartRef={donutChartRef}
-            />
-          </ChartContainer>
+            {isLoading ? 'Loading...' : 'Refresh Data'}
+          </ActionButton>
         </div>
-      )}
+      </div>
 
-      {!drillDown.active && (
-        <p className="col-span-1 md:col-span-2 text-sm text-gray-500 text-center mt-4">
-          <i>Click on any chart element to drill down into more detailed data</i>
-        </p>
-      )}
+      {error && (<ErrorAlert message={error} onDismiss={handleDismissError} />)}
+
+      <ReusableChartDrawer
+        isOpen={isOpen}
+        drillDownState={drillDownState}
+        onBack={closeDrawer}
+        isLoading={isLoading}
+        showBackButton={true}
+        showCloseButton={true}
+      >
+        {drillDownData.length > 0 && (
+          <DrillDownChart
+            drillDownState={drillDownState}
+            drillDownData={drillDownData}
+            onBack={closeDrawer}
+            chartRef={drillDownChartRef}
+          />
+        )}
+      </ReusableChartDrawer>
+
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <ChartContainer
+          isLoading={isLoading}
+          hasData={lineChartData.length}
+          title="Revenue Trends with Cross Chart Filter"
+          onExportCSV={() => exportToCSV(lineChartData)}
+          onExportPNG={() => exportToPNG(lineChartRef)}
+        >
+          <LineChartComponent
+            data={lineChartData}
+            onDrillDown={(period, value, dataType) => handleDrillDown('line', period, value, dataType)}
+            chartRef={lineChartRef}
+            setDimensions={setDimensions}
+          />
+        </ChartContainer>
+
+        <ChartContainer
+          isLoading={isLoading}
+          hasData={barChartData.length}
+          title="Revenue vs Expenses"
+          onExportCSV={() => exportToCSV(barChartData)}
+          onExportPNG={() => exportToPNG(barChartRef)}
+        >
+          <BarChartComponent
+            data={barChartData}
+            onDrillDown={(period, value, dataType) => handleDrillDown('bar', period, value, dataType)}
+            chartRef={barChartRef}
+          />
+        </ChartContainer>
+
+        <ChartContainer
+          isLoading={isLoading}
+          hasData={pieChartData.length}
+          title="Financial Distribution"
+          onExportCSV={() => exportToCSV(pieChartData)}
+          onExportPNG={() => exportToPNG(pieChartRef)}
+        >
+          <PieChartComponent
+            data={pieChartData}
+            onDrillDown={(category, value) => handleDrillDown('pie', category, value, 'revenue')}
+            chartRef={pieChartRef}
+          />
+        </ChartContainer>
+
+        <ChartContainer
+          isLoading={isLoading}
+          hasData={donutChartData.length}
+          title="Revenue by Category"
+          onExportCSV={() => exportToCSV(donutChartData)}
+          onExportPNG={() => exportToPNG(donutChartRef)}
+        >
+          <DonutChartComponent
+            data={donutChartData}
+            onDrillDown={(category, value) => handleDrillDown('donut', category, value, 'revenue')}
+            chartRef={donutChartRef}
+          />
+        </ChartContainer>
+      </div>
+
+      <p className="col-span-1 md:col-span-2 text-sm text-gray-500 text-center mt-4">
+        <i>Click on any chart element to drill down into more detailed data</i>
+      </p>
     </section>
   );
 };
@@ -333,40 +358,49 @@ const EChartsPage = () => {
 export default EChartsPage;
 
 // Chart container component
-const ChartContainer: React.FC<ChartContainerProps> = ({ title, children, onExportCSV, onExportPNG, isDrilled, onBack }) => (
-  <div className="bg-white p-6 rounded-lg shadow-md">
-    <div className="flex justify-between items-center mb-4">
-      <div className="flex items-center">
-        <h2 className="text-xl font-semibold">{title}</h2>
-        {isDrilled && (
-          <button
-            onClick={onBack}
-            className="ml-3 px-2 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-sm"
-          >
-            ↩ Back
-          </button>
-        )}
-      </div>
-      <div className="flex space-x-2">
-        {onExportPNG && (
-          <button
-            onClick={onExportPNG}
-            className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
-          >
-            PNG
-          </button>
-        )}
-        {onExportCSV && (
-          <button
-            onClick={onExportCSV}
-            className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
-          >
-            CSV
-          </button>
-        )}
-      </div>
+const ChartContainer: React.FC<ChartContainerProps> = ({ title, children, onExportCSV, onExportPNG, isDrilled, onBack, hasData, isLoading }) => (
+
+  <div className="bg-white p-6 rounded-lg shadow-lg border border-gray-100 hover:shadow-xl transition-shadow duration-200">
+    <div className="flex items-center justify-between mb-4">
+      <h3 className="text-lg font-semibold text-gray-800">{title}</h3>
+      {isLoading && (
+        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
+      )}
     </div>
-    <div className="h-64">{children}</div>
+    {hasData ? (
+      <>
+        <div className="flex justify-between items-center mb-2">
+          <div className="flex items-center">
+
+            {isDrilled && (
+              <button
+                onClick={onBack}
+                className="ml-3 px-2 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-sm"
+              >
+                ↩ Back
+              </button>
+            )}
+          </div>
+          <div className="flex space-x-2">
+            {onExportPNG && <button
+              onClick={onExportPNG}
+              className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
+            >
+              PNG
+            </button>}
+            {onExportCSV && <button
+              onClick={onExportCSV}
+              className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
+            >
+              CSV
+            </button>}
+          </div>
+        </div>
+        <div className="h-64">{children}</div>
+      </>
+    ) : (
+      <ChartSkelten />
+    )}
   </div>
 );
 
@@ -395,7 +429,7 @@ const exportToPNG = (chartRef: any) => {
 
 // Drill Down Chart Component
 const DrillDownChart: React.FC<{
-  drillDownState: DrillDownState;
+  drillDownState: any;
   drillDownData: any[];
   onBack: () => void;
   chartRef: React.RefObject<any>;
@@ -514,23 +548,12 @@ const DrillDownChart: React.FC<{
 
   return (
     <div className="mb-4">
-      <ChartContainer
-        title={title}
-        isDrilled={true}
-        onBack={onBack}
-        // @ts-ignore
-        onExportCSV={() => exportToCSV(drillDownData)}
-        onExportPNG={() => exportToPNG(chartRef)}
-      >
-        <ReactECharts
-          option={option}
-          style={{ height: '100%' }}
-          ref={chartRef}
-        />
-      </ChartContainer>
-      <p className="mt-2 text-sm text-gray-500 text-center">
-        <i>Click any data point for further drill-down, or use the back button to return</i>
-      </p>
+      <ReactECharts
+        option={option}
+        style={{ height: '400px', width: '100%' }} // Set explicit height
+        ref={chartRef}
+      />
+
     </div>
   );
 };
@@ -611,7 +634,7 @@ const LineChartComponent = ({
     if (event?.event?.ctrlKey || event?.event?.metaKey) {
       onDrillDown(name, value, dataType);
     } else {
-       // @ts-ignore
+      // @ts-ignore
       setDimensions(handleCrossChartFilteringFunc(name));
     }
 

@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { ResponsiveBar } from "@nivo/bar";
 import { ResponsivePie } from "@nivo/pie";
 import { ResponsiveLine } from "@nivo/line";
@@ -12,6 +12,11 @@ import {
 // Types
 import { Dimensions } from "@/types/Schemas";
 import { buildRequestBody, handleCrossChartFilteringFunc } from "@/lib/services/buildWhereClause";
+import { ActionButton } from "@/components/ui/action-button";
+import { ErrorAlert } from "@/components/ui/status-alerts";
+import { ChartSkelten } from "@/components/ui/ChartSkelten";
+
+import ReusableChartDrawer, { useChartDrawer } from "@/components/ChartDrawer";
 
 // Core data types
 interface ChartDataPoint {
@@ -27,12 +32,6 @@ interface ChartDataPoint {
   [key: string]: any;
 }
 
-interface DrillDownState {
-  active: boolean;
-  chartType: string;
-  category: string;
-  title: string;
-}
 
 interface LineChartPoint {
   x: string;
@@ -51,6 +50,7 @@ interface ChartContainerProps {
   isDrilled?: boolean;
   onBack?: () => void;
   onExport?: () => void;
+  isLoading?: boolean;
 }
 
 // Chart Container Component
@@ -60,8 +60,10 @@ const ChartContainer: React.FC<ChartContainerProps> = ({
   data,
   isDrilled,
   onBack,
-  onExport
+  onExport,
+  isLoading = false,
 }) => {
+  const hasData = data && data.length > 0;
   // Export to CSV function
   const exportToCSV = () => {
     if (!data || !data.length) {
@@ -112,27 +114,50 @@ const ChartContainer: React.FC<ChartContainerProps> = ({
   };
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md">
-      <div className="flex justify-between items-center mb-4">
-        <div className="flex items-center">
-          <h2 className="text-xl font-semibold">{title}</h2>
-          {isDrilled && onBack && (
-            <button
-              onClick={onBack}
-              className="ml-3 px-2 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-sm"
-            >
-              ↩ Back
-            </button>
-          )}
-        </div>
-        <button
-          onClick={onExport || exportToCSV}
-          className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
-        >
-          Export CSV
-        </button>
+    <div className="bg-white p-6 rounded-lg shadow-lg border border-gray-100 hover:shadow-xl transition-shadow duration-200">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold text-gray-800">{title}</h3>
+        {isLoading && (
+          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
+        )}
       </div>
-      <div>{children}</div>
+      {hasData ? (
+        <>
+          <div className="flex justify-between items-center mb-2">
+            <div className="flex items-center">
+
+              {isDrilled && (
+                <button
+                  onClick={onBack}
+                  className="ml-3 px-2 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-sm"
+                >
+                  ↩ Back
+                </button>
+              )}
+            </div>
+            <div className="flex space-x-2">
+              {/* <button
+                        onClick={handleDownloadImage}
+                        className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
+                      >
+                        PNG
+                      </button> */}
+              <button
+                onClick={onExport || exportToCSV}
+                className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
+              >
+                CSV
+              </button>
+            </div>
+          </div>
+          <div>
+            {children}
+          </div>
+        </>
+      ) : (
+        <ChartSkelten />
+      )}
+
     </div>
   );
 };
@@ -170,25 +195,7 @@ export default function NivoChartsPage() {
   });
 
   // Drill down states
-  const [drillDown, setDrillDown] = useState<DrillDownState>({
-    active: false,
-    chartType: "",
-    category: "",
-    title: ""
-  });
-
-  const [drillDownData, setDrillDownData] = useState<ChartDataPoint[]>([]);
-
-  // Reset drill down
-  const resetDrillDown = () => {
-    setDrillDown({
-      active: false,
-      chartType: "",
-      category: "",
-      title: ""
-    });
-    setDrillDownData([]);
-  };
+  const { drillDownState, openDrawer, closeDrawer, isOpen } = useChartDrawer();
 
   const handleCreateGroup = (datas: any) => {
     setDimensions(datas);
@@ -301,17 +308,18 @@ export default function NivoChartsPage() {
         const drillData = result.data;
         const title = result.title || `${dataType} Breakdown for ${category}`;
 
-        setDrillDownData(drillData);
+        // Update raw data for export
         setRawData(prev => ({
           ...prev,
           drillDown: drillData
         }));
 
-        setDrillDown({
-          active: true,
+        // Open drawer instead of setting drill down state
+        openDrawer({
           chartType,
           category,
-          title
+          title,
+          dataType
         });
       } else {
         setError("No data available for this selection");
@@ -326,16 +334,16 @@ export default function NivoChartsPage() {
 
   // Render drill down visualization based on data structure
   const renderDrillDown = () => {
-    if (!drillDownData.length) return null;
+    if (!rawData.drillDown.length) return null;
 
-    const firstDataPoint = drillDownData[0];
+    const firstDataPoint = rawData.drillDown[0];
     const dataKeys = firstDataPoint ? Object.keys(firstDataPoint) : [];
 
     if (dataKeys.includes('catfinancialview') || dataKeys.includes('catFinancialView')) {
       return (
         <div style={{ height: "400px" }}>
           <ResponsiveBar
-            data={drillDownData.map((item) => ({
+            data={rawData.drillDown.map((item) => ({
               category: item.catfinancialview || item.catFinancialView || 'Unknown',
               value: Math.round(Number(item.value || item.revenue || 0))
             }))}
@@ -363,7 +371,7 @@ export default function NivoChartsPage() {
           <ResponsiveLine
             data={[{
               id: "Value",
-              data: drillDownData.map((d) => ({
+              data: rawData.drillDown.map((d) => ({
                 x: d.period,
                 y: Number(d.value || d.revenue || 0),
               }))
@@ -401,7 +409,7 @@ export default function NivoChartsPage() {
       return (
         <div style={{ height: "400px" }}>
           <ResponsivePie
-            data={drillDownData.map((item) => ({
+            data={rawData.drillDown.map((item) => ({
               id: item[labelKey] || 'Unknown',
               label: item[labelKey] || 'Unknown',
               value: Math.round(Number(item.value || item.revenue || 0))
@@ -431,9 +439,21 @@ export default function NivoChartsPage() {
     fetchAllChartDataHanlde();
   }, [dimensions]);
 
-  if (isLoading && !lineChartData.length && !barChartData.length && !pieChartData.length && !donutChartData.length) {
-    return <div className="p-8 text-center">Loading financial data...</div>;
-  }
+  const handleResetGroup = useCallback((): void => {
+    setDimensions(null);
+  }, []);
+
+  const handleCloseModal = useCallback((): void => {
+    setIsGroupModalOpen(false);
+  }, []);
+
+  const handleOpenModal = useCallback((): void => {
+    setIsGroupModalOpen(true);
+  }, []);
+
+  const handleDismissError = useCallback((): void => {
+    setError(null);
+  }, []);
 
   return (
     <section className="p-8 bg-gray-50">
@@ -441,7 +461,8 @@ export default function NivoChartsPage() {
 
       <GroupModal
         isOpen={isGroupModalOpen}
-        onClose={() => setIsGroupModalOpen(false)}
+        onClose={handleCloseModal}
+        // @ts-ignore
         onCreateGroup={handleCreateGroup}
       />
 
@@ -452,275 +473,263 @@ export default function NivoChartsPage() {
           </p>
         )}
         <div className="flex gap-2">
-          <button
-            onClick={() => setDimensions(null)}
-            className="shadow-xl border bg-red-400 p-2 rounded text-white hover:bg-red-500"
+          <ActionButton
+            onClick={handleResetGroup}
+            className="bg-red-400 hover:bg-red-500"
+            disabled={isLoading}
           >
             Reset Group
-          </button>
-          <button
-            onClick={() => setIsGroupModalOpen(true)}
-            className="shadow-xl border bg-blue-400 p-2 rounded text-white hover:bg-blue-500"
+          </ActionButton>
+
+          <ActionButton
+            onClick={handleOpenModal}
+            className="bg-blue-400 hover:bg-blue-500"
+            disabled={isLoading}
           >
             Create Group
-          </button>
-          <button
+          </ActionButton>
+
+          <ActionButton
             onClick={fetchAllChartDataHanlde}
-            className="shadow-xl border bg-green-400 p-2 rounded text-white hover:bg-green-500"
+            className="bg-green-400 hover:bg-green-500"
+            disabled={isLoading}
           >
-            Refresh Data
-          </button>
+            {isLoading ? 'Loading...' : 'Refresh Data'}
+          </ActionButton>
         </div>
       </div>
 
-      {error && (
-        <div className="flex justify-between bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          <p>{error}</p>
-          <p onClick={() => setError('')} className="cursor-pointer">x</p>
-        </div>
-      )}
+      {error && (<ErrorAlert message={error} onDismiss={handleDismissError} />)}
 
-      {isLoading && (
-        <div className="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded mb-4">
-          <p>Loading chart data...</p>
-        </div>
-      )}
+      <ReusableChartDrawer
+        isOpen={isOpen}
+        drillDownState={drillDownState}
+        onBack={closeDrawer}
+        isLoading={isLoading}
+        showBackButton={true}
+        showCloseButton={true}
+      >
+        {renderDrillDown()}
+      </ReusableChartDrawer>
 
-      {drillDown.active ? (
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <ChartContainer
-          title={drillDown.title}
-          isDrilled={true}
-          onBack={resetDrillDown}
-          data={rawData.drillDown}
+          isLoading={isLoading}
+          title="Revenue Trends Over Time with Cross Chart Filter"
+          data={rawData.line}
         >
-          {renderDrillDown()}
-        </ChartContainer>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {lineChartData.length > 0 && (
-            <ChartContainer
-              title="Revenue Trends Over Time with Cross Chart Filter"
-              data={rawData.line}
-            >
-              <div style={{ height: "400px" }}>
-                <ResponsiveLine
-                  data={lineChartData}
-                  margin={{ top: 50, right: 110, bottom: 50, left: 60 }}
-                  xScale={{ type: "point" }}
-                  yScale={{
-                    type: "linear",
-                    min: "auto",
-                    max: "auto",
-                    stacked: false,
-                    reverse: false,
-                  }}
-                  axisBottom={{
-                    legend: "Period",
-                    legendOffset: 36,
-                    legendPosition: "middle",
-                  }}
-                  axisLeft={{
-                    legend: "Amount",
-                    legendOffset: -40,
-                    legendPosition: "middle",
-                  }}
-                  colors={{ scheme: "nivo" }}
-                  pointSize={10}
-                  pointColor={{ theme: "background" }}
-                  pointBorderWidth={2}
-                  pointBorderColor={{ from: "serieColor" }}
-                  useMesh={true}
-                  onClick={(point, event) => {
-                    if (point.data) {
-                      if (event.ctrlKey || event.metaKey) {
-                        handleDrillDown('line', point.data.x as string, point.data.y, point.serieId as string);
-                      } else {
-                        // @ts-ignore
-                        setDimensions(handleCrossChartFilteringFunc(point.data.x));
-                      }
-                    }
-                  }}
-                  legends={[
-                    {
-                      anchor: "bottom-right",
-                      direction: "column",
-                      justify: false,
-                      translateX: 100,
-                      translateY: 0,
-                      itemsSpacing: 0,
-                      itemDirection: "left-to-right",
-                      itemWidth: 80,
-                      itemHeight: 20,
-                      itemOpacity: 0.75,
-                      symbolSize: 12,
-                      symbolShape: "circle",
-                      toggleSerie: true,
-                      // onClick: (datum) => alert(datum.label),
-
-                    }
-                  ]}
-                />
-              </div>
-            </ChartContainer>
-          )}
-
-          {barChartData.length > 0 && (
-            <ChartContainer
-              title="Revenue vs Expenses"
-              data={rawData.bar}
-            >
-              <div style={{ height: "400px" }}>
-                <ResponsiveBar
-                  data={barChartData.map((item) => ({
-                    period: item.period || 'Unknown',
-                    revenue: Math.round(Number(item.revenue || 0)),
-                    expenses: Math.round(Number(item.expenses || 0)),
-                  }))}
-                  keys={["revenue", "expenses"]}
-                  indexBy="period"
-                  margin={{ top: 50, right: 130, bottom: 50, left: 60 }}
-                  padding={0.3}
-                  groupMode="grouped"
-                  colors={{ scheme: "paired" }}
-                  axisBottom={{
-                    legend: "Period",
-                    legendOffset: 36,
-                    // legendPosition: "middle",
-                  }}
-                  axisLeft={{
-                    legend: "Amount",
-                    legendOffset: -40,
-                    // legendPosition: "middle",
-                  }}
-                  onClick={(data) => {
+          <div style={{ height: "400px" }}>
+            <ResponsiveLine
+              data={lineChartData}
+              margin={{ top: 50, right: 110, bottom: 50, left: 60 }}
+              xScale={{ type: "point" }}
+              yScale={{
+                type: "linear",
+                min: "auto",
+                max: "auto",
+                stacked: false,
+                reverse: false,
+              }}
+              axisBottom={{
+                legend: "Period",
+                legendOffset: 36,
+                legendPosition: "middle",
+              }}
+              axisLeft={{
+                legend: "Amount",
+                legendOffset: -40,
+                legendPosition: "middle",
+              }}
+              colors={{ scheme: "nivo" }}
+              pointSize={10}
+              pointColor={{ theme: "background" }}
+              pointBorderWidth={2}
+              pointBorderColor={{ from: "serieColor" }}
+              useMesh={true}
+              onClick={(point, event) => {
+                if (point.data) {
+                  if (event.ctrlKey || event.metaKey) {
+                    handleDrillDown('line', point.data.x as string, point.data.y, point.serieId as string);
+                  } else {
                     // @ts-ignore
-                    handleDrillDown('bar', data.data.period, data.data[data.id], data.id);
-                  }}
-                  legends={[
-                    {
-                      dataFrom: "keys",
-                      anchor: "bottom-right",
-                      direction: "column",
-                      justify: false,
-                      translateX: 120,
-                      translateY: 0,
-                      itemsSpacing: 2,
-                      itemWidth: 100,
-                      itemHeight: 20,
-                      itemDirection: "left-to-right",
-                      itemOpacity: 0.85,
-                      symbolSize: 20,
-                      toggleSerie: true,
-                    }
-                  ]}
-                />
-              </div>
-            </ChartContainer>
-          )}
+                    setDimensions(handleCrossChartFilteringFunc(point.data.x));
+                  }
+                }
+              }}
+              legends={[
+                {
+                  anchor: "bottom-right",
+                  direction: "column",
+                  justify: false,
+                  translateX: 100,
+                  translateY: 0,
+                  itemsSpacing: 0,
+                  itemDirection: "left-to-right",
+                  itemWidth: 80,
+                  itemHeight: 20,
+                  itemOpacity: 0.75,
+                  symbolSize: 12,
+                  symbolShape: "circle",
+                  toggleSerie: true,
+                  // onClick: (datum) => alert(datum.label),
 
-          {pieChartData.length > 0 && (
-            <ChartContainer
-              title="Financial Distribution"
-              data={rawData.pie}
-            >
-              <div style={{ height: "400px" }}>
-                <ResponsivePie
-                  data={pieChartData}
-                  margin={{ top: 40, right: 80, bottom: 80, left: 80 }}
-                  innerRadius={0}
-                  padAngle={0.7}
-                  cornerRadius={3}
-                  colors={{ scheme: "category10" }}
-                  activeOuterRadiusOffset={8}
-                  borderWidth={1}
-                  borderColor={{ from: "color", modifiers: [["darker", 0.2]] }}
-                  arcLinkLabelsSkipAngle={10}
-                  arcLinkLabelsTextColor="#333333"
-                  arcLinkLabelsThickness={2}
-                  arcLinkLabelsColor={{ from: "color" }}
-                  arcLabelsSkipAngle={10}
-                  arcLabelsTextColor={{ from: "color", modifiers: [["darker", 2]] }}
-                  onClick={(data) => {
-                    handleDrillDown('pie', data.id as string, data.value, 'revenue');
-                  }}
-                  legends={[
-                    {
-                      anchor: "bottom",
-                      direction: "row",
-                      justify: false,
-                      translateX: 0,
-                      translateY: 56,
-                      itemsSpacing: 0,
-                      itemWidth: 100,
-                      itemHeight: 18,
-                      itemTextColor: "#999",
-                      itemDirection: "left-to-right",
-                      itemOpacity: 1,
-                      symbolSize: 18,
-                      symbolShape: "circle",
-                      toggleSerie: true,
-                    }
-                  ]}
-                />
-              </div>
-            </ChartContainer>
-          )}
+                }
+              ]}
+            />
+          </div>
+        </ChartContainer>
 
-          {donutChartData.length > 0 && (
-            <ChartContainer
-              title="Revenue by Category"
-              data={rawData.donut}
-            >
-              <div style={{ height: "400px" }}>
-                <ResponsivePie
-                  data={donutChartData}
-                  margin={{ top: 40, right: 80, bottom: 80, left: 80 }}
-                  innerRadius={0.5}  // This creates the donut effect
-                  padAngle={0.7}
-                  cornerRadius={3}
-                  colors={{ scheme: "nivo" }}
-                  activeOuterRadiusOffset={8}
-                  borderWidth={1}
-                  borderColor={{ from: "color", modifiers: [["darker", 0.2]] }}
-                  arcLinkLabelsSkipAngle={10}
-                  arcLinkLabelsTextColor="#333333"
-                  arcLinkLabelsThickness={2}
-                  arcLinkLabelsColor={{ from: "color" }}
-                  arcLabelsSkipAngle={10}
-                  arcLabelsTextColor={{ from: "color", modifiers: [["darker", 2]] }}
-                  onClick={(data) => {
-                    handleDrillDown('donut', data.label as string, data.value, 'revenue');
-                  }}
-                  legends={[
-                    {
-                      anchor: "bottom",
-                      direction: "row",
-                      justify: false,
-                      translateX: 0,
-                      translateY: 56,
-                      itemsSpacing: 0,
-                      itemWidth: 100,
-                      itemHeight: 18,
-                      itemTextColor: "#999",
-                      itemDirection: "left-to-right",
-                      itemOpacity: 1,
-                      symbolSize: 18,
-                      symbolShape: "circle",
-                      toggleSerie: true,
-                    }
-                  ]}
-                />
-              </div>
-            </ChartContainer>
-          )}
-        </div>
-      )}
+        <ChartContainer
+          isLoading={isLoading}
+          title="Revenue vs Expenses"
+          data={rawData.bar}
+        >
+          <div style={{ height: "400px" }}>
+            <ResponsiveBar
+              data={barChartData.map((item) => ({
+                period: item.period || 'Unknown',
+                revenue: Math.round(Number(item.revenue || 0)),
+                expenses: Math.round(Number(item.expenses || 0)),
+              }))}
+              keys={["revenue", "expenses"]}
+              indexBy="period"
+              margin={{ top: 50, right: 130, bottom: 50, left: 60 }}
+              padding={0.3}
+              groupMode="grouped"
+              colors={{ scheme: "paired" }}
+              axisBottom={{
+                legend: "Period",
+                legendOffset: 36,
+                // legendPosition: "middle",
+              }}
+              axisLeft={{
+                legend: "Amount",
+                legendOffset: -40,
+                // legendPosition: "middle",
+              }}
+              onClick={(data) => {
+                // @ts-ignore
+                handleDrillDown('bar', data.data.period, data.data[data.id], data.id);
+              }}
+              legends={[
+                {
+                  dataFrom: "keys",
+                  anchor: "bottom-right",
+                  direction: "column",
+                  justify: false,
+                  translateX: 120,
+                  translateY: 0,
+                  itemsSpacing: 2,
+                  itemWidth: 100,
+                  itemHeight: 20,
+                  itemDirection: "left-to-right",
+                  itemOpacity: 0.85,
+                  symbolSize: 20,
+                  toggleSerie: true,
+                }
+              ]}
+            />
+          </div>
+        </ChartContainer>
 
-      {!drillDown.active && (
-        <p className="mt-4 text-center text-sm text-gray-500">
-          <i>Click on any chart element to drill down into more detailed data</i>
-        </p>
-      )}
+        <ChartContainer
+          isLoading={isLoading}
+          title="Financial Distribution"
+          data={rawData.pie}
+        >
+          <div style={{ height: "400px" }}>
+            <ResponsivePie
+              data={pieChartData}
+              margin={{ top: 40, right: 80, bottom: 80, left: 80 }}
+              innerRadius={0}
+              padAngle={0.7}
+              cornerRadius={3}
+              colors={{ scheme: "category10" }}
+              activeOuterRadiusOffset={8}
+              borderWidth={1}
+              borderColor={{ from: "color", modifiers: [["darker", 0.2]] }}
+              arcLinkLabelsSkipAngle={10}
+              arcLinkLabelsTextColor="#333333"
+              arcLinkLabelsThickness={2}
+              arcLinkLabelsColor={{ from: "color" }}
+              arcLabelsSkipAngle={10}
+              arcLabelsTextColor={{ from: "color", modifiers: [["darker", 2]] }}
+              onClick={(data) => {
+                handleDrillDown('pie', data.id as string, data.value, 'revenue');
+              }}
+              legends={[
+                {
+                  anchor: "bottom",
+                  direction: "row",
+                  justify: false,
+                  translateX: 0,
+                  translateY: 56,
+                  itemsSpacing: 0,
+                  itemWidth: 100,
+                  itemHeight: 18,
+                  itemTextColor: "#999",
+                  itemDirection: "left-to-right",
+                  itemOpacity: 1,
+                  symbolSize: 18,
+                  symbolShape: "circle",
+                  toggleSerie: true,
+                }
+              ]}
+            />
+          </div>
+        </ChartContainer>
+
+        <ChartContainer
+          isLoading={isLoading}
+          title="Revenue by Category"
+          data={rawData.donut}
+        >
+          <div style={{ height: "400px" }}>
+            <ResponsivePie
+              data={donutChartData}
+              margin={{ top: 40, right: 80, bottom: 80, left: 80 }}
+              innerRadius={0.5}  // This creates the donut effect
+              padAngle={0.7}
+              cornerRadius={3}
+              colors={{ scheme: "nivo" }}
+              activeOuterRadiusOffset={8}
+              borderWidth={1}
+              borderColor={{ from: "color", modifiers: [["darker", 0.2]] }}
+              arcLinkLabelsSkipAngle={10}
+              arcLinkLabelsTextColor="#333333"
+              arcLinkLabelsThickness={2}
+              arcLinkLabelsColor={{ from: "color" }}
+              arcLabelsSkipAngle={10}
+              arcLabelsTextColor={{ from: "color", modifiers: [["darker", 2]] }}
+              onClick={(data) => {
+                handleDrillDown('donut', data.label as string, data.value, 'revenue');
+              }}
+              legends={[
+                {
+                  anchor: "bottom",
+                  direction: "row",
+                  justify: false,
+                  translateX: 0,
+                  translateY: 56,
+                  itemsSpacing: 0,
+                  itemWidth: 100,
+                  itemHeight: 18,
+                  itemTextColor: "#999",
+                  itemDirection: "left-to-right",
+                  itemOpacity: 1,
+                  symbolSize: 18,
+                  symbolShape: "circle",
+                  toggleSerie: true,
+                }
+              ]}
+            />
+          </div>
+        </ChartContainer>
+      </div>
+
+      <p className="mt-4 text-center text-sm text-gray-500">
+        <i>Click on any chart element to drill down into more detailed data</i>
+      </p>
     </section>
   );
 }
