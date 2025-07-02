@@ -58,10 +58,10 @@ interface ChartType {
 }
 
 interface ChartConfig {
-    measures: ChartAttribute[];
-    dimensions: ChartAttribute[];
+    chart: ChartAttribute[];
+    filters: ChartAttribute[];
     groupBy?: string;
-    filters: Record<string, string[]>;
+    filterValues: Record<string, string[]>;
 }
 
 interface ChartConfigurations {
@@ -77,10 +77,10 @@ interface DraggableAttributeProps {
 interface ChartDropZoneProps {
     chartType: ChartType;
     config: ChartConfig;
-    onAttributeDrop: (chartType: string, attribute: ChartAttribute, dropZone: 'measures' | 'dimensions') => void;
-    onAttributeRemove: (chartType: string, attributeKey: string, attributeType: 'measure' | 'dimension') => void;
-    onGroupByChange: (chartType: string, dimensionKey: string | undefined) => void;
-    onFilterChange: (chartType: string, dimension: string, values: string[]) => void;
+    onAttributeDrop: (chartType: 'line' | 'bar', attribute: ChartAttribute, dropZone: 'chart' | 'filters') => void;
+    onAttributeRemove: (chartType: 'line' | 'bar', attributeKey: string, attributeType: 'chart' | 'filters') => void;
+    onGroupByChange: (chartType: 'line' | 'bar', dimensionKey: string | undefined) => void;
+    onFilterChange: (chartType: 'line' | 'bar', dimension: string, values: string[]) => void;
     data: FinancialData[];
 }
 
@@ -273,31 +273,31 @@ const ChartDropZone: React.FC<ChartDropZoneProps> = ({
     onFilterChange,
     data
 }) => {
-    const [isDragOverMeasures, setIsDragOverMeasures] = useState<boolean>(false);
-    const [isDragOverDimensions, setIsDragOverDimensions] = useState<boolean>(false);
+    const [isDragOverChart, setIsDragOverChart] = useState<boolean>(false);
+    const [isDragOverFilters, setIsDragOverFilters] = useState<boolean>(false);
 
-    const handleDragOver = (e: React.DragEvent<HTMLDivElement>, zone: 'measures' | 'dimensions'): void => {
+    const handleDragOver = (e: React.DragEvent<HTMLDivElement>, zone: 'chart' | 'filters'): void => {
         e.preventDefault();
         e.dataTransfer.dropEffect = 'copy';
-        if (zone === 'measures') {
-            setIsDragOverMeasures(true);
+        if (zone === 'chart') {
+            setIsDragOverChart(true);
         } else {
-            setIsDragOverDimensions(true);
+            setIsDragOverFilters(true);
         }
     };
 
-    const handleDragLeave = (zone: 'measures' | 'dimensions'): void => {
-        if (zone === 'measures') {
-            setIsDragOverMeasures(false);
+    const handleDragLeave = (zone: 'chart' | 'filters'): void => {
+        if (zone === 'chart') {
+            setIsDragOverChart(false);
         } else {
-            setIsDragOverDimensions(false);
+            setIsDragOverFilters(false);
         }
     };
 
-    const handleDrop = (e: React.DragEvent<HTMLDivElement>, zone: 'measures' | 'dimensions'): void => {
+    const handleDrop = (e: React.DragEvent<HTMLDivElement>, zone: 'chart' | 'filters'): void => {
         e.preventDefault();
-        setIsDragOverMeasures(false);
-        setIsDragOverDimensions(false);
+        setIsDragOverChart(false);
+        setIsDragOverFilters(false);
 
         try {
             const attributeData: ChartAttribute = JSON.parse(e.dataTransfer.getData('text/plain'));
@@ -312,7 +312,7 @@ const ChartDropZone: React.FC<ChartDropZoneProps> = ({
         let filteredData = data;
 
         // Apply filters
-        Object.entries(config.filters).forEach(([dimension, values]) => {
+        Object.entries(config.filterValues).forEach(([dimension, values]) => {
             if (values.length > 0) {
                 filteredData = filteredData.filter(item =>
                     values.includes((item as any)[dimension]?.toString())
@@ -321,7 +321,7 @@ const ChartDropZone: React.FC<ChartDropZoneProps> = ({
         });
 
         return filteredData;
-    }, [data, config.filters]);
+    }, [data, config.filterValues]);
 
     // Get unique values for dimension filters
     const getDimensionValues = (dimensionKey: string) => {
@@ -329,13 +329,16 @@ const ChartDropZone: React.FC<ChartDropZoneProps> = ({
     };
 
     const chartOptions: AgChartOptions = useMemo(() => {
-        if (config.measures.length === 0) {
+        const chartMeasures = config.chart.filter(attr => attr.type === 'measure');
+        const chartDimensions = config.chart.filter(attr => attr.type === 'dimension');
+
+        if (chartMeasures.length === 0) {
             return {};
         }
 
-        const series = config.measures.map(measure => ({
+        const series = chartMeasures.map(measure => ({
             type: chartType.key,
-            xKey: config.groupBy || 'period',
+            xKey: config.groupBy || (chartDimensions[0]?.key || 'period'),
             yKey: measure.key,
             yName: measure.label,
             stroke: measure.color,
@@ -351,7 +354,11 @@ const ChartDropZone: React.FC<ChartDropZoneProps> = ({
                 {
                     type: 'category',
                     position: 'bottom',
-                    title: { text: config.groupBy ? availableDimensions.find(d => d.key === config.groupBy)?.label || 'Group' : 'Period' },
+                    title: {
+                        text: config.groupBy ?
+                            [...availableDimensions, ...availableMeasures].find(d => d.key === config.groupBy)?.label || 'Group' :
+                            'Period'
+                    },
                     label: { rotation: -45 }
                 },
                 {
@@ -380,33 +387,42 @@ const ChartDropZone: React.FC<ChartDropZoneProps> = ({
             {/* Configuration Area */}
             <div className="p-4 bg-gray-50 border-b">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    {/* Measures Drop Zone */}
+                    {/* Chart Configuration Drop Zone */}
                     <div
-                        className={`border-2 border-dashed rounded-lg p-3 transition-all duration-200 ${isDragOverMeasures ? 'border-blue-400 bg-blue-50' : 'border-blue-200 bg-blue-25'
+                        className={`border-2 border-dashed rounded-lg p-3 transition-all duration-200 ${isDragOverChart ? 'border-blue-400 bg-blue-50' : 'border-blue-200 bg-blue-25'
                             }`}
-                        onDragOver={(e) => handleDragOver(e, 'measures')}
-                        onDragLeave={() => handleDragLeave('measures')}
-                        onDrop={(e) => handleDrop(e, 'measures')}
+                        onDragOver={(e) => handleDragOver(e, 'chart')}
+                        onDragLeave={() => handleDragLeave('chart')}
+                        onDrop={(e) => handleDrop(e, 'chart')}
                     >
                         <div className="flex items-center gap-2 mb-2">
-                            <DollarSign size={16} className="text-blue-600" />
-                            <span className="font-medium text-blue-800">Measures</span>
+                            {getIcon(getChartSectionLayout(chartType.key).icon, 16)}
+                            <span className="font-medium text-blue-800">
+                                {getChartSectionLayout(chartType.key).title}
+                            </span>
                         </div>
+                        <p className="text-xs text-gray-600 mb-2">
+                            {getChartSectionLayout(chartType.key).subtitle}
+                        </p>
                         <div className="flex flex-wrap gap-2">
-                            {config.measures.length === 0 ? (
-                                <span className="text-sm text-gray-500">Drag measures here</span>
+                            {config.chart.length === 0 ? (
+                                <span className="text-sm text-gray-500">Drag fields here for visualization</span>
                             ) : (
-                                config.measures.map((measure) => (
+                                config.chart.map((attribute) => (
                                     <div
-                                        key={measure.key}
+                                        key={attribute.key}
                                         className="flex items-center gap-1 px-2 py-1 bg-white rounded-md border text-xs"
                                     >
-                                        <div style={{ color: measure.color }}>
-                                            {getIcon(measure.iconName, 12)}
+                                        <div style={{ color: attribute.color }}>
+                                            {getIcon(attribute.iconName, 12)}
                                         </div>
-                                        <span>{measure.label}</span>
+                                        <span>{attribute.label}</span>
+                                        <span className={`text-xs px-1 py-0.5 rounded-full ${attribute.type === 'measure' ? 'bg-blue-100 text-blue-600' : 'bg-purple-100 text-purple-600'
+                                            }`}>
+                                            {attribute.type === 'measure' ? 'M' : 'D'}
+                                        </span>
                                         <button
-                                            onClick={() => onAttributeRemove(chartType.key, measure.key, 'measure')}
+                                            onClick={() => onAttributeRemove(chartType.key, attribute.key, 'chart')}
                                             className="ml-1 text-gray-400 hover:text-red-500"
                                         >
                                             <X size={12} />
@@ -417,33 +433,40 @@ const ChartDropZone: React.FC<ChartDropZoneProps> = ({
                         </div>
                     </div>
 
-                    {/* Dimensions Drop Zone */}
+                    {/* Filter Configuration Drop Zone */}
                     <div
-                        className={`border-2 border-dashed rounded-lg p-3 transition-all duration-200 ${isDragOverDimensions ? 'border-purple-400 bg-purple-50' : 'border-purple-200 bg-purple-25'
+                        className={`border-2 border-dashed rounded-lg p-3 transition-all duration-200 ${isDragOverFilters ? 'border-purple-400 bg-purple-50' : 'border-purple-200 bg-purple-25'
                             }`}
-                        onDragOver={(e) => handleDragOver(e, 'dimensions')}
-                        onDragLeave={() => handleDragLeave('dimensions')}
-                        onDrop={(e) => handleDrop(e, 'dimensions')}
+                        onDragOver={(e) => handleDragOver(e, 'filters')}
+                        onDragLeave={() => handleDragLeave('filters')}
+                        onDrop={(e) => handleDrop(e, 'filters')}
                     >
                         <div className="flex items-center gap-2 mb-2">
                             <Filter size={16} className="text-purple-600" />
-                            <span className="font-medium text-purple-800">Dimensions</span>
+                            <span className="font-medium text-purple-800">Filters</span>
                         </div>
+                        <p className="text-xs text-gray-600 mb-2">
+                            Fields for filtering data
+                        </p>
                         <div className="flex flex-wrap gap-2">
-                            {config.dimensions.length === 0 ? (
-                                <span className="text-sm text-gray-500">Drag dimensions here</span>
+                            {config.filters.length === 0 ? (
+                                <span className="text-sm text-gray-500">Drag fields here for filtering</span>
                             ) : (
-                                config.dimensions.map((dimension) => (
+                                config.filters.map((attribute) => (
                                     <div
-                                        key={dimension.key}
+                                        key={attribute.key}
                                         className="flex items-center gap-1 px-2 py-1 bg-white rounded-md border text-xs"
                                     >
-                                        <div style={{ color: dimension.color }}>
-                                            {getIcon(dimension.iconName, 12)}
+                                        <div style={{ color: attribute.color }}>
+                                            {getIcon(attribute.iconName, 12)}
                                         </div>
-                                        <span>{dimension.label}</span>
+                                        <span>{attribute.label}</span>
+                                        <span className={`text-xs px-1 py-0.5 rounded-full ${attribute.type === 'measure' ? 'bg-blue-100 text-blue-600' : 'bg-purple-100 text-purple-600'
+                                            }`}>
+                                            {attribute.type === 'measure' ? 'M' : 'D'}
+                                        </span>
                                         <button
-                                            onClick={() => onAttributeRemove(chartType.key, dimension.key, 'dimension')}
+                                            onClick={() => onAttributeRemove(chartType.key, attribute.key, 'filters')}
                                             className="ml-1 text-gray-400 hover:text-red-500"
                                         >
                                             <X size={12} />
@@ -455,41 +478,43 @@ const ChartDropZone: React.FC<ChartDropZoneProps> = ({
                     </div>
                 </div>
 
-                {/* Group By and Filters */}
-                {config.dimensions.length > 0 && (
+                {/* Group By and Filter Values */}
+                {config.filters.length > 0 && (
                     <div className="mt-4 space-y-3">
-                        {/* Group By Selection */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Group By:</label>
-                            <select
-                                value={config.groupBy || ''}
-                                onChange={(e) => onGroupByChange(chartType.key, e.target.value || undefined)}
-                                className="px-3 py-2 border border-gray-300 rounded-md text-sm"
-                            >
-                                <option value="">Select dimension...</option>
-                                {config.dimensions.map((dim) => (
-                                    <option key={dim.key} value={dim.key}>{dim.label}</option>
-                                ))}
-                            </select>
-                        </div>
+                        {/* Group By Selection - only show dimensions from chart area */}
+                        {config.chart.filter(attr => attr.type === 'dimension').length > 0 && (
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Group By:</label>
+                                <select
+                                    value={config.groupBy || ''}
+                                    onChange={(e) => onGroupByChange(chartType.key, e.target.value || undefined)}
+                                    className="px-3 py-2 border border-gray-300 rounded-md text-sm"
+                                >
+                                    <option value="">Select dimension...</option>
+                                    {config.chart.filter(attr => attr.type === 'dimension').map((dim) => (
+                                        <option key={dim.key} value={dim.key}>{dim.label}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
 
-                        {/* Filters */}
+                        {/* Filter Values */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                            {config.dimensions.map((dimension) => (
-                                <div key={dimension.key}>
+                            {config.filters.map((attribute) => (
+                                <div key={attribute.key}>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Filter by {dimension.label}:
+                                        Filter by {attribute.label}:
                                     </label>
                                     <select
                                         multiple
-                                        value={config.filters[dimension.key] || []}
+                                        value={config.filterValues[attribute.key] || []}
                                         onChange={(e) => {
                                             const selectedValues = Array.from(e.target.selectedOptions, option => option.value);
-                                            onFilterChange(chartType.key, dimension.key, selectedValues);
+                                            onFilterChange(chartType.key, attribute.key, selectedValues);
                                         }}
                                         className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm h-20"
                                     >
-                                        {getDimensionValues(dimension.key).map((value) => (
+                                        {getDimensionValues(attribute.key).map((value) => (
                                             <option key={value} value={value}>{value}</option>
                                         ))}
                                     </select>
@@ -502,11 +527,11 @@ const ChartDropZone: React.FC<ChartDropZoneProps> = ({
 
             {/* Chart Area */}
             <div className="h-96">
-                {config.measures.length === 0 ? (
+                {config.chart.filter(attr => attr.type === 'measure').length === 0 ? (
                     <div className="flex items-center justify-center h-full text-gray-500">
                         <div className="text-center">
                             <BarChart3 size={48} className="mx-auto mb-2 opacity-50" />
-                            <p className="text-sm">Add measures and dimensions to create a chart</p>
+                            <p className="text-sm">Add measures to chart area to create visualization</p>
                         </div>
                     </div>
                 ) : (
@@ -525,16 +550,17 @@ const ChartDropZone: React.FC<ChartDropZoneProps> = ({
 const EnhancedDashboard: React.FC = () => {
     const [chartConfigurations, setChartConfigurations] = useState<ChartConfigurations>({
         line: {
-            measures: [],
-            dimensions: [],
-            filters: {}
+            chart: [],
+            filters: [],
+            filterValues: {}
         },
         bar: {
-            measures: [],
-            dimensions: [],
-            filters: {}
+            chart: [],
+            filters: [],
+            filterValues: {}
         }
     });
+
     const [mobileConfig, setMobileConfig] = useState<{
         selectedMeasures: Set<string>;
         selectedDimensions: Set<string>;
@@ -546,52 +572,46 @@ const EnhancedDashboard: React.FC = () => {
         filters: {}
     });
 
-    const handleAttributeDrop = (chartType: string, attribute: ChartAttribute, dropZone: 'measures' | 'dimensions'): void => {
-        if ((dropZone === 'measures' && attribute.type !== 'measure') ||
-            (dropZone === 'dimensions' && attribute.type !== 'dimension')) {
-            return; // Prevent dropping wrong type
-        }
-
+    const handleAttributeDrop = (chartType: 'line' | 'bar', attribute: ChartAttribute, dropZone: 'chart' | 'filters'): void => {
         setChartConfigurations(prev => ({
             ...prev,
             [chartType]: {
-                ...prev[chartType as keyof ChartConfigurations],
+                ...prev[chartType],
                 [dropZone]: [
-                    ...prev[chartType as keyof ChartConfigurations][dropZone].filter(attr => attr.key !== attribute.key),
+                    ...prev[chartType][dropZone].filter(attr => attr.key !== attribute.key),
                     attribute
                 ]
             }
         }));
     };
 
-    const handleAttributeRemove = (chartType: string, attributeKey: string, attributeType: 'measure' | 'dimension'): void => {
-        const arrayKey = attributeType === 'measure' ? 'measures' : 'dimensions';
+    const handleAttributeRemove = (chartType: 'line' | 'bar', attributeKey: string, attributeType: 'chart' | 'filters'): void => {
         setChartConfigurations(prev => ({
             ...prev,
             [chartType]: {
-                ...prev[chartType as keyof ChartConfigurations],
-                [arrayKey]: prev[chartType as keyof ChartConfigurations][arrayKey].filter(attr => attr.key !== attributeKey)
+                ...prev[chartType],
+                [attributeType]: prev[chartType][attributeType].filter(attr => attr.key !== attributeKey)
             }
         }));
     };
 
-    const handleGroupByChange = (chartType: string, dimensionKey: string | undefined): void => {
+    const handleGroupByChange = (chartType: 'line' | 'bar', dimensionKey: string | undefined): void => {
         setChartConfigurations(prev => ({
             ...prev,
             [chartType]: {
-                ...prev[chartType as keyof ChartConfigurations],
+                ...prev[chartType],
                 groupBy: dimensionKey
             }
         }));
     };
 
-    const handleFilterChange = (chartType: string, dimension: string, values: string[]): void => {
+    const handleFilterChange = (chartType: 'line' | 'bar', dimension: string, values: string[]): void => {
         setChartConfigurations(prev => ({
             ...prev,
             [chartType]: {
-                ...prev[chartType as keyof ChartConfigurations],
-                filters: {
-                    ...prev[chartType as keyof ChartConfigurations].filters,
+                ...prev[chartType],
+                filterValues: {
+                    ...prev[chartType].filterValues,
                     [dimension]: values
                 }
             }
@@ -600,10 +620,10 @@ const EnhancedDashboard: React.FC = () => {
 
     const usedAttributeKeys = useMemo<Set<string>>(() => {
         return new Set([
-            ...chartConfigurations.line.measures.map(attr => attr.key),
-            ...chartConfigurations.line.dimensions.map(attr => attr.key),
-            ...chartConfigurations.bar.measures.map(attr => attr.key),
-            ...chartConfigurations.bar.dimensions.map(attr => attr.key)
+            ...chartConfigurations.line.chart.map(attr => attr.key),
+            ...chartConfigurations.line.filters.map(attr => attr.key),
+            ...chartConfigurations.bar.chart.map(attr => attr.key),
+            ...chartConfigurations.bar.filters.map(attr => attr.key)
         ]);
     }, [chartConfigurations]);
 
@@ -655,15 +675,15 @@ const EnhancedDashboard: React.FC = () => {
                         Create interactive charts with measures and dimensions
                     </p>
                 </div>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 bg-white rounded-xl shadow-lg p-6 mb-5">
+                <div className="grid grid-cols-1 lg:grid-cols-1 gap-6 bg-white rounded-xl shadow-lg p-6 mb-5">
                     {/* Measures Section */}
                     <div className="mb-6">
                         <h3 className="font-semibold text-blue-800 mb-4 flex items-center gap-2">
                             <DollarSign size={16} />
-                            Measures
+                            Available Fields
                         </h3>
-                        <div className="grid grid-cols-2 gap-4">
-                            {availableMeasures.map((attribute) => (
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                            {[...availableMeasures, ...availableDimensions].map((attribute) => (
                                 <DraggableAttribute
                                     key={attribute.key}
                                     attribute={attribute}
@@ -674,7 +694,7 @@ const EnhancedDashboard: React.FC = () => {
                     </div>
 
                     {/* Dimensions Section */}
-                    <div className="mb-6">
+                    {/* <div className="mb-6">
                         <h3 className="font-semibold text-purple-800 mb-4 flex items-center gap-2">
                             <Filter size={16} />
                             Dimensions
@@ -688,7 +708,7 @@ const EnhancedDashboard: React.FC = () => {
                                 />
                             ))}
                         </div>
-                    </div>
+                    </div> */}
                 </div>
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                     {/* Sidebar - Available Attributes */}
@@ -734,12 +754,9 @@ const EnhancedDashboard: React.FC = () => {
                 onFilterChange={handleMobileFilterChange}
                 data={mockFinancialData}
             />
-            {/* Mobile Dashboard */}
         </div>
     );
 };
-
-export default EnhancedDashboard;
 
 interface MobileDashboardProps {
     availableMeasures: ChartAttribute[];
@@ -756,7 +773,6 @@ interface MobileDashboardProps {
     data: FinancialData[];
 }
 
-
 const MobileDashboard: React.FC<MobileDashboardProps> = ({
     availableMeasures,
     availableDimensions,
@@ -769,14 +785,12 @@ const MobileDashboard: React.FC<MobileDashboardProps> = ({
     const [isExpanded, setIsExpanded] = useState<string | null>(null);
     const [showFilters, setShowFilters] = useState(false);
 
-
     // Get selected attributes for chart
     const selectedMeasureObjects = availableMeasures.filter(m => mobileConfig.selectedMeasures.has(m.key));
     const selectedDimensionObjects = availableDimensions.filter(d => mobileConfig.selectedDimensions.has(d.key));
 
     // Auto-show chart when measures are selected
     const showChart = selectedMeasureObjects.length > 0;
-
 
     // Process data for mobile chart
     const processedData = useMemo(() => {
@@ -964,7 +978,6 @@ const MobileDashboard: React.FC<MobileDashboardProps> = ({
                             Clear All Filters
                         </button>
                     </div>
-
                 </div>
             )}
 
@@ -1004,8 +1017,8 @@ const MobileDashboard: React.FC<MobileDashboardProps> = ({
                                                 key={attribute.key}
                                                 onClick={() => onAttributeToggle(attribute.key, attribute.type)}
                                                 className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${isSelected
-                                                        ? 'border-blue-300 bg-blue-50'
-                                                        : 'border-gray-200 bg-white hover:border-gray-300'
+                                                    ? 'border-blue-300 bg-blue-50'
+                                                    : 'border-gray-200 bg-white hover:border-gray-300'
                                                     }`}
                                             >
                                                 <div style={{ color: attribute.color }}>
@@ -1016,8 +1029,8 @@ const MobileDashboard: React.FC<MobileDashboardProps> = ({
                                                         {attribute.label}
                                                     </span>
                                                     <span className={`text-xs px-2 py-0.5 rounded-full ${attribute.type === 'measure' ?
-                                                            'bg-blue-100 text-blue-700' :
-                                                            'bg-purple-100 text-purple-700'
+                                                        'bg-blue-100 text-blue-700' :
+                                                        'bg-purple-100 text-purple-700'
                                                         }`}>
                                                         {attribute.type}
                                                     </span>
@@ -1053,3 +1066,28 @@ const MobileDashboard: React.FC<MobileDashboardProps> = ({
         </div>
     );
 };
+
+const getChartSectionLayout = (chartType: string) => {
+    switch (chartType) {
+        case 'line':
+            return {
+                title: 'Chart Configuration',
+                subtitle: 'X-Axis (Categories) and Y-Axis (Values)',
+                icon: 'Activity'
+            };
+        case 'bar':
+            return {
+                title: 'Chart Configuration',
+                subtitle: 'Categories and Values',
+                icon: 'BarChart3'
+            };
+        default:
+            return {
+                title: 'Chart Configuration',
+                subtitle: 'Data for visualization',
+                icon: 'BarChart3'
+            };
+    }
+};
+
+export default EnhancedDashboard;
