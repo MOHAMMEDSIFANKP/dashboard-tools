@@ -1265,7 +1265,7 @@ const MobileDashboard: React.FC<MobileDashboardProps> = ({
             <h3 className="font-medium text-gray-900">Chart View</h3>
           </div>
           <div className="h-64 p-2">
-            <AgChartsReact
+            <AgCharts
               className="w-full h-full"
               options={mobileChartOptions}
             />
