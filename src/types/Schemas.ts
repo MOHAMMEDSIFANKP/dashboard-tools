@@ -113,3 +113,47 @@ export interface ApiResponse {
     donut?: ChartResponse<DonutChartData>;
   };
 }
+
+
+// Dashboard configuration interfaces
+export interface ChartAttribute {
+  key: string;
+  label: string;
+  color: string;
+  iconName: string;
+  type: 'measure' | 'dimension';
+}
+
+export interface ChartType {
+  key: 'line' | 'bar';
+  label: string;
+  iconName: string;
+}
+
+export interface ChartConfig {
+  chart: ChartAttribute[];
+  filters: ChartAttribute[];
+  groupBy?: string;
+  filterValues: Record<string, string[]>;
+}
+
+export interface ChartConfigurations {
+  line: ChartConfig;
+  bar: ChartConfig;
+}
+
+export interface DraggableAttributeProps {
+  attribute: ChartAttribute;
+  isUsed: boolean;
+}
+
+// Chart Library types
+export type ChartLibrary = 'ag-charts' | 'chart-js' | 'plotly' | 'nivo' | 'victory' | 'echarts';
+
+export interface ChartLibraryOption {
+  key: ChartLibrary;
+  label: string;
+  icon: string;
+  color: string;
+  implemented: boolean;
+}

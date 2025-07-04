@@ -1,3 +1,4 @@
+// src\store\slices\counterSlice.ts
 import { createSlice } from "@reduxjs/toolkit";
 
 interface CounterState {

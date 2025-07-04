@@ -1,5 +1,6 @@
 'use client';
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import {
   Banknote,
   TrendingUp,
@@ -44,7 +45,30 @@ import { Line, Bar as ChartJSBar } from "react-chartjs-2";
 
 // Plotly imports
 import Plot from 'react-plotly.js';
-import dynamic from 'next/dynamic';
+// Nivo imports
+import { ResponsiveBar } from "@nivo/bar";
+import { ResponsiveLine } from '@nivo/line';
+// Victory imports
+import {
+  VictoryChart,
+  VictoryLine,
+  VictoryTheme,
+  VictoryLegend,
+  VictoryGroup,
+  VictoryBar,
+  VictoryAxis,
+  VictoryPie,
+  VictoryTooltip,
+  VictoryScatter,
+} from "victory";
+// ECharts imports
+import ReactECharts from "echarts-for-react";
+
+import { ChartAttribute, ChartType, ChartConfig, ChartConfigurations, DraggableAttributeProps, ChartLibrary } from '@/types/Schemas';
+// Redux imports
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState } from '@/store/store';
+import { setChartConfigurations, setSelectedLibrary, updateChartConfig } from '@/store/slices/dashboardSlice';
 
 // Dynamically import Plotly to avoid SSR issues
 const Plotly = dynamic(() => import('react-plotly.js'), { ssr: false });
@@ -81,40 +105,6 @@ interface FinancialData {
   continent: string;
 }
 
-interface ChartAttribute {
-  key: string;
-  label: string;
-  color: string;
-  iconName: string;
-  type: 'measure' | 'dimension';
-}
-
-interface ChartType {
-  key: 'line' | 'bar';
-  label: string;
-  iconName: string;
-}
-
-interface ChartConfig {
-  chart: ChartAttribute[];
-  filters: ChartAttribute[];
-  groupBy?: string;
-  filterValues: Record<string, string[]>;
-}
-
-interface ChartConfigurations {
-  line: ChartConfig;
-  bar: ChartConfig;
-}
-
-interface DraggableAttributeProps {
-  attribute: ChartAttribute;
-  isUsed: boolean;
-}
-
-// Chart Library types
-type ChartLibrary = 'ag-charts' | 'chart-js' | 'plotly' | 'nivo' | 'victory' | 'echarts';
-
 interface ChartLibraryOption {
   key: ChartLibrary;
   label: string;
@@ -128,9 +118,9 @@ const chartLibraryOptions: ChartLibraryOption[] = [
   { key: 'ag-charts', label: 'AG Charts', icon: 'BarChart3', color: '#3B82F6', implemented: true },
   { key: 'chart-js', label: 'Chart.js', icon: 'Activity', color: '#10B981', implemented: true },
   { key: 'plotly', label: 'Plotly', icon: 'TrendingUp', color: '#8B5CF6', implemented: true },
-  { key: 'nivo', label: 'Nivo Charts', icon: 'BarChart3', color: '#F59E0B', implemented: false },
-  { key: 'victory', label: 'Victory Charts', icon: 'Target', color: '#EF4444', implemented: false },
-  { key: 'echarts', label: 'ECharts', icon: 'Activity', color: '#06B6D4', implemented: false }
+  { key: 'nivo', label: 'Nivo Charts', icon: 'BarChart3', color: '#F59E0B', implemented: true },
+  { key: 'victory', label: 'Victory Charts', icon: 'Target', color: '#EF4444', implemented: true },
+  { key: 'echarts', label: 'ECharts', icon: 'Activity', color: '#06B6D4', implemented: true }
 ];
 
 // Mock data for demonstration
@@ -245,7 +235,7 @@ const availableDimensions: ChartAttribute[] = [
 // Chart types
 const chartTypes: ChartType[] = [
   { key: 'line', label: 'Line Chart', iconName: 'Activity' },
-//   { key: 'bar', label: 'Bar Chart', iconName: 'BarChart3' },
+  // { key: 'bar', label: 'Bar Chart', iconName: 'BarChart3' },
 ];
 
 // Icon mapper function
@@ -292,13 +282,12 @@ const ChartLibraryTabs: React.FC<{
             key={library.key}
             onClick={() => library.implemented && onLibraryChange(library.key)}
             disabled={!library.implemented}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              selectedLibrary === library.key
-                ? 'bg-blue-600 text-white shadow-md'
-                : library.implemented
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${selectedLibrary === library.key
+              ? 'bg-blue-600 text-white shadow-md'
+              : library.implemented
                 ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 : 'bg-gray-50 text-gray-400 cursor-not-allowed'
-            }`}
+              }`}
           >
             {getIcon(library.icon, 16)}
             <span>{library.label}</span>
@@ -354,25 +343,46 @@ const ChartRenderer: React.FC<{
 
   switch (library) {
     case 'ag-charts':
-      return <AGChartsRenderer 
-        chartType={chartType} 
-        measures={chartMeasures} 
-        xKey={xKey} 
-        data={processedData} 
+      return <AGChartsRenderer
+        chartType={chartType}
+        measures={chartMeasures}
+        xKey={xKey}
+        data={processedData}
       />;
     case 'chart-js':
-      return <ChartJSRenderer 
-        chartType={chartType} 
-        measures={chartMeasures} 
-        xKey={xKey} 
-        data={processedData} 
+      return <ChartJSRenderer
+        chartType={chartType}
+        measures={chartMeasures}
+        xKey={xKey}
+        data={processedData}
       />;
     case 'plotly':
-      return <PlotlyRenderer 
-        chartType={chartType} 
-        measures={chartMeasures} 
-        xKey={xKey} 
-        data={processedData} 
+      return <PlotlyRenderer
+        chartType={chartType}
+        measures={chartMeasures}
+        xKey={xKey}
+        data={processedData}
+      />;
+    case 'nivo':
+      return <NivoRenderer
+        chartType={chartType}
+        measures={chartMeasures}
+        xKey={xKey}
+        data={processedData}
+      />;
+    case 'victory':
+      return <VictoryRenderer
+        chartType={chartType}
+        measures={chartMeasures}
+        xKey={xKey}
+        data={processedData}
+      />;
+    case 'echarts':
+      return <EChartsRenderer
+        chartType={chartType}
+        measures={chartMeasures}
+        xKey={xKey}
+        data={processedData}
       />;
     default:
       return <div className="text-center text-gray-500">Chart library not implemented yet</div>;
@@ -394,7 +404,7 @@ const AGChartsRenderer: React.FC<{
       yName: measure.label,
       stroke: measure.color,
       fill: measure.color,
-      tooltip: { 
+      tooltip: {
         renderer: (params: any) => {
           return `<div class="p-2 bg-white border border-gray-200 rounded shadow">
             <div class="font-semibold">${params.xValue}</div>
@@ -424,8 +434,8 @@ const AGChartsRenderer: React.FC<{
           }
         },
       ],
-      legend: { 
-        enabled: true, 
+      legend: {
+        enabled: true,
         position: 'bottom',
         item: {
           marker: {
@@ -455,7 +465,7 @@ const ChartJSRenderer: React.FC<{
 }> = ({ chartType, measures, xKey, data }) => {
   const chartData: ChartData<'line' | 'bar'> = useMemo(() => {
     const labels = [...new Set(data.map(item => (item as any)[xKey]?.toString()))].sort();
-    
+
     const datasets = measures.map(measure => ({
       label: measure.label,
       data: labels.map(label => {
@@ -517,7 +527,7 @@ const ChartJSRenderer: React.FC<{
           callback: (value) => formatCurrency(Number(value)),
         },
         grid: {
-            //@ts-ignore
+          //@ts-ignore
           drawBorder: false,
           color: '#E5E7EB'
         }
@@ -535,7 +545,7 @@ const ChartJSRenderer: React.FC<{
   return (
     <div className="w-full h-full p-4">
       <ChartComponent
-      //@ts-ignore
+        //@ts-ignore
         data={chartData}
         options={options}
       />
@@ -554,7 +564,7 @@ const PlotlyRenderer: React.FC<{
 
   const chartData = useMemo(() => {
     const labels = [...new Set(data.map(item => (item as any)[xKey]?.toString()))].sort();
-    
+
     return measures.map(measure => ({
       x: labels,
       y: labels.map(label => {
@@ -572,24 +582,24 @@ const PlotlyRenderer: React.FC<{
 
   const layout = useMemo(() => ({
     title: `${chartType.label} - Financial Analysis (Plotly)`,
-    xaxis: { 
+    xaxis: {
       title: xKey,
       tickangle: -45,
       automargin: true
     },
-    yaxis: { 
+    yaxis: {
       title: 'Amount ($)',
       tickprefix: '$',
       tickformat: ',.2f',
       hoverformat: '$,.2f'
     },
-    legend: { 
+    legend: {
       orientation: 'h',
       y: -0.3,
       x: 0.5,
       xanchor: 'center'
     },
-    margin: { 
+    margin: {
       t: 50,
       b: 100,
       l: 60,
@@ -627,6 +637,520 @@ const PlotlyRenderer: React.FC<{
     </div>
   );
 };
+// Nivo Renderer
+const NivoRenderer: React.FC<{
+  chartType: ChartType;
+  measures: ChartAttribute[];
+  xKey: string;
+  data: FinancialData[];
+}> = ({ chartType, measures, xKey, data }) => {
+  const chartData = useMemo(() => {
+    if (chartType.key === 'line') {
+      // For line charts, create data in Nivo line format
+      return measures.map(measure => ({
+        id: measure.label,
+        color: measure.color,
+        data: data.map(item => ({
+          x: (item as any)[xKey]?.toString(),
+          y: (item as any)[measure.key] || 0
+        }))
+      }));
+    } else {
+      // For bar charts, create data in Nivo bar format
+      const groupedData = data.reduce((acc, item) => {
+        const key = (item as any)[xKey]?.toString();
+        if (!acc[key]) {
+          acc[key] = { [xKey]: key };
+        }
+        measures.forEach(measure => {
+          acc[key][measure.key] = (item as any)[measure.key] || 0;
+        });
+        return acc;
+      }, {} as Record<string, any>);
+
+      return Object.values(groupedData);
+    }
+  }, [chartType, measures, xKey, data]);
+
+  const colors = measures.map(m => m.color);
+
+  if (chartType.key === 'line') {
+    return (
+      <div className="w-full h-full p-4">
+        <h3 className="text-lg font-semibold text-gray-800 mb-4 text-center">
+          Line Chart - Financial Analysis (Nivo)
+        </h3>
+        <div className="h-80">
+          <ResponsiveLine
+            data={chartData}
+            margin={{ top: 20, right: 110, bottom: 60, left: 80 }}
+            xScale={{ type: 'point' }}
+            yScale={{
+              type: 'linear',
+              min: 'auto',
+              max: 'auto',
+              stacked: false,
+              reverse: false
+            }}
+            yFormat={(value) => formatCurrency(Number(value))}
+            curve="cardinal"
+            axisTop={null}
+            axisRight={null}
+            axisBottom={{
+              // orient: 'bottom',
+              tickSize: 5,
+              tickPadding: 5,
+              tickRotation: -45,
+              legend: xKey,
+              legendOffset: 50,
+              legendPosition: 'middle'
+            }}
+            axisLeft={{
+              // orient: 'left',
+              tickSize: 5,
+              tickPadding: 5,
+              tickRotation: 0,
+              legend: 'Amount ($)',
+              legendOffset: -60,
+              legendPosition: 'middle',
+              format: (value) => formatCurrency(Number(value))
+            }}
+            pointSize={8}
+            pointColor={{ theme: 'background' }}
+            pointBorderWidth={2}
+            pointBorderColor={{ from: 'serieColor' }}
+            pointLabelYOffset={-12}
+            useMesh={true}
+            legends={[
+              {
+                anchor: 'bottom-right',
+                direction: 'column',
+                justify: false,
+                translateX: 100,
+                translateY: 0,
+                itemsSpacing: 0,
+                itemDirection: 'left-to-right',
+                itemWidth: 80,
+                itemHeight: 20,
+                itemOpacity: 0.75,
+                symbolSize: 12,
+                symbolShape: 'circle',
+                symbolBorderColor: 'rgba(0, 0, 0, .5)',
+                effects: [
+                  {
+                    on: 'hover',
+                    style: {
+                      itemBackground: 'rgba(0, 0, 0, .03)',
+                      itemOpacity: 1
+                    }
+                  }
+                ]
+              }
+            ]}
+            colors={colors}
+            tooltip={({ point }) => (
+              <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-md">
+                <div className="font-semibold text-gray-800">{point.data.xFormatted}</div>
+                <div className="text-sm" style={{ color: point.serieColor }}>
+                  {point.serieId}: {formatCurrency(Number(point.data.yFormatted))}
+                </div>
+              </div>
+            )}
+          />
+        </div>
+      </div>
+    );
+  } else {
+    return (
+      <div className="w-full h-full p-4">
+        <h3 className="text-lg font-semibold text-gray-800 mb-4 text-center">
+          Bar Chart - Financial Analysis (Nivo)
+        </h3>
+        <div className="h-80">
+          <ResponsiveBar
+            data={chartData}
+            keys={measures.map(m => m.key)}
+            indexBy={xKey}
+            margin={{ top: 20, right: 110, bottom: 60, left: 80 }}
+            padding={0.3}
+            valueScale={{ type: 'linear' }}
+            indexScale={{ type: 'band', round: true }}
+            colors={colors}
+            defs={[
+              {
+                id: 'dots',
+                type: 'patternDots',
+                background: 'inherit',
+                color: '#38bcb2',
+                size: 4,
+                padding: 1,
+                stagger: true
+              }
+            ]}
+            borderColor={{
+              from: 'color',
+              modifiers: [['darker', 1.6]]
+            }}
+            axisTop={null}
+            axisRight={null}
+            axisBottom={{
+              tickSize: 5,
+              tickPadding: 5,
+              tickRotation: -45,
+              legend: xKey,
+              legendPosition: 'middle',
+              legendOffset: 50
+            }}
+            axisLeft={{
+              tickSize: 5,
+              tickPadding: 5,
+              tickRotation: 0,
+              legend: 'Amount ($)',
+              legendPosition: 'middle',
+              legendOffset: -60,
+              format: (value) => formatCurrency(Number(value))
+            }}
+            labelSkipWidth={12}
+            labelSkipHeight={12}
+            labelTextColor={{
+              from: 'color',
+              modifiers: [['darker', 1.6]]
+            }}
+            legends={[
+              {
+                dataFrom: 'keys',
+                anchor: 'bottom-right',
+                direction: 'column',
+                justify: false,
+                translateX: 100,
+                translateY: 0,
+                itemsSpacing: 2,
+                itemWidth: 80,
+                itemHeight: 20,
+                itemDirection: 'left-to-right',
+                itemOpacity: 0.85,
+                symbolSize: 20,
+                effects: [
+                  {
+                    on: 'hover',
+                    style: {
+                      itemOpacity: 1
+                    }
+                  }
+                ]
+              }
+            ]}
+            role="application"
+            ariaLabel="Financial data bar chart"
+            barAriaLabel={(e) => `${e.id}: ${formatCurrency(Number(e.value))} for ${e.indexValue}`}
+            tooltip={({ id, value, indexValue }) => (
+              <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-md">
+                <div className="font-semibold text-gray-800">{indexValue}</div>
+                <div className="text-sm">
+                  {measures.find(m => m.key === id)?.label}: {formatCurrency(Number(value))}
+                </div>
+              </div>
+            )}
+          />
+        </div>
+      </div>
+    );
+  }
+};
+
+const VictoryRenderer: React.FC<{
+  chartType: ChartType;
+  measures: ChartAttribute[];
+  xKey: string;
+  data: FinancialData[];
+}> = ({ chartType, measures, xKey, data }) => {
+  const chartData = useMemo(() => {
+    if (chartType.key === 'line') {
+      return measures.map(measure => ({
+        name: measure.label,
+        color: measure.color,
+        data: data.map(item => ({
+          x: (item as any)[xKey]?.toString(),
+          y: (item as any)[measure.key] || 0
+        }))
+      }));
+    } else {
+      return data.map(item => {
+        const result: any = { x: (item as any)[xKey]?.toString() };
+        measures.forEach(measure => {
+          result[measure.key] = (item as any)[measure.key] || 0;
+        });
+        return result;
+      });
+    }
+  }, [chartType, measures, xKey, data]);
+
+  if (chartType.key === 'line') {
+    return (
+      <div className="w-full h-full p-4">
+        <h3 className="text-lg font-semibold text-gray-800 mb-4 text-center">
+          Line Chart - Financial Analysis (Victory)
+        </h3>
+        <div className="h-80">
+          <VictoryChart
+            theme={VictoryTheme.material}
+            width={800}
+            height={400}
+            padding={{ left: 80, top: 20, right: 80, bottom: 60 }}
+          >
+            <VictoryAxis
+              dependentAxis
+              tickFormat={(value) => formatCurrency(Number(value))}
+              style={{
+                tickLabels: { fontSize: 12, padding: 5 }
+              }}
+            />
+            <VictoryAxis
+              style={{
+                tickLabels: { fontSize: 12, padding: 5, angle: -45 }
+              }}
+            />
+            <VictoryGroup>
+              {chartData.map((series, index) => (
+                <VictoryLine
+                  key={series.name}
+                  data={series.data}
+                  style={{
+                    data: { stroke: series.color, strokeWidth: 2 }
+                  }}
+                  animate={{
+                    duration: 1000,
+                    onLoad: { duration: 500 }
+                  }}
+                />
+              ))}
+            </VictoryGroup>
+            <VictoryLegend
+              x={600}
+              y={50}
+              orientation="vertical"
+              gutter={20}
+              style={{ border: { stroke: "black", strokeWidth: 2 }, title: { fontSize: 20 } }}
+              data={chartData.map(series => ({
+                name: series.name,
+                symbol: { fill: series.color }
+              }))}
+            />
+          </VictoryChart>
+        </div>
+      </div>
+    );
+  } else {
+    return (
+      <div className="w-full h-full p-4">
+        <h3 className="text-lg font-semibold text-gray-800 mb-4 text-center">
+          Bar Chart - Financial Analysis (Victory)
+        </h3>
+        <div className="h-80">
+          <VictoryChart
+            theme={VictoryTheme.material}
+            width={800}
+            height={400}
+            padding={{ left: 80, top: 20, right: 80, bottom: 60 }}
+          >
+            <VictoryAxis
+              dependentAxis
+              tickFormat={(value) => formatCurrency(Number(value))}
+              style={{
+                tickLabels: { fontSize: 12, padding: 5 }
+              }}
+            />
+            <VictoryAxis
+              style={{
+                tickLabels: { fontSize: 12, padding: 5, angle: -45 }
+              }}
+            />
+            <VictoryGroup offset={20} colorScale="qualitative">
+              {measures.map((measure, index) => (
+                <VictoryBar
+                  key={measure.key}
+                  data={chartData}
+                  x="x"
+                  y={measure.key}
+                  style={{
+                    data: { fill: measure.color }
+                  }}
+                  animate={{
+                    duration: 1000,
+                    onLoad: { duration: 500 }
+                  }}
+                />
+              ))}
+            </VictoryGroup>
+            <VictoryLegend
+              x={600}
+              y={50}
+              orientation="vertical"
+              gutter={20}
+              style={{ border: { stroke: "black", strokeWidth: 2 }, title: { fontSize: 20 } }}
+              data={measures.map(measure => ({
+                name: measure.label,
+                symbol: { fill: measure.color }
+              }))}
+            />
+          </VictoryChart>
+        </div>
+      </div>
+    );
+  }
+};
+
+
+const EChartsRenderer: React.FC<{
+  chartType: ChartType;
+  measures: ChartAttribute[];
+  xKey: string;
+  data: FinancialData[];
+}> = ({ chartType, measures, xKey, data }) => {
+  const chartOptions = useMemo(() => {
+    const categories = [...new Set(data.map(item => (item as any)[xKey]?.toString()))].sort();
+
+    if (chartType.key === 'line') {
+      return {
+        title: {
+          text: 'Line Chart - Financial Analysis (ECharts)',
+          left: 'center',
+          textStyle: {
+            fontSize: 18,
+            fontWeight: 'bold',
+            color: '#1F2937'
+          }
+        },
+        tooltip: {
+          trigger: 'axis',
+          formatter: (params: any) => {
+            let result = `${params[0].axisValue}<br/>`;
+            params.forEach((param: any) => {
+              result += `${param.seriesName}: ${formatCurrency(param.value)}<br/>`;
+            });
+            return result;
+          }
+        },
+        legend: {
+          data: measures.map(m => m.label),
+          bottom: 10
+        },
+        grid: {
+          left: '3%',
+          right: '4%',
+          bottom: '15%',
+          containLabel: true
+        },
+        xAxis: {
+          type: 'category',
+          boundaryGap: false,
+          data: categories,
+          axisLabel: {
+            rotate: -45,
+            fontSize: 12
+          }
+        },
+        yAxis: {
+          type: 'value',
+          axisLabel: {
+            formatter: (value: number) => formatCurrency(value),
+            fontSize: 12
+          }
+        },
+        series: measures.map(measure => ({
+          name: measure.label,
+          type: 'line',
+          data: categories.map(category => {
+            const item = data.find(d => (d as any)[xKey]?.toString() === category);
+            return item ? (item as any)[measure.key] : 0;
+          }),
+          lineStyle: {
+            color: measure.color,
+            width: 2
+          },
+          itemStyle: {
+            color: measure.color
+          },
+          smooth: true,
+          symbol: 'circle',
+          symbolSize: 6
+        }))
+      };
+    } else {
+      return {
+        title: {
+          text: 'Bar Chart - Financial Analysis (ECharts)',
+          left: 'center',
+          textStyle: {
+            fontSize: 18,
+            fontWeight: 'bold',
+            color: '#1F2937'
+          }
+        },
+        tooltip: {
+          trigger: 'axis',
+          axisPointer: {
+            type: 'shadow'
+          },
+          formatter: (params: any) => {
+            let result = `${params[0].axisValue}<br/>`;
+            params.forEach((param: any) => {
+              result += `${param.seriesName}: ${formatCurrency(param.value)}<br/>`;
+            });
+            return result;
+          }
+        },
+        legend: {
+          data: measures.map(m => m.label),
+          bottom: 10
+        },
+        grid: {
+          left: '3%',
+          right: '4%',
+          bottom: '15%',
+          containLabel: true
+        },
+        xAxis: {
+          type: 'category',
+          data: categories,
+          axisLabel: {
+            rotate: -45,
+            fontSize: 12
+          }
+        },
+        yAxis: {
+          type: 'value',
+          axisLabel: {
+            formatter: (value: number) => formatCurrency(value),
+            fontSize: 12
+          }
+        },
+        series: measures.map(measure => ({
+          name: measure.label,
+          type: 'bar',
+          data: categories.map(category => {
+            const item = data.find(d => (d as any)[xKey]?.toString() === category);
+            return item ? (item as any)[measure.key] : 0;
+          }),
+          itemStyle: {
+            color: measure.color
+          }
+        }))
+      };
+    }
+  }, [chartType, measures, xKey, data]);
+
+  return (
+    <div className="w-full h-full p-4">
+      <ReactECharts
+        option={chartOptions}
+        style={{ height: '100%', width: '100%' }}
+        opts={{ renderer: 'canvas' }}
+      />
+    </div>
+  );
+};
+
 
 // Draggable Attribute Component
 const DraggableAttribute: React.FC<DraggableAttributeProps> = ({ attribute, isUsed }) => {
@@ -642,11 +1166,10 @@ const DraggableAttribute: React.FC<DraggableAttributeProps> = ({ attribute, isUs
     <div
       draggable={!isUsed}
       onDragStart={handleDragStart}
-      className={`flex items-center gap-2 p-3 rounded-lg border-2 border-dashed transition-all duration-200 cursor-move ${
-        isUsed
-          ? 'border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed'
-          : `${bgColor} ${hoverColor}`
-      }`}
+      className={`flex items-center gap-2 p-3 rounded-lg border-2 border-dashed transition-all duration-200 cursor-move ${isUsed
+        ? 'border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed'
+        : `${bgColor} ${hoverColor}`
+        }`}
     >
       <Grip size={16} className="text-gray-400" />
       <div style={{ color: attribute.color }}>
@@ -655,9 +1178,8 @@ const DraggableAttribute: React.FC<DraggableAttributeProps> = ({ attribute, isUs
       <span className={`text-sm font-medium ${isUsed ? 'text-gray-400' : 'text-gray-700'}`}>
         {attribute.label}
       </span>
-      <span className={`text-xs px-2 py-1 rounded-full ${
-        attribute.type === 'measure' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'
-      }`}>
+      <span className={`text-xs px-2 py-1 rounded-full ${attribute.type === 'measure' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'
+        }`}>
         {attribute.type}
       </span>
     </div>
@@ -684,232 +1206,231 @@ const ChartDropZone: React.FC<{
   data,
   selectedLibrary
 }) => {
-  const [isDragOverChart, setIsDragOverChart] = useState<boolean>(false);
-  const [isDragOverFilters, setIsDragOverFilters] = useState<boolean>(false);
+    const [isDragOverChart, setIsDragOverChart] = useState<boolean>(false);
+    const [isDragOverFilters, setIsDragOverFilters] = useState<boolean>(false);
 
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>, zone: 'chart' | 'filters'): void => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'copy';
-    if (zone === 'chart') {
-      setIsDragOverChart(true);
-    } else {
-      setIsDragOverFilters(true);
-    }
-  };
+    const handleDragOver = (e: React.DragEvent<HTMLDivElement>, zone: 'chart' | 'filters'): void => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+      if (zone === 'chart') {
+        setIsDragOverChart(true);
+      } else {
+        setIsDragOverFilters(true);
+      }
+    };
 
-  const handleDragLeave = (zone: 'chart' | 'filters'): void => {
-    if (zone === 'chart') {
+    const handleDragLeave = (zone: 'chart' | 'filters'): void => {
+      if (zone === 'chart') {
+        setIsDragOverChart(false);
+      } else {
+        setIsDragOverFilters(false);
+      }
+    };
+
+    const handleDrop = (e: React.DragEvent<HTMLDivElement>, zone: 'chart' | 'filters'): void => {
+      e.preventDefault();
       setIsDragOverChart(false);
-    } else {
       setIsDragOverFilters(false);
-    }
-  };
 
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>, zone: 'chart' | 'filters'): void => {
-    e.preventDefault();
-    setIsDragOverChart(false);
-    setIsDragOverFilters(false);
+      try {
+        const attributeData: ChartAttribute = JSON.parse(e.dataTransfer.getData('text/plain'));
+        onAttributeDrop(chartType.key, attributeData, zone);
+      } catch (error) {
+        console.error('Error parsing dropped data:', error);
+      }
+    };
 
-    try {
-      const attributeData: ChartAttribute = JSON.parse(e.dataTransfer.getData('text/plain'));
-      onAttributeDrop(chartType.key, attributeData, zone);
-    } catch (error) {
-      console.error('Error parsing dropped data:', error);
-    }
-  };
+    // Get unique values for dimension filters
+    const getDimensionValues = (dimensionKey: string) => {
+      return [...new Set(data.map(item => (item as any)[dimensionKey]?.toString()))].filter(Boolean);
+    };
 
-  // Get unique values for dimension filters
-  const getDimensionValues = (dimensionKey: string) => {
-    return [...new Set(data.map(item => (item as any)[dimensionKey]?.toString()))].filter(Boolean);
-  };
-
-  return (
-    <div className="bg-white rounded-xl shadow-lg border-2 border-gray-200 overflow-hidden">
-      {/* Chart Header */}
-      <div className="flex items-center justify-between p-4 border-b bg-gray-50">
-        <div className="flex items-center gap-2">
-          {getIcon(chartType.iconName, 16)}
-          <h3 className="font-semibold text-gray-800">{chartType.label}</h3>
-          <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded-full">
-            {chartLibraryOptions.find(lib => lib.key === selectedLibrary)?.label}
-          </span>
-        </div>
-      </div>
-
-      {/* Configuration Area */}
-      <div className="p-4 bg-gray-50 border-b">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {/* Chart Configuration Drop Zone */}
-          <div
-            className={`border-2 border-dashed rounded-lg p-3 transition-all duration-200 ${
-              isDragOverChart ? 'border-blue-400 bg-blue-50' : 'border-blue-200 bg-blue-25'
-            }`}
-            onDragOver={(e) => handleDragOver(e, 'chart')}
-            onDragLeave={() => handleDragLeave('chart')}
-            onDrop={(e) => handleDrop(e, 'chart')}
-          >
-            <div className="flex items-center gap-2 mb-2">
-              {getIcon('BarChart3', 16)}
-              <span className="font-medium text-blue-800">Chart Configuration</span>
-            </div>
-            <p className="text-xs text-gray-600 mb-2">
-              X-Axis (Categories) and Y-Axis (Values)
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {config.chart.length === 0 ? (
-                <span className="text-sm text-gray-500">Drag fields here for visualization</span>
-              ) : (
-                config.chart.map((attribute) => (
-                  <div
-                    key={attribute.key}
-                    className="flex items-center gap-1 px-2 py-1 bg-white rounded-md border text-xs"
-                  >
-                    <div style={{ color: attribute.color }}>
-                      {getIcon(attribute.iconName, 12)}
-                    </div>
-                    <span>{attribute.label}</span>
-                    <span className={`text-xs px-1 py-0.5 rounded-full ${
-                      attribute.type === 'measure' ? 'bg-blue-100 text-blue-600' : 'bg-purple-100 text-purple-600'
-                    }`}>
-                      {attribute.type === 'measure' ? 'M' : 'D'}
-                    </span>
-                    <button
-                      onClick={() => onAttributeRemove(chartType.key, attribute.key, 'chart')}
-                      className="ml-1 text-gray-400 hover:text-red-500"
-                    >
-                      <X size={12} />
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          {/* Filter Configuration Drop Zone */}
-          <div
-            className={`border-2 border-dashed rounded-lg p-3 transition-all duration-200 ${
-              isDragOverFilters ? 'border-purple-400 bg-purple-50' : 'border-purple-200 bg-purple-25'
-            }`}
-            onDragOver={(e) => handleDragOver(e, 'filters')}
-            onDragLeave={() => handleDragLeave('filters')}
-            onDrop={(e) => handleDrop(e, 'filters')}
-          >
-            <div className="flex items-center gap-2 mb-2">
-              <Filter size={16} className="text-purple-600" />
-              <span className="font-medium text-purple-800">Filters</span>
-            </div>
-            <p className="text-xs text-gray-600 mb-2">
-              Fields for filtering data
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {config.filters.length === 0 ? (
-                <span className="text-sm text-gray-500">Drag fields here for filtering</span>
-              ) : (
-                config.filters.map((attribute) => (
-                  <div
-                    key={attribute.key}
-                    className="flex items-center gap-1 px-2 py-1 bg-white rounded-md border text-xs"
-                  >
-                    <div style={{ color: attribute.color }}>
-                      {getIcon(attribute.iconName, 12)}
-                    </div>
-                    <span>{attribute.label}</span>
-                    <span className={`text-xs px-1 py-0.5 rounded-full ${
-                      attribute.type === 'measure' ? 'bg-blue-100 text-blue-600' : 'bg-purple-100 text-purple-600'
-                    }`}>
-                      {attribute.type === 'measure' ? 'M' : 'D'}
-                    </span>
-                    <button
-                      onClick={() => onAttributeRemove(chartType.key, attribute.key, 'filters')}
-                      className="ml-1 text-gray-400 hover:text-red-500"
-                    >
-                      <X size={12} />
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
+    return (
+      <div className="bg-white rounded-xl shadow-lg border-2 border-gray-200 overflow-hidden">
+        {/* Chart Header */}
+        <div className="flex items-center justify-between p-4 border-b bg-gray-50">
+          <div className="flex items-center gap-2">
+            {getIcon(chartType.iconName, 16)}
+            <h3 className="font-semibold text-gray-800">{chartType.label}</h3>
+            <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded-full">
+              {chartLibraryOptions.find(lib => lib.key === selectedLibrary)?.label}
+            </span>
           </div>
         </div>
 
-        {/* Group By and Filter Values */}
-        {(config.filters.length > 0 || config.chart.some(attr => attr.type === 'dimension')) && (
-          <div className="mt-4 space-y-3">
-            {/* Group By Selection */}
-            {config.chart.filter(attr => attr.type === 'dimension').length > 0 && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Group By:</label>
-                <select
-                  value={config.groupBy || ''}
-                  onChange={(e) => onGroupByChange(chartType.key, e.target.value || undefined)}
-                  className="px-3 py-2 border border-gray-300 rounded-md text-sm w-full"
-                >
-                  <option value="">Select dimension...</option>
-                  {config.chart.filter(attr => attr.type === 'dimension').map((dim) => (
-                    <option key={dim.key} value={dim.key}>{dim.label}</option>
+        {/* Configuration Area */}
+        <div className="p-4 bg-gray-50 border-b">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Chart Configuration Drop Zone */}
+            <div
+              className={`border-2 border-dashed rounded-lg p-3 transition-all duration-200 ${isDragOverChart ? 'border-blue-400 bg-blue-50' : 'border-blue-200 bg-blue-25'
+                }`}
+              onDragOver={(e) => handleDragOver(e, 'chart')}
+              onDragLeave={() => handleDragLeave('chart')}
+              onDrop={(e) => handleDrop(e, 'chart')}
+            >
+              <div className="flex items-center gap-2 mb-2">
+                {getIcon('BarChart3', 16)}
+                <span className="font-medium text-blue-800">Chart Configuration</span>
+              </div>
+              <p className="text-xs text-gray-600 mb-2">
+                X-Axis (Categories) and Y-Axis (Values)
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {config.chart.length === 0 ? (
+                  <span className="text-sm text-gray-500">Drag fields here for visualization</span>
+                ) : (
+                  config.chart.map((attribute) => (
+                    <div
+                      key={attribute.key}
+                      className="flex items-center gap-1 px-2 py-1 bg-white rounded-md border text-xs"
+                    >
+                      <div style={{ color: attribute.color }}>
+                        {getIcon(attribute.iconName, 12)}
+                      </div>
+                      <span>{attribute.label}</span>
+                      <span className={`text-xs px-1 py-0.5 rounded-full ${attribute.type === 'measure' ? 'bg-blue-100 text-blue-600' : 'bg-purple-100 text-purple-600'
+                        }`}>
+                        {attribute.type === 'measure' ? 'M' : 'D'}
+                      </span>
+                      <button
+                        onClick={() => onAttributeRemove(chartType.key, attribute.key, 'chart')}
+                        className="ml-1 text-gray-400 hover:text-red-500"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Filter Configuration Drop Zone */}
+            <div
+              className={`border-2 border-dashed rounded-lg p-3 transition-all duration-200 ${isDragOverFilters ? 'border-purple-400 bg-purple-50' : 'border-purple-200 bg-purple-25'
+                }`}
+              onDragOver={(e) => handleDragOver(e, 'filters')}
+              onDragLeave={() => handleDragLeave('filters')}
+              onDrop={(e) => handleDrop(e, 'filters')}
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <Filter size={16} className="text-purple-600" />
+                <span className="font-medium text-purple-800">Filters</span>
+              </div>
+              <p className="text-xs text-gray-600 mb-2">
+                Fields for filtering data
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {config.filters.length === 0 ? (
+                  <span className="text-sm text-gray-500">Drag fields here for filtering</span>
+                ) : (
+                  config.filters.map((attribute) => (
+                    <div
+                      key={attribute.key}
+                      className="flex items-center gap-1 px-2 py-1 bg-white rounded-md border text-xs"
+                    >
+                      <div style={{ color: attribute.color }}>
+                        {getIcon(attribute.iconName, 12)}
+                      </div>
+                      <span>{attribute.label}</span>
+                      <span className={`text-xs px-1 py-0.5 rounded-full ${attribute.type === 'measure' ? 'bg-blue-100 text-blue-600' : 'bg-purple-100 text-purple-600'
+                        }`}>
+                        {attribute.type === 'measure' ? 'M' : 'D'}
+                      </span>
+                      <button
+                        onClick={() => onAttributeRemove(chartType.key, attribute.key, 'filters')}
+                        className="ml-1 text-gray-400 hover:text-red-500"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Group By and Filter Values */}
+          {(config.filters.length > 0 || config.chart.some(attr => attr.type === 'dimension')) && (
+            <div className="mt-4 space-y-3">
+              {/* Group By Selection */}
+              {config.chart.filter(attr => attr.type === 'dimension').length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Group By:</label>
+                  <select
+                    value={config.groupBy || ''}
+                    onChange={(e) => onGroupByChange(chartType.key, e.target.value || undefined)}
+                    className="px-3 py-2 border border-gray-300 rounded-md text-sm w-full"
+                  >
+                    <option value="">Select dimension...</option>
+                    {config.chart.filter(attr => attr.type === 'dimension').map((dim) => (
+                      <option key={dim.key} value={dim.key}>{dim.label}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Filter Values */}
+              {config.filters.length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {config.filters.map((attribute) => (
+                    <div key={attribute.key}>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Filter by {attribute.label}:
+                      </label>
+                      <select
+                        multiple
+                        value={config.filterValues[attribute.key] || []}
+                        onChange={(e) => {
+                          const selectedValues = Array.from(e.target.selectedOptions, option => option.value);
+                          onFilterChange(chartType.key, attribute.key, selectedValues);
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm h-20"
+                      >
+                        {getDimensionValues(attribute.key).map((value) => (
+                          <option key={value} value={value}>{value}</option>
+                        ))}
+                      </select>
+                    </div>
                   ))}
-                </select>
-              </div>
-            )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
 
-            {/* Filter Values */}
-            {config.filters.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                {config.filters.map((attribute) => (
-                  <div key={attribute.key}>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Filter by {attribute.label}:
-                    </label>
-                    <select
-                      multiple
-                      value={config.filterValues[attribute.key] || []}
-                      onChange={(e) => {
-                        const selectedValues = Array.from(e.target.selectedOptions, option => option.value);
-                        onFilterChange(chartType.key, attribute.key, selectedValues);
-                      }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm h-20"
-                    >
-                      {getDimensionValues(attribute.key).map((value) => (
-                        <option key={value} value={value}>{value}</option>
-                      ))}
-                    </select>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+        {/* Chart Area */}
+        <div className="h-96">
+          <ChartRenderer
+            library={selectedLibrary}
+            chartType={chartType}
+            config={config}
+            data={data}
+          />
+        </div>
       </div>
-
-      {/* Chart Area */}
-      <div className="h-96">
-        <ChartRenderer
-          library={selectedLibrary}
-          chartType={chartType}
-          config={config}
-          data={data}
-        />
-      </div>
-    </div>
-  );
-};
+    );
+  };
 
 // Main Dashboard Component
 const EnhancedDashboard: React.FC = () => {
-  const [chartConfigurations, setChartConfigurations] = useState<ChartConfigurations>({
-    line: {
-      chart: [],
-      filters: [],
-      filterValues: {}
-    },
-    bar: {
-      chart: [],
-      filters: [],
-      filterValues: {}
-    }
-  });
+  const dispatch = useDispatch();
+  const { chartConfigurations, selectedLibrary } = useSelector((state: RootState) => state.dashboard);
 
-  const [selectedLibrary, setSelectedLibrary] = useState<ChartLibrary>('ag-charts');
+  // const [chartConfigurations, setChartConfigurations] = useState<ChartConfigurations>({
+  //   line: {
+  //     chart: [],
+  //     filters: [],
+  //     filterValues: {}
+  //   },
+  //   bar: {
+  //     chart: [],
+  //     filters: [],
+  //     filterValues: {}
+  //   }
+  // });
+
+  // const [selectedLibrary, setSelectedLibrary] = useState<ChartLibrary>('ag-charts');
   const [mobileConfig, setMobileConfig] = useState<{
     selectedMeasures: Set<string>;
     selectedDimensions: Set<string>;
@@ -921,51 +1442,93 @@ const EnhancedDashboard: React.FC = () => {
     filters: {}
   });
 
-  const handleAttributeDrop = (chartType: 'line' | 'bar', attribute: ChartAttribute, dropZone: 'chart' | 'filters'): void => {
-    setChartConfigurations(prev => ({
-      ...prev,
-      [chartType]: {
-        ...prev[chartType],
-        [dropZone]: [
-          ...prev[chartType][dropZone].filter(attr => attr.key !== attribute.key),
-          attribute
-        ]
-      }
-    }));
+  const handleAttributeDrop = (chartType: 'line' | 'bar', attribute: ChartAttribute, dropZone: 'chart' | 'filters') => {
+    const updatedConfig = {
+      ...chartConfigurations[chartType],
+      [dropZone]: [
+        ...chartConfigurations[chartType][dropZone].filter(attr => attr.key !== attribute.key),
+        attribute
+      ]
+    };
+    dispatch(updateChartConfig({ chartType, config: updatedConfig }));
   };
 
-  const handleAttributeRemove = (chartType: 'line' | 'bar', attributeKey: string, attributeType: 'chart' | 'filters'): void => {
-    setChartConfigurations(prev => ({
-      ...prev,
-      [chartType]: {
-        ...prev[chartType],
-        [attributeType]: prev[chartType][attributeType].filter(attr => attr.key !== attributeKey)
-      }
-    }));
+  const handleAttributeRemove = (chartType: 'line' | 'bar', attributeKey: string, attributeType: 'chart' | 'filters') => {
+    const updatedConfig = {
+      ...chartConfigurations[chartType],
+      [attributeType]: chartConfigurations[chartType][attributeType].filter(attr => attr.key !== attributeKey)
+    };
+    dispatch(updateChartConfig({ chartType, config: updatedConfig }));
   };
 
-  const handleGroupByChange = (chartType: 'line' | 'bar', dimensionKey: string | undefined): void => {
-    setChartConfigurations(prev => ({
-      ...prev,
-      [chartType]: {
-        ...prev[chartType],
-        groupBy: dimensionKey
-      }
-    }));
+  const handleGroupByChange = (chartType: 'line' | 'bar', dimensionKey: string | undefined) => {
+    const updatedConfig = {
+      ...chartConfigurations[chartType],
+      groupBy: dimensionKey
+    };
+    dispatch(updateChartConfig({ chartType, config: updatedConfig }));
   };
 
-  const handleFilterChange = (chartType: 'line' | 'bar', dimension: string, values: string[]): void => {
-    setChartConfigurations(prev => ({
-      ...prev,
-      [chartType]: {
-        ...prev[chartType],
-        filterValues: {
-          ...prev[chartType].filterValues,
-          [dimension]: values
-        }
+  const handleFilterChange = (chartType: 'line' | 'bar', dimension: string, values: string[]) => {
+    const updatedConfig = {
+      ...chartConfigurations[chartType],
+      filterValues: {
+        ...chartConfigurations[chartType].filterValues,
+        [dimension]: values
       }
-    }));
+    };
+    dispatch(updateChartConfig({ chartType, config: updatedConfig }));
   };
+
+  const handleLibraryChange = (library: ChartLibrary) => {
+    dispatch(setSelectedLibrary(library));
+  };
+
+  // const handleAttributeDrop = (chartType: 'line' | 'bar', attribute: ChartAttribute, dropZone: 'chart' | 'filters'): void => {
+  //   setChartConfigurations(prev => ({
+  //     ...prev,
+  //     [chartType]: {
+  //       ...prev[chartType],
+  //       [dropZone]: [
+  //         ...prev[chartType][dropZone].filter(attr => attr.key !== attribute.key),
+  //         attribute
+  //       ]
+  //     }
+  //   }));
+  // };
+
+  // const handleAttributeRemove = (chartType: 'line' | 'bar', attributeKey: string, attributeType: 'chart' | 'filters'): void => {
+  //   setChartConfigurations(prev => ({
+  //     ...prev,
+  //     [chartType]: {
+  //       ...prev[chartType],
+  //       [attributeType]: prev[chartType][attributeType].filter(attr => attr.key !== attributeKey)
+  //     }
+  //   }));
+  // };
+
+  // const handleGroupByChange = (chartType: 'line' | 'bar', dimensionKey: string | undefined): void => {
+  //   setChartConfigurations(prev => ({
+  //     ...prev,
+  //     [chartType]: {
+  //       ...prev[chartType],
+  //       groupBy: dimensionKey
+  //     }
+  //   }));
+  // };
+
+  // const handleFilterChange = (chartType: 'line' | 'bar', dimension: string, values: string[]): void => {
+  //   setChartConfigurations(prev => ({
+  //     ...prev,
+  //     [chartType]: {
+  //       ...prev[chartType],
+  //       filterValues: {
+  //         ...prev[chartType].filterValues,
+  //         [dimension]: values
+  //       }
+  //     }
+  //   }));
+  // };
 
   const usedAttributeKeys = useMemo<Set<string>>(() => {
     return new Set([
@@ -1026,9 +1589,9 @@ const EnhancedDashboard: React.FC = () => {
         </div>
 
         {/* Chart Library Selection */}
-        <ChartLibraryTabs 
+        <ChartLibraryTabs
           selectedLibrary={selectedLibrary}
-          onLibraryChange={setSelectedLibrary}
+          onLibraryChange={handleLibraryChange}
         />
 
         <div className="grid grid-cols-1 lg:grid-cols-1 gap-6 bg-white rounded-xl shadow-lg p-6 mb-5">
@@ -1162,7 +1725,7 @@ const MobileDashboard: React.FC<MobileDashboardProps> = ({
       yName: measure.label,
       stroke: measure.color,
       fill: measure.color,
-      tooltip: { 
+      tooltip: {
         renderer: (params: any) => {
           return `<div class="p-2 bg-white border border-gray-200 rounded shadow">
             <div class="font-semibold">${params.xValue}</div>
@@ -1198,8 +1761,8 @@ const MobileDashboard: React.FC<MobileDashboardProps> = ({
           }
         },
       ],
-      legend: { 
-        enabled: true, 
+      legend: {
+        enabled: true,
         position: 'bottom',
         item: {
           marker: {
@@ -1357,9 +1920,8 @@ const MobileDashboard: React.FC<MobileDashboardProps> = ({
                   <Filter size={16} className="text-purple-600" />
                 }
                 <span className="font-medium text-gray-900">{title}</span>
-                <span className={`text-xs px-2 py-1 rounded-full ${
-                  selectedCount > 0 ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'
-                }`}>
+                <span className={`text-xs px-2 py-1 rounded-full ${selectedCount > 0 ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'
+                  }`}>
                   {selectedCount}
                 </span>
               </div>
@@ -1378,11 +1940,10 @@ const MobileDashboard: React.FC<MobileDashboardProps> = ({
                       <button
                         key={attribute.key}
                         onClick={() => onAttributeToggle(attribute.key, attribute.type)}
-                        className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
-                          isSelected
-                            ? 'border-blue-300 bg-blue-50'
-                            : 'border-gray-200 bg-white hover:border-gray-300'
-                        }`}
+                        className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${isSelected
+                          ? 'border-blue-300 bg-blue-50'
+                          : 'border-gray-200 bg-white hover:border-gray-300'
+                          }`}
                       >
                         <div style={{ color: attribute.color }}>
                           {getIcon(attribute.iconName, 16)}
@@ -1391,11 +1952,10 @@ const MobileDashboard: React.FC<MobileDashboardProps> = ({
                           <span className="text-sm font-medium block">
                             {attribute.label}
                           </span>
-                          <span className={`text-xs px-2 py-0.5 rounded-full ${
-                            attribute.type === 'measure' ?
-                              'bg-blue-100 text-blue-700' :
-                              'bg-purple-100 text-purple-700'
-                          }`}>
+                          <span className={`text-xs px-2 py-0.5 rounded-full ${attribute.type === 'measure' ?
+                            'bg-blue-100 text-blue-700' :
+                            'bg-purple-100 text-purple-700'
+                            }`}>
                             {attribute.type}
                           </span>
                         </div>

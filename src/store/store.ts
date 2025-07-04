@@ -1,5 +1,7 @@
+// src\store\store.ts
 import { configureStore, combineReducers } from '@reduxjs/toolkit';
 import counterReducer from './slices/counterSlice';
+import dashboardReducer from './slices/dashboardSlice';
 import {
   persistStore,
   persistReducer,
@@ -17,6 +19,7 @@ import { api } from '@/lib/services/usersApi';
 // Combine normal reducers with RTK Query reducer
 const rootReducer = combineReducers({
   counter: counterReducer,
+  dashboard: dashboardReducer, 
   [api.reducerPath]: api.reducer,
 });
 
@@ -24,7 +27,7 @@ const rootReducer = combineReducers({
 const persistConfig = {
   key: 'root',
   storage,
-  whitelist: ['counter'], // don't persist the usersApi slice
+  whitelist: ['counter','dashboard'], // don't persist the usersApi slice
 };
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);
