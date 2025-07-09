@@ -40,7 +40,8 @@ const SideBarLayout: React.FC<SideBarLayoutProps> = ({ children }) => {
     const [searchValue, setSearchValue] = useState('');
 
     const sidebarItems = [
-        { icon: Home, label: 'Dashboard', href: '/', active: pathname === '/', section: 'Dashboards' },
+        { icon: Home, label: 'Home', href: '/', active: pathname === '/', section: 'Dashboards' },
+        { icon: Home, label: 'Dashboard', href: '/dashboard', active: pathname === '/dashboard', section: 'Dashboards' },
         { icon: Layout, label: 'Draggable Dashboard', href: '/dashboard/draggble-dashboard', active: pathname === '/dashboard/draggble-dashboard', section: 'Dashboards' },
         { icon: Grid3X3, label: 'DnD Draggable ', href: '/dashboard/draggble-dashboard-dnd', active: pathname === '/dashboard/draggble-dashboard-dnd', section: 'Dashboards' },
 

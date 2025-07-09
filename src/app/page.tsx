@@ -1,768 +1,531 @@
-'use client';
-
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+'use client'
+import React, { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import {
-    Banknote,
-    TrendingUp,
-    TrendingDown,
-    Percent,
-    DollarSign,
-    Receipt,
-    ArrowLeft,
-    ArrowRight,
     BarChart3,
+    Database,
+    Globe,
+    FileText,
+    Users,
+    TrendingUp,
     Activity,
-    CheckCircle,
     Target,
-    AlertCircle,
-    RefreshCw,
-} from "lucide-react";
-import { DonutChartData, LineChartData } from '@/types/Schemas';
-import { AgCharts } from 'ag-charts-react';
-import { AgChartOptions } from "ag-charts-community";
-import { ColDef } from 'ag-grid-community';
-import { AgGridReact } from 'ag-grid-react';
-import { AllCommunityModule, ModuleRegistry } from 'ag-grid-community';
-import {
-    databaseName,
-    useFetchChartDataMutation,
-    useFetchSearchableDataQuery
-} from '@/lib/services/usersApi';
-import { buildRequestBody } from '@/lib/services/buildWhereClause';
+    BookOpen,
+    Code,
+    ExternalLink,
+    ChevronRight,
+    TestTube,
+    Layers,
+    Settings,
+    Play,
+    CheckCircle,
+    Clock,
+    Calendar,
+    Table,
+    PieChart,
+    LineChart,
+    Menu,
+    X,
+    Home,
+    Link,
+    Info,
+    Server,
+    Eye,
+    ArrowUpRight,
+    Gauge,
+    Zap,
+    Shield
+} from 'lucide-react';
 
-// Register AG Grid modules
-ModuleRegistry.registerModules([AllCommunityModule]);
+const DashboardHomepage = () => {
+    const [activeSection, setActiveSection] = useState('overview');
 
-// Types
-interface CardSchema {
-    title: string;
-    bgGradient: string;
-    iconBg: string;
-    icon: React.ReactNode;
-    value: string;
-    change: string;
-    isPositive?: boolean;
-}
-
-interface PerformanceMetric {
-    title: string;
-    value: string;
-    target: string;
-    status: 'success' | 'warning' | 'error';
-    icon: React.ReactNode;
-}
-
-interface KPIData {
-    totalRevenue: number;
-    netProfit: number;
-    operatingProfit: number;
-    operatingExpenses: number;
-    profitMargin: number;
-    lossPeriods: number;
-}
-
-interface FinancialData {
-    fiscalyear: number;
-    period: string;
-    cataccountingview: string;
-    catfinancialview: string;
-    revenue: number;
-    otherincome: number;
-    grossmargin: number;
-    operatingexpenses: number;
-    operatingprofit: number;
-    financialresult: number;
-    earningsbeforetax: number;
-    nonrecurringresult: number;
-    netprofit: number;
-    country: string;
-    continent: string;
-}
-
-// Constants
-const SLIDES_COUNT = 3;
-const DEFAULT_PAGINATION_LIMIT = 10;
-
-// Utility functions
-const formatCurrency = (value: number): string => {
-    if (value >= 1000000) {
-        return `$${(value / 1000000).toFixed(1)}M`;
-    } else if (value >= 1000) {
-        return `$${(value / 1000).toFixed(1)}K`;
-    }
-    return `$${value.toFixed(2)}`;
-};
-
-const formatPercentage = (value: number): string => `${value.toFixed(1)}%`;
-
-// Custom hooks
-const useKPICalculations = (data: FinancialData[] | undefined): KPIData => {
-    return useMemo(() => {
-        if (!data || data.length === 0) {
-            return {
-                totalRevenue: 0,
-                netProfit: 0,
-                operatingProfit: 0,
-                operatingExpenses: 0,
-                profitMargin: 0,
-                lossPeriods: 0
-            };
+    // Test Case Data with detailed API information
+    const testCases = [
+        {
+            id: 'test-case-1',
+            name: 'Test Case 1 - Basic Financial Dashboard',
+            description: 'Single table financial data visualization with comprehensive KPIs',
+            status: 'Complete',
+            recordsCount: '1,250',
+            apiEndpoint: '/api/v1/financial-data',
+            dashboardUrl: '/dashboard/financial',
+            lastUpdated: '2024-01-15',
+            tools: ['AG Charts', 'Chart.js', 'Recharts', 'AG Grid'],
+            features: ['KPI Cards', 'Revenue Trends', 'Performance Metrics', 'Data Grid'],
+            apiMethods: [
+                { method: 'GET', endpoint: '/api/v1/financial-data', description: 'Fetch financial records' },
+                { method: 'POST', endpoint: '/api/v1/chart-data', description: 'Get chart data with filters' }
+            ]
+        },
+        {
+            id: 'test-case-2',
+            name: 'Test Case 2 - P&L Dashboard',
+            description: 'Multi-table join structure for Profit & Loss analysis with account categories',
+            status: 'In Progress',
+            recordsCount: '2,847',
+            apiEndpoint: '/api/v1/pl-analysis',
+            dashboardUrl: '/dashboard/pl-analysis',
+            lastUpdated: '2024-01-20',
+            tools: ['AG Charts', 'Plotly', 'AG Grid'],
+            features: ['P&L Statements', 'Account Categories', 'Multi-table Joins', 'Drill-down Analysis'],
+            apiMethods: [
+                { method: 'GET', endpoint: '/api/v1/pl-analysis', description: 'P&L analysis data' },
+                { method: 'GET', endpoint: '/api/v1/accounts', description: 'Account categories' },
+                { method: 'GET', endpoint: '/api/v1/categories', description: 'Financial categories' }
+            ]
         }
+    ];
 
-        const totals = data.reduce((acc, item) => ({
-            revenue: acc.revenue + (Number(item.revenue) || 0),
-            netProfit: acc.netProfit + (Number(item.netprofit) || 0),
-            operatingProfit: acc.operatingProfit + (Number(item.operatingprofit) || 0),
-            operatingExpenses: acc.operatingExpenses + (Number(item.operatingexpenses) || 0),
-        }), {
-            revenue: 0,
-            netProfit: 0,
-            operatingProfit: 0,
-            operatingExpenses: 0
-        });
-
-        const profitMargin = totals.revenue > 0 ? (totals.netProfit / totals.revenue) * 100 : 0;
-        const lossPeriods = data.filter(item => Number(item.netprofit) < 0).length;
-
-        return {
-            totalRevenue: totals.revenue,
-            netProfit: totals.netProfit,
-            operatingProfit: totals.operatingProfit,
-            operatingExpenses: totals.operatingExpenses,
-            profitMargin,
-            lossPeriods
-        };
-    }, [data]);
-};
-
-// Components
-const DashboardCard: React.FC<{ item: CardSchema }> = React.memo(({ item }) => (
-    <Card className={`p-6 bg-gradient-to-br ${item.bgGradient} border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer group`}>
-        <div className='flex items-start justify-between mb-4'>
-            <div className={`${item.iconBg} p-3 rounded-xl shadow-md group-hover:scale-110 transition-transform duration-300`}>
-                {item.icon}
-            </div>
-            <div className='text-right'>
-                <div className='text-2xl font-bold text-gray-800 mb-1 group-hover:text-gray-900 transition-colors'>
-                    {item.value}
-                </div>
-                <div className={`text-sm font-medium flex items-center gap-1 ${item.isPositive !== false ? 'text-emerald-600' : 'text-rose-600'
-                    }`}>
-                    {item.isPositive !== false ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
-                    {item.change}
-                </div>
-            </div>
-        </div>
-        <div>
-            <h3 className='text-sm font-semibold text-gray-600 uppercase tracking-wide'>
-                {item.title}
-            </h3>
-        </div>
-    </Card>
-));
-
-DashboardCard.displayName = 'DashboardCard';
-
-const LoadingSpinner: React.FC = () => (
-    <div className="flex items-center justify-center h-64">
-        <RefreshCw className="animate-spin h-8 w-8 text-blue-500" />
-        <span className="ml-2 text-gray-600">Loading...</span>
-    </div>
-);
-
-const ErrorMessage: React.FC<{ message: string; onRetry?: () => void }> = ({ message, onRetry }) => (
-    <div className="flex items-center justify-center h-64 bg-red-50 rounded-lg">
-        <div className="text-center">
-            <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-            <p className="text-red-700 font-medium mb-2">Error loading data</p>
-            <p className="text-red-600 text-sm mb-4">{message}</p>
-            {onRetry && (
-                <button
-                    onClick={onRetry}
-                    className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
-                >
-                    Retry
-                </button>
-            )}
-        </div>
-    </div>
-);
-
-const SlideNavigation: React.FC<{
-    currentSlide: number;
-    totalSlides: number;
-    onSlideChange: (slide: number) => void;
-    onPrevious: () => void;
-    onNext: () => void;
-}> = ({ currentSlide, totalSlides, onSlideChange, onPrevious, onNext }) => (
-    <div className='flex items-center gap-3'>
-        <div className='flex gap-2'>
-            {Array.from({ length: totalSlides }).map((_, index) => (
-                <button
-                    key={index}
-                    onClick={() => onSlideChange(index)}
-                    className={`w-2 h-2 rounded-full transition-all duration-300 ${currentSlide === index ? 'bg-blue-500 w-6' : 'bg-gray-300 hover:bg-gray-400'
-                        }`}
-                    aria-label={`Go to slide ${index + 1}`}
-                />
-            ))}
-        </div>
-        <div className='flex items-center gap-1 bg-gray-50 rounded-lg p-1'>
-            <button
-                onClick={onPrevious}
-                disabled={currentSlide === 0}
-                className={`p-2 rounded-md transition-all duration-200 ${currentSlide === 0
-                    ? 'text-gray-400 cursor-not-allowed'
-                    : 'text-gray-600 hover:bg-white hover:shadow-sm hover:text-blue-500'
-                    }`}
-                aria-label="Previous slide"
-            >
-                <ArrowLeft size={16} />
-            </button>
-            <button
-                onClick={onNext}
-                disabled={currentSlide === totalSlides - 1}
-                className={`p-2 rounded-md transition-all duration-200 ${currentSlide === totalSlides - 1
-                    ? 'text-gray-400 cursor-not-allowed'
-                    : 'text-gray-600 hover:bg-white hover:shadow-sm hover:text-blue-500'
-                    }`}
-                aria-label="Next slide"
-            >
-                <ArrowRight size={16} />
-            </button>
-        </div>
-    </div>
-);
-
-// Main Dashboard Component
-export default function Dashboard() {
-    // State management
-    const [searchParams, setSearchParams] = useState({
-        tableName: databaseName,
-        column_filters: {},
-        limit: DEFAULT_PAGINATION_LIMIT,
-        offset: 0,
-    });
-
-    const [chartOptions, setChartOptions] = useState<{
-        line: AgChartOptions;
-        donut: AgChartOptions;
-    }>({
-        line: {},
-        donut: {},
-    });
-
-    const [currentSlide, setCurrentSlide] = useState(0);
-    const [chartError, setChartError] = useState<string | null>(null);
-
-    // API hooks
-    const {
-        data,
-        error,
-        isLoading,
-        refetch
-    } = useFetchSearchableDataQuery(searchParams);
-
-    const [fetchAllChartData, { isLoading: isChartLoading }] = useFetchChartDataMutation();
-
-    // Calculate KPIs
-    const kpis = useKPICalculations(data?.data);
-
-    // Chart data fetching
-    const fetchChartDataHandler = useCallback(async () => {
-        try {
-            setChartError(null);
-            const result = await fetchAllChartData({
-                body: buildRequestBody({
-                    "groupName": "test",
-                    "filteredSelections": [
-                        {
-                            "dimension": "fiscalyear",
-                            "members": ['2025']
-                        }
-                    ]
-                }, 'all')
-            }).unwrap();
-
-            if (!result || !result.success) {
-                throw new Error(result?.message || "Failed to fetch chart data");
-            }
-
-            // Process line chart data
-            const lineData: LineChartData[] = result?.charts?.line?.success ? result?.charts?.line?.data || [] : [];
-            const lineOpts: AgChartOptions = lineData.length ? {
-                title: { text: "Revenue Trends Over Time" },
-                subtitle: { text: "Showing financial metrics by period" },
-                data: lineData,
-                series: [
-                    {
-                        type: "line",
-                        xKey: "period",
-                        yKey: "revenue",
-                        yName: "Revenue",
-                        tooltip: { enabled: true },
-                    },
-                    {
-                        type: "line",
-                        xKey: "period",
-                        yKey: "grossMargin",
-                        yName: "Gross Margin",
-                        tooltip: { enabled: true },
-                    },
-                    {
-                        type: "line",
-                        xKey: "period",
-                        yKey: "netProfit",
-                        yName: "Net Profit",
-                        tooltip: { enabled: true },
-                    },
-                ],
-                axes: [
-                    { type: "category", label: { rotation: -50 }, position: "bottom", title: { text: "Period" } },
-                    { type: "number", position: "left", title: { text: "Amount ($)" }, label: { formatter: (params: any) => formatCurrency(params.value) } },
-                ],
-                legend: { enabled: true, position: "bottom" },
-
-            } : {};
-            // Process donut chart data
-            const donutData: DonutChartData[] = result?.charts?.donut?.success ? result?.charts?.donut?.data || [] : [];
-            // @ts-ignore
-            const donutOpts: AgChartOptions = donutData.length ? {
-                title: { text: "Revenue by Category" },
-                data: donutData,
-                series: [{
-                    type: "donut",
-                    angleKey: "revenue",
-                    labelKey: "cataccountingview",
-                    tooltip: {
-                        enabled: true,
-                        renderer: (params) => ({
-                            // @ts-ignore
-                            content: `${params.labelKey}: ${formatCurrency(params.angleValue)}`
-                        })
-                    },
-                    calloutLabel: { enabled: true },
-                    sectorLabelKey: 'cataccountingview',
-                }],
-            } : {};
-
-            setChartOptions({
-                line: lineOpts,
-                donut: donutOpts,
-            });
-        } catch (error) {
-            console.error('Chart data fetch error:', error);
-            setChartError(error instanceof Error ? error.message : 'Failed to load chart data');
-        }
-    }, [fetchAllChartData]);
-
-    // Effects
-    useEffect(() => {
-        fetchChartDataHandler();
-    }, [fetchChartDataHandler]);
-
-    // Navigation handlers
-    const handlePrevSlide = useCallback(() => {
-        setCurrentSlide(prev => Math.max(0, prev - 1));
-    }, []);
-
-    const handleNextSlide = useCallback(() => {
-        setCurrentSlide(prev => Math.min(SLIDES_COUNT - 1, prev + 1));
-    }, []);
-
-    const handleSlideChange = useCallback((slide: number) => {
-        setCurrentSlide(slide);
-    }, []);
-
-    // Grid configuration
-    const columnDefs: ColDef[] = useMemo(() => [
+    // Dashboard Tools with detailed specifications
+    const dashboardTools = [
         {
-            field: 'fiscalyear',
-            headerName: 'Fiscal Year',
-            sortable: true,
-            filter: 'agNumberColumnFilter',
-            floatingFilter: true,
-            width: 120,
+            name: 'AG Charts',
+            type: 'Commercial',
+            category: 'Chart Library',
+            performance: 'High',
+            usedIn: ['Test Case 1', 'Test Case 2'],
+            features: ['Interactive Charts', 'Real-time Updates', 'Multi-series Support', 'Enterprise Grade'],
+            documentation: 'https://charts.ag-grid.com/documentation/',
+            status: 'Active'
         },
         {
-            field: 'period',
-            headerName: 'Period',
-            sortable: true,
-            filter: 'agTextColumnFilter',
-            floatingFilter: true,
-            width: 120,
+            name: 'Chart.js',
+            type: 'Open Source',
+            category: 'Chart Library',
+            performance: 'Medium',
+            usedIn: ['Test Case 1'],
+            features: ['Responsive', 'Animated', 'Canvas Based', 'Lightweight'],
+            documentation: 'https://www.chartjs.org/docs/',
+            status: 'Active'
         },
         {
-            field: 'cataccountingview',
-            headerName: 'Accounting Category',
-            sortable: true,
-            filter: 'agTextColumnFilter',
-            floatingFilter: true,
-            width: 180,
+            name: 'Recharts',
+            type: 'Open Source',
+            category: 'React Charts',
+            performance: 'High',
+            usedIn: ['Test Case 1'],
+            features: ['React Native', 'Composable', 'SVG Based', 'TypeScript Support'],
+            documentation: 'https://recharts.org/en-US/guide',
+            status: 'Active'
         },
         {
-            field: 'catfinancialview',
-            headerName: 'Financial Category',
-            sortable: true,
-            filter: 'agTextColumnFilter',
-            floatingFilter: true,
-            width: 160,
+            name: 'AG Grid',
+            type: 'Commercial',
+            category: 'Data Grid',
+            performance: 'High',
+            usedIn: ['Test Case 1', 'Test Case 2'],
+            features: ['Virtual Scrolling', 'Filtering', 'Sorting', 'Excel Export'],
+            documentation: 'https://ag-grid.com/documentation/',
+            status: 'Active'
         },
-        {
-            field: 'revenue',
-            headerName: 'Revenue',
-            sortable: true,
-            filter: 'agNumberColumnFilter',
-            floatingFilter: true,
-            valueFormatter: (params) => formatCurrency(params.value),
-            width: 120,
-        },
-        {
-            field: 'otherincome',
-            headerName: 'Other Income',
-            sortable: true,
-            filter: 'agNumberColumnFilter',
-            floatingFilter: true,
-            valueFormatter: (params) => formatCurrency(params.value),
-            width: 140,
-        },
-        {
-            field: 'grossmargin',
-            headerName: 'Gross Margin',
-            sortable: true,
-            filter: 'agNumberColumnFilter',
-            floatingFilter: true,
-            valueFormatter: (params) => formatCurrency(params.value),
-            width: 140,
-        },
-        {
-            field: 'operatingexpenses',
-            headerName: 'Operating Expenses',
-            sortable: true,
-            filter: 'agNumberColumnFilter',
-            floatingFilter: true,
-            valueFormatter: (params) => formatCurrency(params.value),
-            width: 170,
-        },
-        {
-            field: 'operatingprofit',
-            headerName: 'Operating Profit',
-            sortable: true,
-            filter: 'agNumberColumnFilter',
-            floatingFilter: true,
-            valueFormatter: (params) => formatCurrency(params.value),
-            width: 150,
-        },
-        {
-            field: 'netprofit',
-            headerName: 'Net Profit',
-            sortable: true,
-            filter: 'agNumberColumnFilter',
-            floatingFilter: true,
-            valueFormatter: (params) => formatCurrency(params.value),
-            cellStyle: (params) => ({
-                color: params.value >= 0 ? '#059669' : '#DC2626',
-                fontWeight: 'bold'
-            }),
-            width: 130,
-        },
-        {
-            field: 'country',
-            headerName: 'Country',
-            sortable: true,
-            filter: 'agTextColumnFilter',
-            floatingFilter: true,
-            width: 120,
-        },
-        {
-            field: 'continent',
-            headerName: 'Continent',
-            sortable: true,
-            filter: 'agTextColumnFilter',
-            floatingFilter: true,
-            width: 120,
-        },
-    ], []);
+       
+    ];
 
-    const defaultColDef = useMemo(() => ({
-        resizable: true,
-        sortable: true,
-        filter: true,
-        minWidth: 100,
-        flex: 1,
-    }), []);
-
-    // KPI Cards configuration
-    const cardsList: CardSchema[] = useMemo(() => [
-        {
-            title: "Total Revenue",
-            bgGradient: "from-emerald-50 to-emerald-100",
-            iconBg: "bg-emerald-500",
-            icon: <Banknote size={24} className='text-white' />,
-            value: formatCurrency(kpis.totalRevenue),
-            change: "+12.5%",
-            isPositive: true,
-        },
-        {
-            title: "Net Profit",
-            bgGradient: "from-blue-50 to-blue-100",
-            iconBg: "bg-blue-500",
-            icon: <DollarSign size={24} className='text-white' />,
-            value: formatCurrency(kpis.netProfit),
-            change: "+8.2%",
-            isPositive: kpis.netProfit >= 0,
-        },
-        {
-            title: "Operating Profit",
-            bgGradient: "from-violet-50 to-violet-100",
-            iconBg: "bg-violet-500",
-            icon: <TrendingUp size={24} className='text-white' />,
-            value: formatCurrency(kpis.operatingProfit),
-            change: "+15.3%",
-            isPositive: kpis.operatingProfit >= 0,
-        },
-        {
-            title: "Operating Expenses",
-            bgGradient: "from-amber-50 to-amber-100",
-            iconBg: "bg-amber-500",
-            icon: <Receipt size={24} className='text-white' />,
-            value: formatCurrency(kpis.operatingExpenses),
-            change: "+5.1%",
-            isPositive: false,
-        },
-        {
-            title: "Profit Margin",
-            bgGradient: "from-teal-50 to-teal-100",
-            iconBg: "bg-teal-500",
-            icon: <Percent size={24} className='text-white' />,
-            value: formatPercentage(kpis.profitMargin),
-            change: "+2.8%",
-            isPositive: kpis.profitMargin >= 0,
-        },
-        {
-            title: "Loss Periods",
-            bgGradient: "from-rose-50 to-rose-100",
-            iconBg: "bg-rose-500",
-            icon: <TrendingDown size={24} className='text-white' />,
-            value: `${kpis.lossPeriods} Records`,
-            change: "-1 Month",
-            isPositive: false,
-        },
-    ], [kpis]);
-
-    // Performance metrics
-    const performanceMetrics: PerformanceMetric[] = useMemo(() => [
-        {
-            title: "YTD Performance",
-            value: "94.2%",
-            target: "Target: 90%",
-            status: "success",
-            icon: <Target size={20} />
-        },
-        {
-            title: "Monthly Growth",
-            value: "+12.8%",
-            target: "vs Last Month",
-            status: "success",
-            icon: <TrendingUp size={20} />
-        },
-        {
-            title: "Efficiency Ratio",
-            value: "87.3%",
-            target: "Target: 85%",
-            status: "success",
-            icon: <Activity size={20} />
-        },
-        {
-            title: "Risk Level",
-            value: "Low",
-            target: "Stable Trend",
-            status: "success",
-            icon: <CheckCircle size={20} />
-        }
-    ], []);
-
-    if (error) {
-        return (
-            <main className='dashboard min-h-screen bg-gradient-to-br from-gray-50 to-white'>
-                <div className='container mx-auto px-4 py-8 max-w-[90%]'>
-                    <ErrorMessage
-                        //@ts-ignore
-                        message={error?.message || 'Failed to load dashboard data'}
-                        onRetry={() => refetch()}
-                    />
-                </div>
-            </main>
-        );
-    }
+    const navigationItems = [
+        { id: 'overview', label: 'Project Overview', icon: Home },
+        { id: 'testcases', label: 'Test Cases', icon: TestTube },
+        { id: 'tools', label: 'Dashboard Tools', icon: Layers },
+        { id: 'apis', label: 'API Documentation', icon: Code }
+    ];
 
     return (
-        <main className='dashboard min-h-screen bg-gradient-to-br from-gray-50 to-white'>
-            <div className='container mx-auto px-4 py-8 max-w-[90%]'>
-                {/* Header */}
-                <header className='mb-8'>
-                    <h1 className='text-3xl font-bold text-gray-900 mb-2'>
-                        Financial Dashboard
-                    </h1>
-                    <p className='text-gray-600'>
-                        Comprehensive overview of your financial performance
-                    </p>
-                </header>
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white">
+            {/* Header */}
+            <header className="bg-white shadow-sm border-b sticky top-0 z-50">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="flex justify-between items-center h-16">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+                                <BarChart3 className="text-white" size={24} />
+                            </div>
+                            <div>
+                                <h1 className="text-xl font-bold text-gray-900">Dashboard Tools Testing</h1>
+                                <p className="text-sm text-gray-600">Enterprise Chart Libraries Evaluation</p>
+                            </div>
+                        </div>
+                        <nav className="hidden md:flex space-x-8">
+                            {navigationItems.map((item) => (
+                                <button
+                                    key={item.id}
+                                    onClick={() => setActiveSection(item.id)}
+                                    className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                                        activeSection === item.id
+                                            ? 'text-blue-600 bg-blue-50'
+                                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                                    }`}
+                                >
+                                    <item.icon size={16} />
+                                    {item.label}
+                                </button>
+                            ))}
+                        </nav>
+                    </div>
+                </div>
+            </header>
 
-                {/* KPI Cards */}
-                <section className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8'>
-                    {cardsList.map((item) => (
-                        <DashboardCard item={item} key={item.title} />
-                    ))}
-                </section>
-
-                {/* Charts Section */}
-                <section className='grid grid-cols-1 xl:grid-cols-3 gap-6 mb-8'>
-                    <div className='xl:col-span-2'>
-                        <div className='relative bg-white rounded-2xl shadow-xl overflow-hidden'>
-                            {/* Navigation Header */}
-                            <div className='flex items-center justify-between p-4 border-b border-gray-100'>
-                                <div className='flex items-center gap-2'>
-                                    <BarChart3 size={20} className='text-blue-500' />
-                                    <h3 className='font-semibold text-gray-800'>Analytics Overview</h3>
+            {/* Main Content */}
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                {/* Overview Section */}
+                {activeSection === 'overview' && (
+                    <div className="space-y-8">
+                        {/* Hero Section */}
+                        <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-8 rounded-2xl">
+                            <h2 className="text-4xl font-bold mb-4">Dashboard Tools Testing Platform</h2>
+                            <p className="text-xl mb-6">Comprehensive evaluation of charting libraries and dashboard tools for enterprise financial applications</p>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4">
+                                    <div className="text-3xl font-bold">2</div>
+                                    <div className="text-sm opacity-90">Test Cases</div>
                                 </div>
-                                <SlideNavigation
-                                    currentSlide={currentSlide}
-                                    totalSlides={SLIDES_COUNT}
-                                    onSlideChange={handleSlideChange}
-                                    onPrevious={handlePrevSlide}
-                                    onNext={handleNextSlide}
-                                />
+                                <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4">
+                                    <div className="text-3xl font-bold">6</div>
+                                    <div className="text-sm opacity-90">Chart Tools</div>
+                                </div>
+                                <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4">
+                                    <div className="text-3xl font-bold">4,097</div>
+                                    <div className="text-sm opacity-90">Total Records</div>
+                                </div>
+                                <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4">
+                                    <div className="text-3xl font-bold">8</div>
+                                    <div className="text-sm opacity-90">API Endpoints</div>
+                                </div>
                             </div>
+                        </div>
 
-                            <div className='h-[450px] p-6'>
-                                {isChartLoading ? (
-                                    <LoadingSpinner />
-                                ) : chartError ? (
-                                    <ErrorMessage
-                                        message={chartError}
-                                        onRetry={fetchChartDataHandler}
-                                    />
-                                ) : (
-                                    <div
-                                        className='flex transition-transform duration-500 ease-in-out h-full'
-                                        style={{ transform: `translateX(-${currentSlide * 100}%)` }}
-                                    >
-                                        {/* Revenue Trends Chart */}
-                                        <div className='w-full flex-shrink-0'>
-                                            <AgCharts
-                                                className='w-full h-full'
-                                                options={chartOptions.line}
-                                            />
-                                        </div>
-
-                                        {/* Financial Distribution */}
-                                        <div className='w-full flex-shrink-0'>
-                                            <AgCharts
-                                                className='w-full h-full'
-                                                options={chartOptions.donut}
-                                            />
-                                        </div>
-
-                                        {/* Performance Metrics */}
-                                        <div className='w-full flex-shrink-0 p-4'>
-                                            <div className='mb-6'>
-                                                <h4 className='text-lg font-semibold text-gray-800'>Key Metrics</h4>
-                                                <p className='text-sm text-gray-600'>Current period highlights</p>
-                                            </div>
-                                            <div className='grid grid-cols-2 gap-4'>
-                                                {performanceMetrics.map((metric, index) => (
-                                                    <div
-                                                        key={index}
-                                                        className='bg-gray-50 rounded-xl p-4 hover:bg-gray-100 transition-colors'
-                                                    >
-                                                        <div className='flex items-center gap-2 mb-2'>
-                                                            <div className={`text-${metric.status === 'success' ? 'green' :
-                                                                metric.status === 'warning' ? 'yellow' : 'red'
-                                                                }-500`}>
-                                                                {metric.icon}
-                                                            </div>
-                                                            <span className='text-sm font-medium text-gray-600'>
-                                                                {metric.title}
-                                                            </span>
-                                                        </div>
-                                                        <div className='text-xl font-bold text-gray-800 mb-1'>
-                                                            {metric.value}
-                                                        </div>
-                                                        <div className='text-xs text-gray-500'>
-                                                            {metric.target}
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
+                        {/* Quick Access Links */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <Card className="p-6 hover:shadow-xl transition-all duration-300 cursor-pointer group">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center group-hover:bg-blue-200 transition-colors">
+                                        <FileText className="text-blue-600" size={24} />
                                     </div>
-                                )}
-                            </div>
+                                    <div>
+                                        <h3 className="font-semibold text-lg">General API Documentation</h3>
+                                        <p className="text-sm text-gray-600">Complete API reference guide</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-blue-600 font-medium">View Documentation</span>
+                                    <ExternalLink size={16} className="text-blue-600" />
+                                </div>
+                            </Card>
+
+                            <Card className="p-6 hover:shadow-xl transition-all duration-300 cursor-pointer group">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center group-hover:bg-green-200 transition-colors">
+                                        <BarChart3 className="text-green-600" size={24} />
+                                    </div>
+                                    <div>
+                                        <h3 className="font-semibold text-lg">Test Case 1 Dashboard</h3>
+                                        <p className="text-sm text-gray-600">Financial metrics dashboard</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-green-600 font-medium">View Dashboard</span>
+                                    <ArrowUpRight size={16} className="text-green-600" />
+                                </div>
+                            </Card>
+
+                            <Card className="p-6 hover:shadow-xl transition-all duration-300 cursor-pointer group">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center group-hover:bg-purple-200 transition-colors">
+                                        <TrendingUp className="text-purple-600" size={24} />
+                                    </div>
+                                    <div>
+                                        <h3 className="font-semibold text-lg">Test Case 2 </h3>
+                                        <p className="text-sm text-gray-600"></p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-purple-600 font-medium">View Dashboard</span>
+                                    <ArrowUpRight size={16} className="text-purple-600" />
+                                </div>
+                            </Card>
                         </div>
                     </div>
+                )}
 
-                    {/* Sidebar - Performance Metrics */}
-                    <div className='bg-white rounded-2xl shadow-xl p-6'>
-                        <div className='flex items-center gap-2 mb-6'>
-                            <Activity size={20} className='text-purple-500' />
-                            <h3 className='font-semibold text-gray-800'>Performance Metrics</h3>
+                {/* Test Cases Section */}
+                {activeSection === 'testcases' && (
+                    <div className="space-y-8">
+                        <div className="text-center mb-8">
+                            <h2 className="text-3xl font-bold text-gray-900 mb-4">Test Cases Overview</h2>
+                            <p className="text-lg text-gray-600">Detailed information about each test case, including API endpoints and record counts</p>
                         </div>
-                        <div className='space-y-4'>
-                            {performanceMetrics.map((metric, index) => (
-                                <div
-                                    key={index}
-                                    className='flex items-center justify-between p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors'
-                                >
-                                    <div className='flex items-center gap-3'>
-                                        <div className={`text-${metric.status === 'success' ? 'green' :
-                                            metric.status === 'warning' ? 'yellow' : 'red'
-                                            }-500`}>
-                                            {metric.icon}
+
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                            { testCases.map((testCase) => (
+                                <Card key={testCase.id} className="p-6 hover:shadow-xl transition-all duration-300">
+                                    <div className="flex items-start justify-between mb-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
+                                                testCase.status === 'Complete' ? 'bg-green-100' : 'bg-yellow-100'
+                                            }`}>
+                                                <TestTube className={`${
+                                                    testCase.status === 'Complete' ? 'text-green-600' : 'text-yellow-600'
+                                                }`} size={24} />
+                                            </div>
+                                            <div>
+                                                <h3 className="text-xl font-semibold text-gray-900">{testCase.name}</h3>
+                                                <p className="text-sm text-gray-600">{testCase.description}</p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <div className='font-medium text-gray-800'>{metric.value}</div>
-                                            <div className='text-xs text-gray-500'>{metric.title}</div>
+                                        <span className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
+                                            testCase.status === 'Complete' 
+                                                ? 'bg-green-100 text-green-800' 
+                                                : 'bg-yellow-100 text-yellow-800'
+                                        }`}>
+                                            {testCase.status}
+                                        </span>
+                                    </div>
+
+                                    {/* Test Case Details */}
+                                    <div className="grid grid-cols-2 gap-4 mb-6">
+                                        <div className="bg-gray-50 p-4 rounded-lg">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <Database size={16} className="text-gray-600" />
+                                                <span className="text-sm font-medium text-gray-600">Records Count</span>
+                                            </div>
+                                            <div className="text-2xl font-bold text-gray-900">{testCase.recordsCount}</div>
+                                        </div>
+                                        <div className="bg-gray-50 p-4 rounded-lg">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <Server size={16} className="text-gray-600" />
+                                                <span className="text-sm font-medium text-gray-600">API Endpoint</span>
+                                            </div>
+                                            <code className="text-sm text-blue-600 bg-blue-50 px-2 py-1 rounded">{testCase.apiEndpoint}</code>
                                         </div>
                                     </div>
-                                    <div className='text-xs text-gray-400 text-right'>
-                                        {metric.target}
+
+                                    {/* API Methods */}
+                                    <div className="mb-6">
+                                        <h4 className="text-sm font-semibold text-gray-900 mb-3">API Methods</h4>
+                                        <div className="space-y-2">
+                                            {testCase.apiMethods.map((api, index) => (
+                                                <div key={index} className="flex items-center gap-3 p-2 bg-gray-50 rounded">
+                                                    <span className={`px-2 py-1 text-xs font-medium rounded ${
+                                                        api.method === 'GET' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
+                                                    }`}>
+                                                        {api.method}
+                                                    </span>
+                                                    <code className="text-sm text-gray-700">{api.endpoint}</code>
+                                                    <span className="text-xs text-gray-500 ml-auto">{api.description}</span>
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
-                                </div>
+
+                                    {/* Tools Used */}
+                                    <div className="mb-6">
+                                        <h4 className="text-sm font-semibold text-gray-900 mb-3">Dashboard Tools Used</h4>
+                                        <div className="flex flex-wrap gap-2">
+                                            {testCase.tools.map((tool, index) => (
+                                                <span key={index} className="px-3 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
+                                                    {tool}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Action Button */}
+                                    <button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 px-4 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-300 flex items-center justify-center gap-2">
+                                        <Eye size={16} />
+                                        View Dashboard
+                                    </button>
+                                </Card>
                             ))}
                         </div>
                     </div>
-                </section>
+                )}
 
-                {/* Data Grid */}
-                <section className='bg-white rounded-2xl shadow-xl overflow-hidden'>
-                    <div className='p-4 border-b border-gray-100'>
-                        <h3 className='font-semibold text-gray-800'>Financial Data</h3>
-                        <p className='text-sm text-gray-600'>Detailed financial records</p>
+                {/* Dashboard Tools Section */}
+                {activeSection === 'tools' && (
+                    <div className="space-y-8">
+                        <div className="text-center mb-8">
+                            <h2 className="text-3xl font-bold text-gray-900 mb-4">Dashboard Tools & Libraries</h2>
+                            <p className="text-lg text-gray-600">Comprehensive evaluation of charting libraries and visualization tools</p>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {dashboardTools.map((tool, index) => (
+                                <Card key={index} className="p-6 hover:shadow-xl transition-all duration-300">
+                                    <div className="flex items-start justify-between mb-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
+                                                tool.type === 'Commercial' ? 'bg-purple-100' : 'bg-green-100'
+                                            }`}>
+                                                <Layers className={`${
+                                                    tool.type === 'Commercial' ? 'text-purple-600' : 'text-green-600'
+                                                }`} size={24} />
+                                            </div>
+                                            <div>
+                                                <h3 className="text-lg font-semibold text-gray-900">{tool.name}</h3>
+                                                <p className="text-sm text-gray-600">{tool.category}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex flex-col items-end gap-2">
+                                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                                                tool.type === 'Commercial' 
+                                                    ? 'bg-purple-100 text-purple-800' 
+                                                    : 'bg-green-100 text-green-800'
+                                            }`}>
+                                                {tool.type}
+                                            </span>
+                                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                                                tool.status === 'Active' 
+                                                    ? 'bg-blue-100 text-blue-800' 
+                                                    : 'bg-yellow-100 text-yellow-800'
+                                            }`}>
+                                                {tool.status}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {/* Performance Indicator */}
+                                    <div className="mb-4">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <span className="text-sm font-medium text-gray-600">Performance</span>
+                                            <span className={`text-sm font-semibold ${
+                                                tool.performance === 'High' ? 'text-green-600' : 'text-yellow-600'
+                                            }`}>
+                                                {tool.performance}
+                                            </span>
+                                        </div>
+                                        <div className="w-full bg-gray-200 rounded-full h-2">
+                                            <div 
+                                                className={`h-2 rounded-full ${
+                                                    tool.performance === 'High' ? 'bg-green-500' : 'bg-yellow-500'
+                                                }`}
+                                                style={{ width: tool.performance === 'High' ? '90%' : '70%' }}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Used In */}
+                                    <div className="mb-4">
+                                        <h4 className="text-sm font-semibold text-gray-900 mb-2">Used In</h4>
+                                        <div className="flex flex-wrap gap-1">
+                                            {tool.usedIn.map((testCase, i) => (
+                                                <span key={i} className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">
+                                                    {testCase}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Features */}
+                                    <div className="mb-4">
+                                        <h4 className="text-sm font-semibold text-gray-900 mb-2">Key Features</h4>
+                                        <div className="space-y-1">
+                                            {tool.features.slice(0, 3).map((feature, i) => (
+                                                <div key={i} className="flex items-center gap-2">
+                                                    <CheckCircle size={12} className="text-green-500" />
+                                                    <span className="text-xs text-gray-600">{feature}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Documentation Link */}
+                                    <button className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 px-4 rounded-lg font-medium transition-colors flex items-center justify-center gap-2">
+                                        <BookOpen size={16} />
+                                        View Documentation
+                                        <ExternalLink size={14} />
+                                    </button>
+                                </Card>
+                            ))}
+                        </div>
                     </div>
-                    <div className="ag-theme-alpine" style={{ height: 550, width: '100%' }}>
-                        {isLoading ? (
-                            <LoadingSpinner />
-                        ) : (
-                            <AgGridReact
-                                rowData={data?.data}
-                                columnDefs={columnDefs}
-                                defaultColDef={defaultColDef}
-                                pagination={false}
-                                paginationPageSize={20}
-                                rowSelection="multiple"
-                                animateRows={true}
-                                suppressRowClickSelection={true}
-                                enableCellTextSelection={true}
-                            // onGridReady={(params) => {
-                            //     params.api.sizeColumnsToFit();
-                            // }}
-                            />
-                        )}
+                )}
+
+                {/* API Documentation Section */}
+                {activeSection === 'apis' && (
+                    <div className="space-y-8">
+                        <div className="text-center mb-8">
+                            <h2 className="text-3xl font-bold text-gray-900 mb-4">API Documentation</h2>
+                            <p className="text-lg text-gray-600">Complete API reference with endpoints, methods, and record counts</p>
+                        </div>
+
+                        {/* General API Information */}
+                        <Card className="p-6 bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                                    <Globe className="text-blue-600" size={24} />
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-semibold text-gray-900">General API Documentation</h3>
+                                    <p className="text-sm text-gray-600">Base URL: https://api.dashboard-tools.com/v1</p>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div className="bg-white p-4 rounded-lg">
+                                    <div className="text-2xl font-bold text-blue-600">8</div>
+                                    <div className="text-sm text-gray-600">Total Endpoints</div>
+                                </div>
+                                <div className="bg-white p-4 rounded-lg">
+                                    <div className="text-2xl font-bold text-green-600">4,097</div>
+                                    <div className="text-sm text-gray-600">Total Records</div>
+                                </div>
+                                <div className="bg-white p-4 rounded-lg">
+                                    <div className="text-2xl font-bold text-purple-600">2</div>
+                                    <div className="text-sm text-gray-600">API Versions</div>
+                                </div>
+                            </div>
+                        </Card>
+
+                        {/* API Endpoints Table */}
+                        <Card className="p-6">
+                            <h3 className="text-xl font-semibold text-gray-900 mb-6">API Endpoints</h3>
+                            <div className="overflow-x-auto">
+                                <table className="w-full">
+                                    <thead>
+                                        <tr className="border-b border-gray-200">
+                                            <th className="text-left py-3 px-4 font-semibold text-gray-900">Method</th>
+                                            <th className="text-left py-3 px-4 font-semibold text-gray-900">Endpoint</th>
+                                            <th className="text-left py-3 px-4 font-semibold text-gray-900">Description</th>
+                                            <th className="text-left py-3 px-4 font-semibold text-gray-900">Test Case</th>
+                                            <th className="text-left py-3 px-4 font-semibold text-gray-900">Records</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {[
+                                            { method: 'GET', endpoint: '/api/v1/financial-data', description: 'Fetch financial records', testCase: 'Test Case 1', records: '1,250' },
+                                            { method: 'POST', endpoint: '/api/v1/chart-data', description: 'Get chart data with filters', testCase: 'Test Case 1', records: 'Variable' },
+                                            { method: 'GET', endpoint: '/api/v1/pl-analysis', description: 'P&L analysis data', testCase: 'Test Case 2', records: '2,847' },
+                                            { method: 'GET', endpoint: '/api/v1/accounts', description: 'Account categories', testCase: 'Test Case 2', records: '485' },
+                                            { method: 'GET', endpoint: '/api/v1/categories', description: 'Financial categories', testCase: 'Test Case 2', records: '234' },
+                                            { method: 'POST', endpoint: '/api/v1/search', description: 'Search across all data', testCase: 'Both', records: 'Variable' },
+                                            { method: 'GET', endpoint: '/api/v1/metrics', description: 'KPI and metrics data', testCase: 'Both', records: 'Calculated' },
+                                            { method: 'GET', endpoint: '/api/v1/health', description: 'API health check', testCase: 'System', records: '1' }
+                                        ].map((api, index) => (
+                                            <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
+                                                <td className="py-3 px-4">
+                                                    <span className={`px-2 py-1 text-xs font-medium rounded ${
+                                                        api.method === 'GET' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
+                                                    }`}>
+                                                        {api.method}
+                                                    </span>
+                                                </td>
+                                                <td className="py-3 px-4">
+                                                    <code className="text-sm text-gray-700 bg-gray-100 px-2 py-1 rounded">{api.endpoint}</code>
+                                                </td>
+                                                <td className="py-3 px-4 text-sm text-gray-600">{api.description}</td>
+                                                <td className="py-3 px-4">
+                                                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">{api.testCase}</span>
+                                                </td>
+                                                <td className="py-3 px-4 text-sm font-medium text-gray-900">{api.records}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </Card>
                     </div>
-                </section>
-            </div>
-        </main>
+                )}
+            </main>
+        </div>
     );
-}
+};
+
+export default DashboardHomepage;

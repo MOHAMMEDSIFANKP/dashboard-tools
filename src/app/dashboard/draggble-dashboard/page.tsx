@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import {
   Banknote,
@@ -560,7 +560,6 @@ const PlotlyRenderer: React.FC<{
   xKey: string;
   data: FinancialData[];
 }> = ({ chartType, measures, xKey, data }) => {
-  const plotlyRef = useRef<HTMLDivElement>(null);
 
   const chartData = useMemo(() => {
     const labels = [...new Set(data.map(item => (item as any)[xKey]?.toString()))].sort();
