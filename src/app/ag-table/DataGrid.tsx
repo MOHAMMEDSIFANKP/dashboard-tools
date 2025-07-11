@@ -10,6 +10,7 @@ ModuleRegistry.registerModules([AllCommunityModule]);
 import { FinancialSchema } from "@/types/Schemas";
 import { databaseName, useFetchSearchableDataQuery } from '@/lib/services/usersApi';
 import { useRef, useState } from 'react';
+import DashboardInfoCard from '@/components/DashboardInfoCard';
 
 const DataGrid = ({ }) => {
   const [searchParams, setSearchParams] = useState({
@@ -33,7 +34,7 @@ const DataGrid = ({ }) => {
 
   const totalRows = data?.total_rows ?? 0;
   const filteredRows = data?.filtered_rows ?? 0;
-  
+
   // Calculate pagination info
   const hasFilters = Object.keys(searchParams.column_filters).length > 0;
   const totalRecords = hasFilters ? filteredRows : totalRows;
@@ -51,10 +52,10 @@ const DataGrid = ({ }) => {
     const newSearchFilters: Record<string, string> = {};
 
     Object.entries(filterModel).forEach(([field, model]) => {
-  if ('filter' in model && model.filter != null && model.filter !== '') {
-    newSearchFilters[field] = String(model.filter);
-  }
-});
+      if ('filter' in model && model.filter != null && model.filter !== '') {
+        newSearchFilters[field] = String(model.filter);
+      }
+    });
 
     // Reset to first page when filters change
     setSearchParams((prev) => ({
@@ -226,6 +227,26 @@ const DataGrid = ({ }) => {
     console.log('Cell value changed:', params);
   };
 
+  const dashboardInfoDatas = {
+    apiEndpoints: [
+      { method: "GET", apiName: "api/duckdb/tables/sample_1m/data", api: "https://testcase.mohammedsifankp.online/api/duckdb/tables/sample_1m/data?limit=10&offset=0", description: "Fetch all table data" },
+      { method: "GET", apiName: "api/duckdb/tables/sample_1m/data?column_filters=%7B%22otherincome%22%3A%22300%22%7D&limit=10&offset=0", api: "https://testcase.mohammedsifankp.online/api/duckdb/tables/sample_1m/data?column_filters=%7B%22otherincome%22%3A%22300%22%7D&limit=10&offset=0", description: "Fetch data filter" },
+    ],
+    availableFeatures: [
+      { feature: "Filter", supported: true },
+      { feature: "Sorting", supported: true },
+      { feature: "Pagination", supported: true },
+      { feature: "Editable Cells", supported: true },
+      { feature: "Row Selection", supported: true },
+      { feature: "Column Reordering", supported: true },
+      { feature: "Updatble ", supported: true },
+      { feature: "Page Size Customization", supported: true },
+      { feature: "UI Customization", supported: true },
+      { feature: "Open Source", supported: true },
+    ],
+    dataRecords: "1 Million Records"
+  }
+
   if (isLoading) {
     return (
       <div className="w-full p-4">
@@ -235,15 +256,15 @@ const DataGrid = ({ }) => {
     );
   }
 
-  if (error) {    
+  if (error) {
     return (
       <div className="w-full p-4">
         <h1 className="text-xl font-bold mb-4">Financial Data - AG Grid</h1>
         <div className="text-red-600 p-4">
-          
+
           Error: {
-          // @ts-ignore
-          error?.error || 'Failed to fetch data.'}
+            // @ts-ignore
+            error?.error || 'Failed to fetch data.'}
           <button
             onClick={() => refetchData()}
             className="ml-2 px-3 py-1 bg-red-100 hover:bg-red-200 rounded"
@@ -258,7 +279,13 @@ const DataGrid = ({ }) => {
   return (
     <div className="w-full p-4">
       <h1 className="text-xl font-bold mb-4">Financial Data - Ag Table</h1>
-      
+
+        <DashboardInfoCard
+        apiEndpoints={dashboardInfoDatas?.apiEndpoints}
+        availableFeatures={dashboardInfoDatas?.availableFeatures}
+        dataRecords={dashboardInfoDatas?.dataRecords}
+      />
+
       {/* Pagination Info */}
       <div className="mb-4 flex justify-between items-center">
         <div className="text-sm text-gray-600">
@@ -269,7 +296,7 @@ const DataGrid = ({ }) => {
             </span>
           )}
         </div>
-        
+
         {/* Items per page selector */}
         <div className="flex items-center gap-2">
           <span className="text-sm text-gray-600">Show:</span>
@@ -306,7 +333,7 @@ const DataGrid = ({ }) => {
         <div className="text-sm text-gray-600">
           Page {currentPage} of {totalPages}
         </div>
-        
+
         <div className="flex items-center gap-2">
           {/* First Page */}
           <button
@@ -316,7 +343,7 @@ const DataGrid = ({ }) => {
           >
             First
           </button>
-          
+
           {/* Previous Page */}
           <button
             onClick={handlePrevPage}
@@ -325,7 +352,7 @@ const DataGrid = ({ }) => {
           >
             Previous
           </button>
-          
+
           {/* Page Numbers */}
           <div className="flex items-center gap-1">
             {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
@@ -339,9 +366,9 @@ const DataGrid = ({ }) => {
               } else {
                 pageNum = currentPage - 2 + i;
               }
-              
+
               const isCurrentPage = pageNum === currentPage;
-              
+
               return (
                 <button
                   key={pageNum}
@@ -349,18 +376,17 @@ const DataGrid = ({ }) => {
                     const newOffset = (pageNum - 1) * searchParams.limit;
                     setSearchParams(prev => ({ ...prev, offset: newOffset }));
                   }}
-                  className={`px-3 py-1 border rounded text-sm ${
-                    isCurrentPage
+                  className={`px-3 py-1 border rounded text-sm ${isCurrentPage
                       ? 'bg-blue-500 text-white border-blue-500'
                       : 'border-gray-300 hover:bg-gray-50'
-                  }`}
+                    }`}
                 >
                   {pageNum}
                 </button>
               );
             })}
           </div>
-          
+
           {/* Next Page */}
           <button
             onClick={handleNextPage}
@@ -369,7 +395,7 @@ const DataGrid = ({ }) => {
           >
             Next
           </button>
-          
+
           {/* Last Page */}
           <button
             onClick={handleLastPage}

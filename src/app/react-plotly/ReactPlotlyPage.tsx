@@ -13,6 +13,7 @@ import { buildRequestBody, handleCrossChartFilteringFunc } from "@/lib/services/
 import { ActionButton } from "@/components/ui/action-button";
 import ReusableChartDrawer, { useChartDrawer } from "@/components/ChartDrawer";
 import { ErrorAlert, LoadingAlert } from "@/components/ui/status-alerts";
+import DashboardInfoCard from "@/components/DashboardInfoCard";
 
 // Constants
 const DEFAULT_CONFIGURATION = {
@@ -387,14 +388,14 @@ export default function ReactPlotlyPage() {
     };
 
     const timeoutId = setTimeout(attachHandlers, 100);
-    
+
     return () => {
       clearTimeout(timeoutId);
       // Clean up event listeners on unmount
       // if (linePlotRef.current?.el) linePlotRef.current.el.removeAllListeners('plotly_click');
-    //   if (barPlotRef.current?.el) barPlotRef.current.el.removeAllListeners('plotly_click');
-    //   if (piePlotRef.current?.el) piePlotRef.current.el.removeAllListeners('plotly_click');
-    //   if (donutPlotRef.current?.el) donutPlotRef.current.el.removeAllListeners('plotly_click');
+      //   if (barPlotRef.current?.el) barPlotRef.current.el.removeAllListeners('plotly_click');
+      //   if (piePlotRef.current?.el) piePlotRef.current.el.removeAllListeners('plotly_click');
+      //   if (donutPlotRef.current?.el) donutPlotRef.current.el.removeAllListeners('plotly_click');
     };
   }, [isLoading, handleLineChartClick, handleBarChartClick, handlePieChartClick, handleDonutChartClick]);
 
@@ -505,9 +506,36 @@ export default function ReactPlotlyPage() {
     },
   ], [chartData.bar]);
 
+  const dashboardInfoDatas = {
+    apiEndpoints: [
+      { method: "GET", apiName: "api/dashboard/all-charts?table_name=sample_1m", api: "https://testcase.mohammedsifankp.online/api/dashboard/all-charts?table_name=sample_1m", description: "Fetch all chart data for the dashboard" },
+      { method: "POST", apiName: "api/dashboard/tables/sample_1m/dimensions", api: "https://testcase.mohammedsifankp.online/api/dashboard/tables/sample_1m/dimensions", description: "Fetch dimensions for the dashboard" },
+      { method: "POST", apiName: "api/dashboard/drill-down?table_name=sample_1m&chart_type=bar&category=201907&data_type=revenue&value=4299212962.550013", api: "https://testcase.mohammedsifankp.online/api/dashboard/drill-down?table_name=sample_1m&chart_type=bar&category=201907&data_type=revenue&value=4299212962.550013", description: "Fetch Drill Down datas" },
+    ],
+    availableFeatures: [
+      { feature: "Drill Down (Need Manual setup)", supported: false },
+      { feature: "Cross-Chart Filtering (Need Manual setup)", supported: false },
+      { feature: "Interactive Charts", supported: true },
+      { feature: "Legend Toggle", supported: true },
+      { feature: "Export Options (PNG, CSV)", supported: true },
+      { feature: "Real-time Data Support (Need Manual setup)", supported: false },
+      { feature: "Custom Options", supported: true },
+      { feature: "TypeScript Support", supported: true },
+      { feature: "Open Source", supported: true },
+      { feature: "Drag and Drop (Need Custom Code not default)", supported: false },
+    ],
+    dataRecords: "1 Million Records",
+  }
+
   return (
     <section className="p-5">
       <h1 className="text-2xl font-bold text-center mb-4">Financial Dashboard - React Plotly</h1>
+
+      <DashboardInfoCard
+        apiEndpoints={dashboardInfoDatas?.apiEndpoints}
+        availableFeatures={dashboardInfoDatas?.availableFeatures}
+        dataRecords={dashboardInfoDatas?.dataRecords}
+      />
 
       <GroupModal
         isOpen={isGroupModalOpen}
@@ -551,7 +579,7 @@ export default function ReactPlotlyPage() {
       {error && (<ErrorAlert message={error} onDismiss={handleDismissError} />)}
 
       {isLoading && <LoadingAlert />}
-      
+
       <ReusableChartDrawer
         isOpen={isOpen}
         drillDownState={drillDownState}
@@ -565,7 +593,7 @@ export default function ReactPlotlyPage() {
       >
         {renderDrillDownChart}
       </ReusableChartDrawer>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {chartData.line.length > 0 && (
           <ChartContainer
@@ -606,7 +634,7 @@ export default function ReactPlotlyPage() {
                 xaxis: { tickformat: 'digits' },
                 yaxis: { title: "Amount ($)" }
               }}
-               style={{ width: "100%", height: "100%" }}
+              style={{ width: "100%", height: "100%" }}
               config={DEFAULT_CONFIGURATION}
             />
           </ChartContainer>
@@ -631,7 +659,7 @@ export default function ReactPlotlyPage() {
                 title: "Financial Distribution",
                 autosize: true
               }}
-               style={{ width: "100%", height: "100%" }}
+              style={{ width: "100%", height: "100%" }}
               config={DEFAULT_CONFIGURATION}
             />
           </ChartContainer>
@@ -657,7 +685,7 @@ export default function ReactPlotlyPage() {
                 title: "Revenue by Category",
                 autosize: true
               }}
-               style={{ width: "100%", height: "100%" }}
+              style={{ width: "100%", height: "100%" }}
               config={DEFAULT_CONFIGURATION}
             />
           </ChartContainer>

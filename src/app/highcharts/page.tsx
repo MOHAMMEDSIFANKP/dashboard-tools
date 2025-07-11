@@ -9,11 +9,16 @@ import HighchartsOfflineExporting from 'highcharts/modules/offline-exporting';
 
 import { BarChartData, Dimensions, DonutChartData, LineChartData, PieChartData } from '@/types/Schemas';
 import { GroupModal } from '@/components/GroupManagement';
-import { useFetchChartDataMutation } from '@/lib/services/usersApi';
-import { buildRequestBody } from '@/lib/services/buildWhereClause';
+import {
+    useFetchChartDataMutation,
+    useFetchDrillDownDataMutation,
+    databaseName
+} from '@/lib/services/usersApi';
 import { ActionButton } from '@/components/ui/action-button';
 import { ErrorAlert, LoadingAlert } from '@/components/ui/status-alerts';
 import { ChartSkelten } from '@/components/ui/ChartSkelten';
+import HighchartsDrilldown from 'highcharts/modules/drilldown';
+import { buildRequestBody, handleCrossChartFilteringFunc } from '@/lib/services/buildWhereClause';
 
 
 // Initialize only once and only on client side
@@ -26,6 +31,9 @@ if (typeof window !== 'undefined') {
     }
     if (typeof HighchartsOfflineExporting === 'function') {
         HighchartsOfflineExporting(Highcharts);
+    }
+    if (typeof HighchartsDrilldown === 'function') {
+        HighchartsDrilldown(Highcharts);
     }
 }
 
@@ -151,6 +159,14 @@ const FinancialDashboard: React.FC = () => {
     });
 
     const [fetchAllChartData] = useFetchChartDataMutation();
+    const [fetchDrillDownData] = useFetchDrillDownDataMutation();
+    const [drillDownData, setDrillDownData] = useState<any[]>([]);
+
+    const handleCrossChartFiltering = (data: string) => {
+        // @ts-ignore   
+        setDimensions(handleCrossChartFilteringFunc(data));
+    };
+
 
     // Memoized chart options
     const chartOptions = useMemo(() => {
@@ -175,21 +191,52 @@ const FinancialDashboard: React.FC = () => {
                         type: 'line',
                         name: 'Revenue',
                         data: chartData.line?.map((item) => item.revenue),
+                        cursor: 'pointer',
+                        events: {
+                            click: function (event: any) {
+                                const point = event.point;
+                                const category = point.category;
+                                const value = point.y;
+
+                                if (event.originalEvent?.ctrlKey || event.originalEvent?.metaKey) {
+                                    handleDrillDown('line', category, value, 'revenue');
+                                } else {
+                                    handleCrossChartFiltering(category);
+                                }
+                            }
+                        }
+
                     },
                     {
                         type: 'line',
                         name: 'Gross Margin',
                         data: chartData.line?.map((item) => item.grossMargin),
+                        cursor: 'pointer',
+                    events: {
+                        click: function(event: any) {
+                            const point = event.point;
+                            const category = point.category;
+                            const value = point.y;
+                            
+                            if (event.originalEvent?.ctrlKey || event.originalEvent?.metaKey) {
+                                handleDrillDown('line', category, value, 'grossMargin');
+                            } else {
+                                handleCrossChartFiltering(category);
+                            }
+                        }
+                    }
+
                     },
                     {
                         type: 'line',
                         name: 'Net Profit',
                         data: chartData.line?.map((item) => item.netProfit),
+                        
                     },
                 ],
                 drilldown: {
                     series: [
-                        
+
                     ]
                 }
             };
@@ -289,6 +336,34 @@ const FinancialDashboard: React.FC = () => {
             setIsLoading(false);
         }
     }, [dimensions, fetchAllChartData]);
+
+    const handleDrillDown = useCallback(async (chartType: string, category: string, value: any, dataType: string) => {
+        setIsLoading(true);
+        setError(null);
+
+        try {
+            const result = await fetchDrillDownData({
+                table_name: databaseName,
+                chart_type: chartType,
+                category: category,
+                data_type: dataType,
+                value: value
+            }).unwrap();
+
+            if (result.success && result.data && result.data.length > 0) {
+                setDrillDownData(result.data);
+                // The drill-down will be handled by Highcharts automatically
+            } else {
+                setError("No data available for this selection");
+            }
+        } catch (err: any) {
+            setError(err?.data?.detail || err.message || "Failed to fetch drill-down data");
+            console.error("Error in drill-down:", err);
+        } finally {
+            setIsLoading(false);
+        }
+    }, [fetchDrillDownData]);
+
 
     // Fetch data when dimensions change
     useEffect(() => {
@@ -412,7 +487,7 @@ const ChartContainer: React.FC<ChartContainerProps> = ({
                 />
             </div>
         ) : (
-            <ChartSkelten/>
+            <ChartSkelten />
         )}
     </div>
 );

@@ -28,6 +28,7 @@ import { ActionButton } from "@/components/ui/action-button";
 import ReusableChartDrawer, { useChartDrawer } from "@/components/ChartDrawer";
 import { ChartSkelten } from "@/components/ui/ChartSkelten";
 import { ErrorAlert } from "@/components/ui/status-alerts";
+import DashboardInfoCard from "@/components/DashboardInfoCard";
 
 ChartJS.register(
   CategoryScale,
@@ -555,9 +556,37 @@ export default function ChartJsPage() {
     setError(null);
   }, []);
 
+  const dashboardInfoDatas = {
+    apiEndpoints: [
+      { method: "GET", apiName: "api/dashboard/all-charts?table_name=sample_1m", api: "https://testcase.mohammedsifankp.online/api/dashboard/all-charts?table_name=sample_1m", description: "Fetch all chart data for the dashboard" },
+      { method: "POST", apiName: "api/dashboard/tables/sample_1m/dimensions", api: "https://testcase.mohammedsifankp.online/api/dashboard/tables/sample_1m/dimensions", description: "Fetch dimensions for the dashboard" },
+      { method: "POST", apiName: "api/dashboard/drill-down?table_name=sample_1m&chart_type=bar&category=201907&data_type=revenue&value=4299212962.550013", api: "https://testcase.mohammedsifankp.online/api/dashboard/drill-down?table_name=sample_1m&chart_type=bar&category=201907&data_type=revenue&value=4299212962.550013", description: "Fetch Drill Down datas" },
+    ],
+    availableFeatures: [
+      { feature: "Drill Down (Need Manual setup)", supported: false },
+      { feature: "Cross-Chart Filtering (Need Manual setup)", supported: false },
+      { feature: "Interactive Charts", supported: true },
+      { feature: "Legend Toggle", supported: true },
+      { feature: "Export Options (PNG, CSV) - (Need Manual setup or third part libraries)", supported: false },
+      { feature: "Real-time Data Support (Need Manual setup)", supported: false },
+      { feature: "Custom Options", supported: true },
+      { feature: "TypeScript Support", supported: true },
+      { feature: "Open Source", supported: true },
+      { feature: "Drag and Drop (Need Custom Code not default)", supported: false },
+    ],
+    dataRecords: "1 Million Records"
+  }
+
+
   return (
     <section className="p-5">
       <h1 className="text-2xl font-bold text-center mb-4">Financial Dashboard - Chart.js</h1>
+
+      <DashboardInfoCard
+        apiEndpoints={dashboardInfoDatas?.apiEndpoints}
+        availableFeatures={dashboardInfoDatas?.availableFeatures}
+        dataRecords={dashboardInfoDatas?.dataRecords}
+      />
 
       <GroupModal
         isOpen={isGroupModalOpen}
@@ -614,6 +643,7 @@ export default function ChartJsPage() {
       >
         {renderDrillDownChart()}
       </ReusableChartDrawer>
+
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {lineChartData && (

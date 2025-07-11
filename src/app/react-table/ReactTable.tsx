@@ -8,8 +8,9 @@ import { useSort } from "@table-library/react-table-library/sort";
 import { TableNode } from "@table-library/react-table-library/types/table";
 import { Action, State } from "@table-library/react-table-library/types/common";
 import { useRowSelect } from "@table-library/react-table-library/select";
-import { databaseName, useFetchSearchableDataQuery, useFetchSearchInfoQuery } from "@/lib/services/usersApi"; 
+import { databaseName, useFetchSearchableDataQuery, useFetchSearchInfoQuery } from "@/lib/services/usersApi";
 import { FinancialSchema } from "@/types/Schemas";
+import DashboardInfoCard from "@/components/DashboardInfoCard";
 
 interface FinancialRow extends FinancialSchema {
   id: string;
@@ -27,7 +28,7 @@ export default function ReactTable() {
   const [filterCategory, setFilterCategory] = useState<string>("All");
   const [currentPage, setCurrentPage] = useState<number>(0);
   const [pageSize, setPageSize] = useState<number>(10);
-  
+
   // Selection and editing state
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
   const [editingCell, setEditingCell] = useState<EditableCell | null>(null);
@@ -36,7 +37,7 @@ export default function ReactTable() {
   // Prepare search parameters
   const searchParams = useMemo(() => {
     const columnFilters: Record<string, string | number> = {};
-    
+
     if (filterCategory !== "All") {
       columnFilters.catfinancialview = filterCategory;
     }
@@ -84,7 +85,7 @@ export default function ReactTable() {
   // Get available categories from search info
   const categories = useMemo(() => {
     if (!searchInfo?.columns) return [];
-    
+
     // You might need to make a separate API call to get unique values
     // For now, return some default categories based on your sample data
     return ["Non opérationnel", "Financier", "Exceptionnel"];
@@ -231,7 +232,7 @@ export default function ReactTable() {
         const isEditing = editingCell?.id === item.id && editingCell?.field === 'catFinancialView';
         const isChanged = unsavedChanges.get(item.id)?.catFinancialView !== undefined;
         const value = getCellValue(item, 'catFinancialView');
-        
+
         if (isEditing) {
           return (
             <input
@@ -250,7 +251,7 @@ export default function ReactTable() {
             />
           );
         }
-        
+
         return (
           <div
             className={`cursor-pointer hover:bg-gray-50 p-1 rounded ${isChanged ? 'bg-yellow-50 font-semibold' : ''}`}
@@ -277,7 +278,7 @@ export default function ReactTable() {
         const isEditing = editingCell?.id === item.id && editingCell?.field === 'revenue';
         const isChanged = unsavedChanges.get(item.id)?.revenue !== undefined;
         const value = getCellValue(item, 'revenue');
-        
+
         if (isEditing) {
           return (
             <input
@@ -296,12 +297,12 @@ export default function ReactTable() {
             />
           );
         }
-        
+
         const numValue = typeof value === 'string' && !isNaN(Number(value)) ? Number(value) : value;
-        const formatted = typeof numValue === 'number' 
+        const formatted = typeof numValue === 'number'
           ? numValue.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
           : value;
-        
+
         return (
           <div
             className={`cursor-pointer hover:bg-gray-50 p-1 rounded ${isChanged ? 'bg-yellow-50 font-semibold' : ''}`}
@@ -319,7 +320,7 @@ export default function ReactTable() {
         const isEditing = editingCell?.id === item.id && editingCell?.field === 'netProfit';
         const isChanged = unsavedChanges.get(item.id)?.netProfit !== undefined;
         const value = getCellValue(item, 'netProfit');
-        
+
         if (isEditing) {
           return (
             <input
@@ -338,12 +339,12 @@ export default function ReactTable() {
             />
           );
         }
-        
+
         const numValue = typeof value === 'string' && !isNaN(Number(value)) ? Number(value) : value;
-        const formatted = typeof numValue === 'number' 
+        const formatted = typeof numValue === 'number'
           ? numValue.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
           : value;
-        
+
         return (
           <div
             className={`cursor-pointer hover:bg-gray-50 p-1 rounded ${isChanged ? 'bg-yellow-50 font-semibold' : ''}`}
@@ -363,6 +364,26 @@ export default function ReactTable() {
   const totalRows = searchData?.total_rows || 0;
   const filteredRows = searchData?.filtered_rows || 0;
 
+  const dashboardInfoDatas = {
+    apiEndpoints: [
+      { method: "GET", apiName: "api/duckdb/tables/sample_1m/data", api: "https://testcase.mohammedsifankp.online/api/duckdb/tables/sample_1m/data?limit=10&offset=0", description: "Fetch all table data" },
+      { method: "GET", apiName: "api/duckdb/tables/sample_1m/data?column_filters=%7B%22otherincome%22%3A%22300%22%7D&limit=10&offset=0", api: "https://testcase.mohammedsifankp.online/api/duckdb/tables/sample_1m/data?column_filters=%7B%22otherincome%22%3A%22300%22%7D&limit=10&offset=0", description: "Fetch data filter" },
+    ],
+    availableFeatures: [
+      { feature: "Filter", supported: true },
+      { feature: "Sorting", supported: true },
+      { feature: "Pagination", supported: true },
+      { feature: "Editable Cells (Need Custom logic)", supported: false },
+      { feature: "Row Selection", supported: true },
+      { feature: "Column Reordering (Need custom logic)", supported: false },
+      { feature: "Updatble (Yes, with custom logic) ", supported: true },
+      { feature: "Page Size Customization", supported: true },
+      { feature: "UI Customization", supported: true },
+      { feature: "Open Source", supported: true },
+    ],
+    dataRecords: "1 Million Records"
+  }
+
   // Handle loading and error states
   if (isSearchLoading || isSearchInfoLoading) {
     return <div className="p-4 text-center">Loading data...</div>;
@@ -372,9 +393,9 @@ export default function ReactTable() {
     return (
       <div className="p-4 text-red-600">
         Error: {
-        // @ts-ignore
-        searchError?.error?.toString() || searchInfoError?.error?.toString()}
-        <button 
+          // @ts-ignore
+          searchError?.error?.toString() || searchInfoError?.error?.toString()}
+        <button
           onClick={() => refetchData()}
           className="ml-2 px-3 py-1 bg-red-100 hover:bg-red-200 rounded"
         >
@@ -387,6 +408,12 @@ export default function ReactTable() {
   return (
     <section className="p-8">
       <h1 className="text-2xl font-bold mb-4">Financial Data Table - API Integrated</h1>
+
+      <DashboardInfoCard
+        apiEndpoints={dashboardInfoDatas?.apiEndpoints}
+        availableFeatures={dashboardInfoDatas?.availableFeatures}
+        dataRecords={dashboardInfoDatas?.dataRecords}
+      />
 
       {/* Controls */}
       <div className="flex flex-wrap items-center gap-4 mb-6">
@@ -455,7 +482,7 @@ export default function ReactTable() {
       <div className="mb-4 text-sm text-gray-600">
         {searchData?.search_applied && (
           <span className="mr-4">
-            🔍 Search: "{searchData.search_term}" 
+            🔍 Search: "{searchData.search_term}"
           </span>
         )}
         <span>

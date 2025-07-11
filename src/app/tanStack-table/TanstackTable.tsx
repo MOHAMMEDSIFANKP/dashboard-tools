@@ -13,8 +13,9 @@ import {
   ColumnOrderState,
 } from '@tanstack/react-table';
 
-import { databaseName, useFetchSearchableDataQuery, useFetchSearchInfoQuery } from "@/lib/services/usersApi"; 
+import { databaseName, useFetchSearchableDataQuery, useFetchSearchInfoQuery } from "@/lib/services/usersApi";
 import { FinancialSchema } from '@/types/Schemas';
+import DashboardInfoCard from '@/components/DashboardInfoCard';
 
 interface FinancialRow extends FinancialSchema {
   id: string;
@@ -30,7 +31,7 @@ export default function TanstackTable() {
   // State for filters and pagination
   const [search, setSearch] = useState<string>("");
   const [filterCategory, setFilterCategory] = useState<string>("All");
-  
+
   // TanStack Table states
   const [sorting, setSorting] = useState<SortingState>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
@@ -39,7 +40,7 @@ export default function TanstackTable() {
     pageIndex: 0,
     pageSize: 5,
   });
-  
+
   // Selection and editing state
   const [editingCell, setEditingCell] = useState<EditableCell | null>(null);
   const [unsavedChanges, setUnsavedChanges] = useState<Map<string, Partial<FinancialRow>>>(new Map());
@@ -47,7 +48,7 @@ export default function TanstackTable() {
   // Prepare search parameters
   const searchParams = useMemo(() => {
     const columnFilters: Record<string, string | number> = {};
-    
+
     if (filterCategory !== "All") {
       columnFilters.catfinancialview = filterCategory; // Note: API uses lowercase
     }
@@ -95,7 +96,7 @@ export default function TanstackTable() {
   // Get available categories from search info
   const categories = useMemo(() => {
     if (!searchInfo?.columns) return [];
-    
+
     // You might need to make a separate API call to get unique values
     // For now, return some default categories based on your sample data
     return ["Non opérationnel", "Financier", "Exceptionnel"];
@@ -180,7 +181,7 @@ export default function TanstackTable() {
         );
       }
 
-      const displayValue = type === 'number' && typeof value === 'number' 
+      const displayValue = type === 'number' && typeof value === 'number'
         ? value.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
         : value;
 
@@ -279,6 +280,26 @@ export default function TanstackTable() {
     }
   }, [table, columnOrder]);
 
+  const dashboardInfoDatas = {
+    apiEndpoints: [
+      { method: "GET", apiName: "api/duckdb/tables/sample_1m/data", api: "https://testcase.mohammedsifankp.online/api/duckdb/tables/sample_1m/data?limit=10&offset=0", description: "Fetch all table data" },
+      { method: "GET", apiName: "api/duckdb/tables/sample_1m/data?column_filters=%7B%22otherincome%22%3A%22300%22%7D&limit=10&offset=0", api: "https://testcase.mohammedsifankp.online/api/duckdb/tables/sample_1m/data?column_filters=%7B%22otherincome%22%3A%22300%22%7D&limit=10&offset=0", description: "Fetch data filter" },
+    ],
+    availableFeatures: [
+      { feature: "Filter", supported: true },
+      { feature: "Sorting", supported: true },
+      { feature: "Pagination", supported: true },
+      { feature: "Editable Cells (Need Custom logic)", supported: false },
+      { feature: "Row Selection", supported: true },
+      { feature: "Column Reordering", supported: true },
+      { feature: "Updatble (Yes, with custom logic) ", supported: true },
+      { feature: "Page Size Customization", supported: true },
+      { feature: "UI Customization", supported: true },
+      { feature: "Open Source", supported: true },
+    ],
+    dataRecords: "1 Million Records"
+  }
+
   // Handle loading and error states
   if (isSearchLoading || isSearchInfoLoading) {
     return <div className="p-4 text-center">Loading data...</div>;
@@ -288,9 +309,9 @@ export default function TanstackTable() {
     return (
       <div className="p-4 text-red-600">
         Error: {
-        // @ts-ignore
-        searchError?.error?.toString() || searchInfoError?.error?.toString()}
-        <button 
+          // @ts-ignore
+          searchError?.error?.toString() || searchInfoError?.error?.toString()}
+        <button
           onClick={() => refetchData()}
           className="ml-2 px-3 py-1 bg-red-100 hover:bg-red-200 rounded"
         >
@@ -303,6 +324,12 @@ export default function TanstackTable() {
   return (
     <section className="p-8">
       <h1 className="text-2xl font-bold mb-4">TanStack Table - API Integrated</h1>
+
+      <DashboardInfoCard
+        apiEndpoints={dashboardInfoDatas?.apiEndpoints}
+        availableFeatures={dashboardInfoDatas?.availableFeatures}
+        dataRecords={dashboardInfoDatas?.dataRecords}
+      />
 
       {/* Controls */}
       <div className="flex flex-wrap items-center gap-4 mb-6">
@@ -371,7 +398,7 @@ export default function TanstackTable() {
       <div className="mb-4 text-sm text-gray-600">
         {searchData?.search_applied && (
           <span className="mr-4">
-            🔍 Search: "{searchData.search_term}" 
+            🔍 Search: "{searchData.search_term}"
           </span>
         )}
         <span>
@@ -405,11 +432,11 @@ export default function TanstackTable() {
                         onDrop={(e) => {
                           const draggedColId = e.dataTransfer.getData('colId');
                           const targetColId = header.column.id;
-                      
+
                           const newOrder = [...table.getState().columnOrder];
                           const fromIndex = newOrder.indexOf(draggedColId);
                           const toIndex = newOrder.indexOf(targetColId);
-                      
+
                           if (fromIndex !== -1 && toIndex !== -1 && fromIndex !== toIndex) {
                             newOrder.splice(fromIndex, 1);
                             newOrder.splice(toIndex, 0, draggedColId);

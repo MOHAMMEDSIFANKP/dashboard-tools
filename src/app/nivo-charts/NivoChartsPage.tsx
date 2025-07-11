@@ -17,6 +17,7 @@ import { ErrorAlert } from "@/components/ui/status-alerts";
 import { ChartSkelten } from "@/components/ui/ChartSkelten";
 
 import ReusableChartDrawer, { useChartDrawer } from "@/components/ChartDrawer";
+import DashboardInfoCard from "@/components/DashboardInfoCard";
 
 // Core data types
 interface ChartDataPoint {
@@ -455,9 +456,36 @@ export default function NivoChartsPage() {
     setError(null);
   }, []);
 
+  const dashboardInfoDatas = {
+    apiEndpoints: [
+      { method: "GET", apiName: "api/dashboard/all-charts?table_name=sample_1m", api: "https://testcase.mohammedsifankp.online/api/dashboard/all-charts?table_name=sample_1m", description: "Fetch all chart data for the dashboard" },
+      { method: "POST", apiName: "api/dashboard/tables/sample_1m/dimensions", api: "https://testcase.mohammedsifankp.online/api/dashboard/tables/sample_1m/dimensions", description: "Fetch dimensions for the dashboard" },
+      { method: "POST", apiName: "api/dashboard/drill-down?table_name=sample_1m&chart_type=bar&category=201907&data_type=revenue&value=4299212962.550013", api: "https://testcase.mohammedsifankp.online/api/dashboard/drill-down?table_name=sample_1m&chart_type=bar&category=201907&data_type=revenue&value=4299212962.550013", description: "Fetch Drill Down datas" },
+    ],
+    availableFeatures: [
+      { feature: "Drill Down (With custom handlers)", supported: true },
+      { feature: "Cross-Chart Filtering (Need Manual setup)", supported: false },
+      { feature: "Interactive Charts", supported: true },
+      { feature: "Legend Toggle", supported: true },
+      { feature: "Export Options (PNG, CSV) - (No built-in export, Need Manual setup)", supported: false },
+      { feature: "Real-time Data Support (Need Manual setup)", supported: false },
+      { feature: "Custom Options", supported: true },
+      { feature: "TypeScript Support", supported: true },
+      { feature: "Open Source", supported: true },
+      { feature: "Drag and Drop (Need Custom Code not default)", supported: false },
+    ],
+    dataRecords: "1 Million Records",
+  }
+
   return (
     <section className="p-8 bg-gray-50">
       <h1 className="text-3xl font-bold text-center mb-8">Financial Dashboard with Nivo Charts</h1>
+
+      <DashboardInfoCard
+        apiEndpoints={dashboardInfoDatas?.apiEndpoints}
+        availableFeatures={dashboardInfoDatas?.availableFeatures}
+        dataRecords={dashboardInfoDatas?.dataRecords}
+      />
 
       <GroupModal
         isOpen={isGroupModalOpen}

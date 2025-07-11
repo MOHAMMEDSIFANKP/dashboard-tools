@@ -5,8 +5,8 @@ type TabsContainerProps = {
 
 export const TabsContainer = ({ selectedTab, setSelectedTab }: TabsContainerProps) => {
   const items = [
-    { id: 'charts', label: 'P&L - Charts' },
-    { id: 'table', label: 'P&L - Table' },
+    { id: 'charts', label: 'Dashboard Tool' },
+    { id: 'table', label: 'Table' },
   ]
 
   return (

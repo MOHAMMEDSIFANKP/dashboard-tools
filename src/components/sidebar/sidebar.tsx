@@ -40,25 +40,30 @@ const SideBarLayout: React.FC<SideBarLayoutProps> = ({ children }) => {
     const [searchValue, setSearchValue] = useState('');
 
     const sidebarItems = [
-        { icon: Home, label: 'Home', href: '/', active: pathname === '/', section: 'Dashboards' },
-        { icon: Home, label: 'Dashboard', href: '/dashboard', active: pathname === '/dashboard', section: 'Dashboards' },
-        { icon: Layout, label: 'Draggable Dashboard', href: '/dashboard/draggble-dashboard', active: pathname === '/dashboard/draggble-dashboard', section: 'Dashboards' },
-        { icon: Grid3X3, label: 'DnD Draggable ', href: '/dashboard/draggble-dashboard-dnd', active: pathname === '/dashboard/draggble-dashboard-dnd', section: 'Dashboards' },
+        // === Custom Features / Internal ===
+        { icon: Home, label: 'Home', href: '/', active: pathname === '/', section: 'Custom Features' },
+        { icon: Home, label: 'Dashboard', href: '/dashboard', active: pathname === '/dashboard', section: 'Custom Features' },
+        { icon: Layout, label: 'Draggable Dashboard', href: '/dashboard/draggble-dashboard', active: pathname === '/dashboard/draggble-dashboard', section: 'Custom Features' },
+        { icon: Grid3X3, label: 'DnD Draggable', href: '/dashboard/draggble-dashboard-dnd', active: pathname === '/dashboard/draggble-dashboard-dnd', section: 'Custom Features' },
+        // { icon: Table, label: 'Redux + RTK', href: '/redux', active: pathname === '/redux', section: 'Custom Features' },
+        // === Open Source Tools ===
+        { icon: BarChart3, label: 'AG Charts', href: '/ag-charts', active: pathname === '/ag-charts', section: 'Open Source' },
+        { icon: PieChart, label: 'Chart JS', href: '/chart-js', active: pathname === '/chart-js', section: 'Open Source' },
+        { icon: LineChart, label: 'React Plotly', href: '/react-plotly', active: pathname === '/react-plotly', section: 'Open Source' },
+        { icon: TrendingUp, label: 'Nivo Charts', href: '/nivo-charts', active: pathname === '/nivo-charts', section: 'Open Source' },
+        { icon: Activity, label: 'Victory Charts', href: '/victory-charts', active: pathname === '/victory-charts', section: 'Open Source' },
+        { icon: Zap, label: 'ECharts', href: '/echarts', active: pathname === '/echarts', section: 'Open Source' },
+        { icon: Table, label: 'AG Grid (List)', href: '/ag-table', active: pathname === '/ag-table', section: 'Open Source' },
+        { icon: Table, label: 'TanStack Table', href: '/tanStack-table', active: pathname === '/tanStack-table', section: 'Open Source' },
+        { icon: Table, label: 'React Table', href: '/react-table', active: pathname === '/react-table', section: 'Open Source' },
 
-        { icon: Table, label: 'Redux + RTK + RTK Query', href: '/redux', active: pathname === '/redux', section: 'Tables' },
-        { icon: Table, label: 'AG List', href: '/ag-table', active: pathname === '/ag-table', section: 'Tables' },
-        { icon: Table, label: 'TanStack Table', href: '/tanStack-table', active: pathname === '/tanStack-table', section: 'Tables' },
-        { icon: Table, label: 'React Table', href: '/react-table', active: pathname === '/react-table', section: 'Tables' },
 
-        { icon: BarChart3, label: 'AG Charts', href: '/ag-charts', active: pathname === '/ag-charts', section: 'Open Source Charts' },
-        { icon: PieChart, label: 'Chart JS', href: '/chart-js', active: pathname === '/chart-js', section: 'Open Source Charts' },
-        { icon: LineChart, label: 'React Plotly', href: '/react-plotly', active: pathname === '/react-plotly', section: 'Open Source Charts' },
-        { icon: TrendingUp, label: 'Nivo Charts', href: '/nivo-charts', active: pathname === '/nivo-charts', section: 'Open Source Charts' },
-        { icon: Activity, label: 'Victory Charts', href: '/victory-charts', active: pathname === '/victory-charts', section: 'Open Source Charts' },
-        { icon: Zap, label: 'ECharts', href: '/echarts', active: pathname === '/echarts', section: 'Open Source Charts' },
+        // === Paid Tools ===
+        { icon: DollarSign, label: 'Highcharts', href: '/highcharts', active: pathname === '/highcharts', section: 'Paid Tools' },
 
-        { icon: DollarSign, label: 'Highcharts', href: '/highcharts', active: pathname === '/highcharts', section: 'Paid Charts' },
+
     ];
+
 
 
     // Close mobile menu when pathname changes
@@ -120,8 +125,8 @@ const SideBarLayout: React.FC<SideBarLayoutProps> = ({ children }) => {
                                 <Link
                                     href={item.href}
                                     className={`flex items-center px-3 py-2 text-sm font-medium rounded-lg transition duration-150 ease-in-out group ${item.active
-                                            ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-700'
-                                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                                        ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-700'
+                                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                                         }`}
                                 >
                                     <Icon className={`h-5 w-5 ${isMobile || isExpanded ? 'mr-3' : 'mx-auto'

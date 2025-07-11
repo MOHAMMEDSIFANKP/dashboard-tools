@@ -18,6 +18,7 @@ import { BarChartData, Dimensions, DonutChartData, LineChartData, PieChartData }
 import { ChartSkelten } from "@/components/ui/ChartSkelten";
 import ChartDrawer, { useChartDrawer } from "@/components/ChartDrawer";
 import ReusableChartDrawer from "@/components/ChartDrawer";
+import DashboardInfoCard from "@/components/DashboardInfoCard";
 
 // Common props for components
 interface CommonProps {
@@ -378,9 +379,38 @@ const AgChartsPage: React.FC = () => {
     setError(null);
   }, []);
 
+  const dashboardInfoDatas = {
+    apiEndpoints: [
+      { method: "GET", apiName: "api/dashboard/all-charts?table_name=sample_1m", api: "https://testcase.mohammedsifankp.online/api/dashboard/all-charts?table_name=sample_1m", description: "Fetch all chart data for the dashboard" },
+      { method: "POST", apiName: "api/dashboard/tables/sample_1m/dimensions", api: "https://testcase.mohammedsifankp.online/api/dashboard/tables/sample_1m/dimensions", description: "Fetch dimensions for the dashboard" },
+      { method: "POST", apiName: "api/dashboard/drill-down?table_name=sample_1m&chart_type=bar&category=201907&data_type=revenue&value=4299212962.550013", api: "https://testcase.mohammedsifankp.online/api/dashboard/drill-down?table_name=sample_1m&chart_type=bar&category=201907&data_type=revenue&value=4299212962.550013", description: "Fetch Drill Down datas" },
+    ],
+  availableFeatures : [
+  { feature: "Drill Down", supported: true },
+  { feature: "Cross-Chart Filtering (But only Enterprise version)", supported: true },
+  { feature: "Interactive Charts", supported: true },
+  { feature: "Legend Toggle", supported: true },
+  { feature: "Export Options (PNG, CSV)", supported: true },
+  { feature: "Real-time Data Support", supported: true },
+  { feature: "Custom Options", supported: true },
+  { feature: "TypeScript Support", supported: true },
+  { feature: "Open Source", supported: true },
+  { feature: "Drag and Drop (Need Custom Code not default)", supported: false },
+],
+    dataRecords: "1 Million Records"
+  }
+
+
   return (
     <section className="p-5">
       <h1 className="text-2xl font-bold text-center mb-4">Financial Dashboard - Ag Charts</h1>
+
+       <DashboardInfoCard
+        apiEndpoints={dashboardInfoDatas?.apiEndpoints}
+        availableFeatures={dashboardInfoDatas?.availableFeatures}
+        dataRecords={dashboardInfoDatas?.dataRecords}
+      />
+      
       <GroupModal
         isOpen={isGroupModalOpen}
         onClose={handleCloseModal}
@@ -423,7 +453,7 @@ const AgChartsPage: React.FC = () => {
       {error && (<ErrorAlert message={error} onDismiss={handleDismissError} />)}
 
       {isLoading && <LoadingAlert />}
-       <ReusableChartDrawer
+      <ReusableChartDrawer
         isOpen={isOpen}
         drillDownState={drillDownState}
         onBack={closeDrawer}
@@ -435,24 +465,24 @@ const AgChartsPage: React.FC = () => {
           <AgCharts options={chartOptions.drillDown} />
         )}
       </ReusableChartDrawer>
-    
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <ChartContainer title="Revenue Trends with Cross Chart Filter" isLoading={isLoading} data={chartData.line}>
-            <AgCharts options={chartOptions.line || {}} />
-          </ChartContainer>
-          <ChartContainer title="Revenue vs Expenses" isLoading={isLoading} data={chartData.bar}>
-            <AgCharts options={chartOptions.bar || {}} />
-          </ChartContainer>
-          <ChartContainer title="Financial Distribution" isLoading={isLoading} data={chartData.pie}>
-            <AgCharts options={chartOptions.pie || {}} />
-          </ChartContainer>
-          <ChartContainer title="Revenue by Category" isLoading={isLoading} data={chartData.donut}>
-            <AgCharts options={chartOptions.donut || {}} />
-          </ChartContainer>
-          <p className="col-span-1 md:col-span-2 text-sm text-gray-500">
-            <i>Click on any chart element to drill down into more detailed data</i>
-          </p>
-        </div>
+     
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <ChartContainer title="Revenue Trends with Cross Chart Filter" isLoading={isLoading} data={chartData.line}>
+          <AgCharts options={chartOptions.line || {}} />
+        </ChartContainer>
+        <ChartContainer title="Revenue vs Expenses" isLoading={isLoading} data={chartData.bar}>
+          <AgCharts options={chartOptions.bar || {}} />
+        </ChartContainer>
+        <ChartContainer title="Financial Distribution" isLoading={isLoading} data={chartData.pie}>
+          <AgCharts options={chartOptions.pie || {}} />
+        </ChartContainer>
+        <ChartContainer title="Revenue by Category" isLoading={isLoading} data={chartData.donut}>
+          <AgCharts options={chartOptions.donut || {}} />
+        </ChartContainer>
+        <p className="col-span-1 md:col-span-2 text-sm text-gray-500">
+          <i>Click on any chart element to drill down into more detailed data</i>
+        </p>
+      </div>
     </section>
   );
 };
