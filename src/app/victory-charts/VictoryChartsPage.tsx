@@ -469,7 +469,7 @@ const VictoryChartsPage: React.FC = () => {
       </ReusableChartDrawer>
       <>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <ChartContainer isLoading={isLoading} title="Revenue Trends with Cross Chart Filter" data={chartData.line}>
+          <ChartContainer isLoading={isLoading} title="Revenue Trends ( Click: Cross Chart Filter | Ctrl+Click: Drill Down )" data={chartData.line}>
             <LineChart data={chartData.line} setDimensions={setDimensions} onDrillDown={handleDrillDown} />
           </ChartContainer>
 

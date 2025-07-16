@@ -530,7 +530,7 @@ const AgChartsPage: React.FC = () => {
       </ReusableChartDrawer>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <ChartContainer title="Revenue Trends with Cross Chart Filter" isLoading={isLoading} data={chartData.line}>
+        <ChartContainer title="Revenue Trends ( Click: Cross Chart Filter | Ctrl+Click: Drill Down )" isLoading={isLoading} data={chartData.line}>
           <AgCharts options={chartOptions.line || {}} />
         </ChartContainer>
         <ChartContainer title="Revenue vs Expenses" isLoading={isLoading} data={chartData.bar}>

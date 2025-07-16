@@ -686,7 +686,7 @@ export default function ChartJsPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {lineChartData && (
-          <ChartContainer title="Revenue Trends with Cross Chart Filter" isLoading={isLoading} chartRef={lineChartRef} data={rawChartData.line}>
+          <ChartContainer title="Revenue Trends ( Click: Cross Chart Filter | Ctrl+Click: Drill Down )" isLoading={isLoading} chartRef={lineChartRef} data={rawChartData.line}>
             <Line
               ref={lineChartRef}
               // @ts-ignore
