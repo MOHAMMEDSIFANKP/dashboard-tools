@@ -1,3 +1,5 @@
+import { FinancialData } from "@/types/Schemas";
+
 // src\lib\testCase2Transformer.ts
 export const transformTestCase2ToCommonFormat = (data: any): any => {
 
@@ -122,19 +124,26 @@ export const transformTestCase2ToTestCase1 = (
   };
 };
 
+interface TestCaseTwoDrillDownResponse {
+    fiscal_year_number: number;
+    fiscal_period_code: number;
+    value: number;
+    level_3_category_name?: string;
+    cat_financial_view?:string;
+    country_name?: string;
+}
+
 export const transformTestCase2DrillDownData = (data: any) => {
   if (!data?.success || !Array.isArray(data.data)) {
     return { success: false };
   }
 
   // Transform and sort the data
-  const transformedData = data.data
-  //@ts-ignore
-    .map(item => ({
+  const transformedData:FinancialData[] = data.data.map((item: TestCaseTwoDrillDownResponse) => ({
       fiscalyear: item.fiscal_year_number,
       period: item.fiscal_period_code,
       value: item.value,
-      catfinancialview: item.level_3_category_name,
+      catfinancialview: item.level_3_category_name || item.cat_financial_view,
       // cataccountingview: item.level_2_department_name,
       // country: item.country_name,
     }))

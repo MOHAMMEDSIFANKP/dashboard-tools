@@ -7,7 +7,7 @@ export interface Post {
 
 export interface FinancialSchema {
   fiscalYear: number;
-  period: string;
+  period: number;
   catAccountingView: string;
   catFinancialView: string;
   revenue: number;
