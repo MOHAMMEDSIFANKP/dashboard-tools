@@ -1,7 +1,7 @@
 import { ApiResponse } from "@/types/Schemas";
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
-export const testCase2ProductId = "sample_100k_product_v1";
+export const testCase2ProductId = "new_product_v1";
 
 interface ChartRequestBody {
   chartType: string;
