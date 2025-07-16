@@ -29,6 +29,10 @@ import ReusableChartDrawer, { useChartDrawer } from "@/components/ChartDrawer";
 import { ChartSkelten } from "@/components/ui/ChartSkelten";
 import { ErrorAlert } from "@/components/ui/status-alerts";
 import DashboardInfoCard from "@/components/DashboardInfoCard";
+import { testCase2ProductId, useFetchTestCase2ChartDataMutation, useFetchTestCase2DrillDownDataMutation } from "@/lib/services/testCase2Api";
+import { RootState } from "@/store/store";
+import { useSelector } from "react-redux";
+import { transformTestCase2DrillDownData, transformTestCase2ToCommonFormat } from "@/lib/testCase2Transformer";
 
 ChartJS.register(
   CategoryScale,
@@ -149,9 +153,15 @@ export default function ChartJsPage() {
   const [isGroupModalOpen, setIsGroupModalOpen] = useState<boolean>(false);
   const [dimensions, setDimensions] = useState<Dimensions | null>(null);
 
-  // API Mutations
+  const testCase = useSelector((state: RootState) => state.dashboard.selectedTestCase);
+
+  // Test Case 1 API Mutations
   const [fetchAllChartData] = useFetchChartDataMutation()
   const [fetchDrillDownData] = useFetchDrillDownDataMutation();
+
+  // Test Case 2 API Mutations
+  const [FetchTestCase2AllChartData] = useFetchTestCase2ChartDataMutation();
+  const [fetchTestCase2DrillDownData] = useFetchTestCase2DrillDownDataMutation();
 
   // Chart data states
   const emptyChartData = { labels: [], datasets: [] };
@@ -186,19 +196,31 @@ export default function ChartJsPage() {
     setDimensions(datas);
   };
 
+  const fetchChartDataByTestCase = async () => {
+    try {
+      if (testCase === "test-case-1") {
+        const res = await fetchAllChartData({ body: buildRequestBody(dimensions, 'all') }).unwrap();
+        if (!res?.success) throw new Error(res.message || "Error");
+        return res;
+      } else {
+        const raw = await FetchTestCase2AllChartData({ body: buildRequestBody(dimensions, 'all'), productId: testCase2ProductId, excludeNullRevenue: false }).unwrap();
+        const transformed = transformTestCase2ToCommonFormat(raw);
+        if (!transformed?.success) throw new Error(transformed.message || "Error");
+        return transformed;
+      }
+    } catch (error) {
+      console.log(error, 'Error fetching chart data');
+
+    }
+  }
+
   // Fetch all chart data
   const fetchAllChartDataHanlde = async () => {
     setIsLoading(true);
     setError(null);
 
     try {
-      const result = await fetchAllChartData({
-        body: buildRequestBody(dimensions, 'all')
-      }).unwrap();
-
-      if (!result || !result.success) {
-        throw new Error(result?.message || "Failed to fetch chart data");
-      }
+      const result: any = await fetchChartDataByTestCase();
 
       // Process line chart data
       const lineData = result?.charts?.line?.success ? result?.charts?.line?.data || [] : [];
@@ -341,13 +363,21 @@ export default function ChartJsPage() {
     setError(null);
 
     try {
-      const result = await fetchDrillDownData({
-        table_name: databaseName,
-        chart_type: chartType,
-        category: category,
-        data_type: dataType,
-        value: value || category
-      }).unwrap();
+      const result: any = testCase === "test-case-1"
+        ? await fetchDrillDownData({
+          table_name: databaseName,
+          chart_type: chartType,
+          category: category,
+          data_type: dataType,
+          value: value
+        }).unwrap()
+        : transformTestCase2DrillDownData(await fetchTestCase2DrillDownData({
+          productId: testCase2ProductId,
+          chartType: chartType,
+          category: category,
+          dataType: dataType,
+          value: value
+        }).unwrap());
 
       if (result.success && result.data && result.data.length > 0) {
         const drillData = result.data;
@@ -357,18 +387,7 @@ export default function ChartJsPage() {
         let formattedData: ChartData<'bar' | 'line' | 'pie' | 'doughnut'>;
         let drillChartType: 'bar' | 'line' | 'pie' | 'doughnut' = 'bar';
 
-        if (columns.includes('period')) {
-          drillChartType = 'line';
-          formattedData = {
-            labels: drillData.map((d: any) => d.period),
-            datasets: [{
-              label: 'Value',
-              data: drillData.map((d: any) => d.value || 0),
-              borderColor: "rgb(75, 192, 192)",
-              backgroundColor: "rgba(75, 192, 192, 0.5)"
-            }]
-          };
-        } else if (columns.includes('catfinancialview') || columns.includes('cataccountingview')) {
+        if (chartType === 'line' || chartType === 'bar') {
           drillChartType = 'bar';
           // @ts-ignore
           const labelKey = columns.find(col => col.includes('cat')) || columns[0];
@@ -378,6 +397,17 @@ export default function ChartJsPage() {
               label: 'Value',
               data: drillData.map((d: any) => d.value || 0),
               backgroundColor: "rgba(75, 192, 192, 0.6)"
+            }]
+          };
+        } else if (columns.includes('period')) {
+          drillChartType = 'line';
+          formattedData = {
+            labels: drillData.map((d: any) => d.period),
+            datasets: [{
+              label: 'Value',
+              data: drillData.map((d: any) => d.value || 0),
+              borderColor: "rgb(75, 192, 192)",
+              backgroundColor: "rgba(75, 192, 192, 0.5)"
             }]
           };
         } else {
@@ -444,7 +474,7 @@ export default function ChartJsPage() {
         await handleDrillDown('line', period, dataType, value);
       } else {
         // @ts-ignore
-        setDimensions(handleCrossChartFilteringFunc(period));
+        setDimensions(handleCrossChartFilteringFunc(String(period)));
       }
     } catch (error) {
       console.error("Error in line chart click handler:", error);
@@ -527,7 +557,7 @@ export default function ChartJsPage() {
   // Fetch data when dimensions change
   useEffect(() => {
     fetchAllChartDataHanlde();
-  }, [dimensions]);
+  }, [dimensions, testCase]);
 
   const chartOptions: ChartOptions<'line' | 'bar' | 'pie' | 'doughnut'> = {
     responsive: true,
@@ -557,11 +587,16 @@ export default function ChartJsPage() {
   }, []);
 
   const dashboardInfoDatas = {
-    apiEndpoints: [
-      { method: "GET", apiName: "api/dashboard/all-charts?table_name=sample_1m", api: "https://testcase.mohammedsifankp.online/api/dashboard/all-charts?table_name=sample_1m", description: "Fetch all chart data for the dashboard" },
-      { method: "POST", apiName: "api/dashboard/tables/sample_1m/dimensions", api: "https://testcase.mohammedsifankp.online/api/dashboard/tables/sample_1m/dimensions", description: "Fetch dimensions for the dashboard" },
-      { method: "POST", apiName: "api/dashboard/drill-down?table_name=sample_1m&chart_type=bar&category=201907&data_type=revenue&value=4299212962.550013", api: "https://testcase.mohammedsifankp.online/api/dashboard/drill-down?table_name=sample_1m&chart_type=bar&category=201907&data_type=revenue&value=4299212962.550013", description: "Fetch Drill Down datas" },
+        apiEndpoints: [
+      { testCase: "test-case-1", method: "POST", apiName: "api/dashboard/all-charts?table_name=sample_1m", api: "https://testcase.mohammedsifankp.online/api/dashboard/all-charts?table_name=sample_1m", description: "Fetch all chart data for the dashboard" },
+      { testCase: "test-case-1", method: "POST", apiName: "api/dashboard/drill-down?table_name=sample_1m&chart_type=bar&category=201907&data_type=revenue&value=4299212962.550013", api: "https://testcase.mohammedsifankp.online/api/dashboard/drill-down?table_name=sample_1m&chart_type=bar&category=201907&data_type=revenue&value=4299212962.550013", description: "Fetch Drill Down datas" },
+      { testCase: "test-case-1", method: "GET", apiName: "api/dashboard/tables/sample_1m/dimensions", api: "https://testcase.mohammedsifankp.online/api/dashboard/tables/sample_1m/dimensions", description: "Fetch dimensions for the dashboard" },
+
+      { testCase: "test-case-2", method: "POST", apiName: "api/dashboard/all-charts?product_id=sample_100k_product_v1&exclude_null_revenue=false", api: "https://testcase2.mohammedsifankp.online/api/dashboard/all-charts?product_id=sample_100k_product_v1&exclude_null_revenue=false", description: "Fetch all chart data for the dashboard" },
+      { testCase: "test-case-2", method: "POST", apiName: "api/dashboard/drill-down?product_id=sample_100k_product_v1&chart_type=line&category=202010&data_type=revenue&drill_down_level=detailed&include_reference_context=true&exclude_null_revenue=false", api: "https://testcase2.mohammedsifankp.online/api/dashboard/drill-down?product_id=sample_100k_product_v1&chart_type=line&category=202010&data_type=revenue&drill_down_level=detailed&include_reference_context=true&exclude_null_revenue=false", description: "Fetch Drill Down datas" },
+      { testCase: "test-case-2", method: "GET", apiName: "api/dashboard/tables/sample_100k_product_v1/dimensions?include_reference_tables=true", api: "https://testcase2.mohammedsifankp.online/api/dashboard/tables/sample_100k_product_v1/dimensions?include_reference_tables=false", description: "Fetch dimensions for the dashboard" },
     ],
+    
     availableFeatures: [
       { feature: "Drill Down (Need Manual setup)", supported: false },
       { feature: "Cross-Chart Filtering (Need Manual setup)", supported: false },
@@ -574,7 +609,10 @@ export default function ChartJsPage() {
       { feature: "Open Source", supported: true },
       { feature: "Drag and Drop (Need Custom Code not default)", supported: false },
     ],
-    dataRecords: "1 Million Records"
+     dataRecords: {
+      "test-case-1": "1,000,000 Records",
+      "test-case-2": "Records"
+    }
   }
 
 
@@ -591,6 +629,7 @@ export default function ChartJsPage() {
       <GroupModal
         isOpen={isGroupModalOpen}
         onClose={handleCloseModal}
+        testCase={testCase}
         // @ts-ignore
         onCreateGroup={handleCreateGroup}
       />

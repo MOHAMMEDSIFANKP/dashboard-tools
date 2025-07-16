@@ -11,8 +11,13 @@ import { FinancialSchema } from "@/types/Schemas";
 import { databaseName, useFetchSearchableDataQuery } from '@/lib/services/usersApi';
 import { useRef, useState } from 'react';
 import DashboardInfoCard from '@/components/DashboardInfoCard';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/store/store';
+import { testCase2ProductId, useFetchTestCase2TableDataQuery } from '@/lib/services/testCase2Api';
 
 const DataGrid = ({ }) => {
+  const testCase = useSelector((state: RootState) => state.dashboard.selectedTestCase);
+
   const [searchParams, setSearchParams] = useState({
     tableName: databaseName,
     column_filters: {},
@@ -22,18 +27,48 @@ const DataGrid = ({ }) => {
 
   const gridRef = useRef<AgGridReact>(null);
 
+  const isTestCase1 = testCase === "test-case-1";
+  const isTestCase2 = testCase === "test-case-2";
+
   const {
-    data,
-    error,
-    isLoading,
-    refetch: refetchData,
-  } = useFetchSearchableDataQuery(searchParams);
+    data: data1,
+    error: error1,
+    isLoading: isLoading1,
+    refetch: refetch1,
+  } = useFetchSearchableDataQuery(searchParams, {
+    skip: !isTestCase1,
+  });
+
+  // Test Case 2 – Data Product table API
+  const {
+    data: data2,
+    error: error2,
+    isLoading: isLoading2,
+    refetch: refetch2,
+  } = useFetchTestCase2TableDataQuery({
+    productId: testCase2ProductId,
+    limit: searchParams.limit,
+    offset: searchParams.offset,
+    search: '',
+    column_filters: searchParams.column_filters,
+    excludeNullRevenue: false,
+    includeEnrichment: true,
+  }, {
+    skip: !isTestCase2,
+  });
+
+  const data = isTestCase1 ? data1 : data2;
+  const error = isTestCase1 ? error1 : error2;
+  const isLoading = isTestCase1 ? isLoading1 : isLoading2;
+  const refetchData = isTestCase1 ? refetch1 : refetch2;
+
 
   // const financialData = (data?.data ?? []) as FinancialSchema[];
   const financialData = ((data?.data ?? []) as FinancialSchema[]).map(row => ({ ...row }));
-
-  const totalRows = data?.total_rows ?? 0;
-  const filteredRows = data?.filtered_rows ?? 0;
+  // @ts-ignore
+  const totalRows = isTestCase1 ? data?.total_rows : data?.pagination?.total_records ?? 0;
+  // @ts-ignore
+  const filteredRows = isTestCase1 ? data?.filtered_rows : data?.pagination?.filtered_records ?? 0;
 
   // Calculate pagination info
   const hasFilters = Object.keys(searchParams.column_filters).length > 0;
@@ -107,7 +142,7 @@ const DataGrid = ({ }) => {
     }));
   };
 
-  const columnDefs: ColDef[] = [
+  const columnDefsTestCase1: ColDef[] = [
     {
       field: 'fiscalyear',
       headerName: 'Fiscal Year',
@@ -211,6 +246,160 @@ const DataGrid = ({ }) => {
     },
   ];
 
+  const columnDefsTestCase2: ColDef[] = [
+    {
+      field: 'fiscal_year_number',
+      headerName: 'Fiscal Year',
+      sortable: true,
+      editable: false,
+      floatingFilter: true,
+      valueParser: (params) => String(params.newValue)
+    },
+    {
+      field: 'fiscal_period_code',
+      headerName: 'Period',
+      sortable: true,
+      editable: true,
+      floatingFilter: true
+    },
+    {
+      field: 'cat_accounting_view',
+      headerName: 'Cat Accounting View',
+      sortable: true,
+      editable: true,
+      floatingFilter: true
+    },
+    {
+      field: 'cat_financial_view',
+      headerName: 'Cat Financial View',
+      sortable: true,
+      editable: true,
+      floatingFilter: true
+    },
+    {
+      field: 'revenue_amount_usd',
+      headerName: 'Revenue',
+      sortable: true,
+      editable: true,
+      floatingFilter: true,
+      valueParser: (params) => String(params.newValue)
+    },
+    {
+      field: 'gross_margin_amount_usd',
+      headerName: 'Gross Margin',
+      sortable: true,
+      editable: true,
+      floatingFilter: true,
+      valueParser: (params) => String(params.newValue)
+    },
+    {
+      field: 'operating_expenses_amount_usd',
+      headerName: 'Operating Expenses',
+      sortable: true,
+      editable: true,
+      floatingFilter: true,
+      valueParser: (params) => String(params.newValue)
+    },
+    {
+      field: 'operating_profit',
+      headerName: 'Operating Profit',
+      sortable: true,
+      editable: true,
+      floatingFilter: true,
+      valueParser: (params) => String(params.newValue)
+    },
+    {
+      field: 'earnings_before_tax',
+      headerName: 'Earnings Before Tax',
+      sortable: true,
+      editable: true,
+      floatingFilter: true,
+      valueParser: (params) => String(params.newValue)
+    },
+    {
+      field: 'non_recurring_result',
+      headerName: 'Non-Recurring Result',
+      sortable: true,
+      editable: true,
+      floatingFilter: true,
+      valueParser: (params) => String(params.newValue)
+    },
+    {
+      field: 'net_profit_amount_usd',
+      headerName: 'Net Profit',
+      sortable: true,
+      editable: true,
+      floatingFilter: true,
+      valueParser: (params) => String(params.newValue)
+    },
+    {
+      field: 'country_name',
+      headerName: 'Country Name',
+      sortable: true,
+      editable: true,
+      floatingFilter: true,
+      valueParser: (params) => String(params.newValue)
+    },
+    {
+      field: 'continent_name',
+      headerName: 'Continent Name',
+      sortable: true,
+      editable: true,
+      floatingFilter: true,
+      valueParser: (params) => String(params.newValue)
+    },
+    {
+      field: 'account_type_code',
+      headerName: 'Account Type Code',
+      sortable: true,
+      editable: true,
+      floatingFilter: true,
+      valueParser: (params) => String(params.newValue)
+    },
+    {
+      field: 'account_category_code',
+      headerName: 'Account Category Code',
+      sortable: true,
+      editable: true,
+      floatingFilter: true,
+      valueParser: (params) => String(params.newValue)
+    },
+    {
+      field: 'normal_balance_type',
+      headerName: 'Normal Balance Type',
+      sortable: true,
+      editable: true,
+      floatingFilter: true,
+      valueParser: (params) => String(params.newValue)
+    },
+    {
+      field: 'level_1_division_name',
+      headerName: 'level_1_division_name',
+      sortable: true,
+      editable: true,
+      floatingFilter: true,
+      valueParser: (params) => String(params.newValue)
+    },
+    {
+      field: 'level_2_department_name',
+      headerName: 'level_2_department_name',
+      sortable: true,
+      editable: true,
+      floatingFilter: true,
+      valueParser: (params) => String(params.newValue)
+    },
+    {
+      field: 'level_3_category_name',
+      headerName: 'level_3_category_name',
+      sortable: true,
+      editable: true,
+      floatingFilter: true,
+      valueParser: (params) => String(params.newValue)
+    },
+  ];
+
+  const columnDefs = isTestCase1 ? columnDefsTestCase1 : columnDefsTestCase2;
+
   const defaultColDef = {
     flex: 1,
     minWidth: 100,
@@ -229,8 +418,11 @@ const DataGrid = ({ }) => {
 
   const dashboardInfoDatas = {
     apiEndpoints: [
-      { method: "GET", apiName: "api/duckdb/tables/sample_1m/data", api: "https://testcase.mohammedsifankp.online/api/duckdb/tables/sample_1m/data?limit=10&offset=0", description: "Fetch all table data" },
-      { method: "GET", apiName: "api/duckdb/tables/sample_1m/data?column_filters=%7B%22otherincome%22%3A%22300%22%7D&limit=10&offset=0", api: "https://testcase.mohammedsifankp.online/api/duckdb/tables/sample_1m/data?column_filters=%7B%22otherincome%22%3A%22300%22%7D&limit=10&offset=0", description: "Fetch data filter" },
+      { testCase: "test-case-1", method: "GET", apiName: "api/duckdb/tables/sample_1m/data", api: "https://testcase.mohammedsifankp.online/api/duckdb/tables/sample_1m/data?limit=10&offset=0", description: "Fetch all table data" },
+      { testCase: "test-case-1", method: "GET", apiName: "api/duckdb/tables/sample_1m/data?column_filters=%7B%22otherincome%22%3A%22300%22%7D&limit=10&offset=0", api: "https://testcase.mohammedsifankp.online/api/duckdb/tables/sample_1m/data?column_filters=%7B%22otherincome%22%3A%22300%22%7D&limit=10&offset=0", description: "Fetch data by filter" },
+
+      { testCase: "test-case-2", method: "GET", apiName: "api/data-products/data-products/sample_100k_product_v1/records?limit=10&offset=0&exclude_null_revenue=false&include_enrichment=true", api: "https://testcase2.mohammedsifankp.online/api/data-products/data-products/sample_100k_product_v1/records?limit=10&offset=0&exclude_null_revenue=false&include_enrichment=true", description: "Fetch all table data" },
+      { testCase: "test-case-2", method: "GET", apiName: "/api/data-products/data-products/sample_100k_product_v1/records?limit=10&offset=0&exclude_null_revenue=false&include_enrichment=true&column_filters=%7B%22fiscal_year_number%22%3A%222022%22%7D", api: "https://testcase2.mohammedsifankp.online/api/data-products/data-products/sample_100k_product_v1/records?limit=10&offset=0&exclude_null_revenue=false&include_enrichment=true&column_filters=%7B%22fiscal_year_number%22%3A%222022%22%7D", description: "Fetch data by filter" },
     ],
     availableFeatures: [
       { feature: "Filter", supported: true },
@@ -244,7 +436,10 @@ const DataGrid = ({ }) => {
       { feature: "UI Customization", supported: true },
       { feature: "Open Source", supported: true },
     ],
-    dataRecords: "1 Million Records"
+     dataRecords: {
+      "test-case-1": "1,000,000 Records",
+      "test-case-2": "Records"
+    }
   }
 
   if (isLoading) {
@@ -280,7 +475,7 @@ const DataGrid = ({ }) => {
     <div className="w-full p-4">
       <h1 className="text-xl font-bold mb-4">Financial Data - Ag Table</h1>
 
-        <DashboardInfoCard
+      <DashboardInfoCard
         apiEndpoints={dashboardInfoDatas?.apiEndpoints}
         availableFeatures={dashboardInfoDatas?.availableFeatures}
         dataRecords={dashboardInfoDatas?.dataRecords}
@@ -377,8 +572,8 @@ const DataGrid = ({ }) => {
                     setSearchParams(prev => ({ ...prev, offset: newOffset }));
                   }}
                   className={`px-3 py-1 border rounded text-sm ${isCurrentPage
-                      ? 'bg-blue-500 text-white border-blue-500'
-                      : 'border-gray-300 hover:bg-gray-50'
+                    ? 'bg-blue-500 text-white border-blue-500'
+                    : 'border-gray-300 hover:bg-gray-50'
                     }`}
                 >
                   {pageNum}

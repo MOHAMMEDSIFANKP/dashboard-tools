@@ -11,6 +11,9 @@ import { useRowSelect } from "@table-library/react-table-library/select";
 import { databaseName, useFetchSearchableDataQuery, useFetchSearchInfoQuery } from "@/lib/services/usersApi";
 import { FinancialSchema } from "@/types/Schemas";
 import DashboardInfoCard from "@/components/DashboardInfoCard";
+import { testCase2ProductId, useFetchTestCase2TableDataQuery } from "@/lib/services/testCase2Api";
+import { RootState } from "@/store/store";
+import { useSelector } from "react-redux";
 
 interface FinancialRow extends FinancialSchema {
   id: string;
@@ -34,12 +37,20 @@ export default function ReactTable() {
   const [editingCell, setEditingCell] = useState<EditableCell | null>(null);
   const [unsavedChanges, setUnsavedChanges] = useState<Map<string, Partial<FinancialRow>>>(new Map());
 
+  const testCase = useSelector((state: RootState) => state.dashboard.selectedTestCase);
+  const isTestCase1 = testCase === "test-case-1";
+  const isTestCase2 = testCase === "test-case-2";
+
   // Prepare search parameters
   const searchParams = useMemo(() => {
     const columnFilters: Record<string, string | number> = {};
 
     if (filterCategory !== "All") {
-      columnFilters.catfinancialview = filterCategory;
+      if (isTestCase1) {
+        columnFilters.catfinancialview = filterCategory;
+      } else {
+        columnFilters.cat_financial_view = filterCategory;
+      }
     }
 
     return {
@@ -53,17 +64,36 @@ export default function ReactTable() {
 
   // API queries
   const {
-    data: searchData,
-    error: searchError,
-    isLoading: isSearchLoading,
-    refetch: refetchData,
-  } = useFetchSearchableDataQuery(searchParams);
+    data: data1,
+    error: error1,
+    isLoading: isLoading1,
+    refetch: refetch1,
+  } = useFetchSearchableDataQuery(searchParams, {
+    skip: !isTestCase1,
+  });
 
   const {
-    data: searchInfo,
-    error: searchInfoError,
-    isLoading: isSearchInfoLoading,
-  } = useFetchSearchInfoQuery({ tableName: databaseName });
+    data: data2,
+    error: error2,
+    isLoading: isLoading2,
+    refetch: refetch2,
+  } = useFetchTestCase2TableDataQuery({
+    productId: testCase2ProductId,
+    limit: searchParams.limit,
+    offset: searchParams.offset,
+    search: '',
+    // @ts-ignore
+    column_filters: searchParams.column_filters,
+    excludeNullRevenue: false,
+    includeEnrichment: true,
+  }, {
+    skip: !isTestCase2,
+  });
+
+  const searchData = isTestCase1 ? data1 : data2;
+  const searchError = isTestCase1 ? error1 : error2;
+  const isSearchLoading = isTestCase1 ? isLoading1 : isLoading2;
+  const refetchData = isTestCase1 ? refetch1 : refetch2;
 
   // Transform API data for table
   const tableData = useMemo(() => {
@@ -73,10 +103,12 @@ export default function ReactTable() {
       ...item,
       id: `row-${index}-${currentPage * pageSize}`,
       // Map API field names to component field names if needed
-      fiscalYear: item.fiscalyear || item.fiscalYear,
-      catFinancialView: item.catfinancialview || item.catFinancialView,
-      catAccountingView: item.cataccountingview || item.catAccountingView,
-      netProfit: item.netprofit || item.netProfit,
+      period: item.period || item.fiscal_period_code,
+      fiscalYear: item.fiscalyear || item.fiscal_year_number,
+      revenue: item.revenue || item.revenue_amount_usd,
+      catFinancialView: item.catfinancialview || item.cat_financial_view,
+      catAccountingView: item.cataccountingview || item.cat_accounting_view,
+      netProfit: item.netprofit || item.net_profit_amount_usd,
     }));
 
     return { nodes: nodesWithIds };
@@ -84,12 +116,8 @@ export default function ReactTable() {
 
   // Get available categories from search info
   const categories = useMemo(() => {
-    if (!searchInfo?.columns) return [];
-
-    // You might need to make a separate API call to get unique values
-    // For now, return some default categories based on your sample data
     return ["Non opérationnel", "Financier", "Exceptionnel"];
-  }, [searchInfo]);
+  }, []);
 
   // Apply theme
   const theme = useTheme([
@@ -360,14 +388,20 @@ export default function ReactTable() {
     },
   ];
 
-  const totalPages = Math.ceil((searchData?.total_rows || 0) / pageSize);
-  const totalRows = searchData?.total_rows || 0;
-  const filteredRows = searchData?.filtered_rows || 0;
+  // @ts-ignore
+  const totalPages = Math.ceil(isTestCase1 ? (searchData?.total_rows || 0) : (searchData?.pagination?.total_records || 0) / pageSize);
+  // @ts-ignore
+  const totalRows = isTestCase1 ? (searchData?.total_rows || 0) : (searchData?.pagination?.total_records || 0);
+  // @ts-ignore
+  const filteredRows = isTestCase1 ? (searchData?.filtered_rows || 0) : (searchData?.pagination?.filtered_records || 0);
 
   const dashboardInfoDatas = {
     apiEndpoints: [
-      { method: "GET", apiName: "api/duckdb/tables/sample_1m/data", api: "https://testcase.mohammedsifankp.online/api/duckdb/tables/sample_1m/data?limit=10&offset=0", description: "Fetch all table data" },
-      { method: "GET", apiName: "api/duckdb/tables/sample_1m/data?column_filters=%7B%22otherincome%22%3A%22300%22%7D&limit=10&offset=0", api: "https://testcase.mohammedsifankp.online/api/duckdb/tables/sample_1m/data?column_filters=%7B%22otherincome%22%3A%22300%22%7D&limit=10&offset=0", description: "Fetch data filter" },
+      { testCase: "test-case-1", method: "GET", apiName: "api/duckdb/tables/sample_1m/data", api: "https://testcase.mohammedsifankp.online/api/duckdb/tables/sample_1m/data?limit=10&offset=0", description: "Fetch all table data" },
+      { testCase: "test-case-1", method: "GET", apiName: "api/duckdb/tables/sample_1m/data?column_filters=%7B%22otherincome%22%3A%22300%22%7D&limit=10&offset=0", api: "https://testcase.mohammedsifankp.online/api/duckdb/tables/sample_1m/data?column_filters=%7B%22otherincome%22%3A%22300%22%7D&limit=10&offset=0", description: "Fetch data by filter" },
+
+      { testCase: "test-case-2", method: "GET", apiName: "api/data-products/data-products/sample_100k_product_v1/records?limit=10&offset=0&exclude_null_revenue=false&include_enrichment=true", api: "https://testcase2.mohammedsifankp.online/api/data-products/data-products/sample_100k_product_v1/records?limit=10&offset=0&exclude_null_revenue=false&include_enrichment=true", description: "Fetch all table data" },
+      { testCase: "test-case-2", method: "GET", apiName: "/api/data-products/data-products/sample_100k_product_v1/records?limit=10&offset=0&exclude_null_revenue=false&include_enrichment=true&column_filters=%7B%22fiscal_year_number%22%3A%222022%22%7D", api: "https://testcase2.mohammedsifankp.online/api/data-products/data-products/sample_100k_product_v1/records?limit=10&offset=0&exclude_null_revenue=false&include_enrichment=true&column_filters=%7B%22fiscal_year_number%22%3A%222022%22%7D", description: "Fetch data by filter" },
     ],
     availableFeatures: [
       { feature: "Filter", supported: true },
@@ -381,20 +415,23 @@ export default function ReactTable() {
       { feature: "UI Customization", supported: true },
       { feature: "Open Source", supported: true },
     ],
-    dataRecords: "1 Million Records"
+     dataRecords: {
+      "test-case-1": "1,000,000 Records",
+      "test-case-2": "Records"
+    }
   }
 
   // Handle loading and error states
-  if (isSearchLoading || isSearchInfoLoading) {
+  if (isSearchLoading) {
     return <div className="p-4 text-center">Loading data...</div>;
   }
 
-  if (searchError || searchInfoError) {
+  if (searchError) {
     return (
       <div className="p-4 text-red-600">
         Error: {
           // @ts-ignore
-          searchError?.error?.toString() || searchInfoError?.error?.toString()}
+          searchError?.error?.toString()}
         <button
           onClick={() => refetchData()}
           className="ml-2 px-3 py-1 bg-red-100 hover:bg-red-200 rounded"
@@ -480,11 +517,9 @@ export default function ReactTable() {
 
       {/* Data Info */}
       <div className="mb-4 text-sm text-gray-600">
-        {searchData?.search_applied && (
-          <span className="mr-4">
-            🔍 Search: "{searchData.search_term}"
-          </span>
-        )}
+        {
+          // @ts-ignore
+          searchData?.search_applied && (<span className="mr-4">🔍 Search: "{searchData.search_term}"</span>)}
         <span>
           Showing {filteredRows} of {totalRows} records
         </span>

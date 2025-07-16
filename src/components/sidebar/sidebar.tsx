@@ -28,6 +28,9 @@ import {
 import { Input } from '@/components/ui/input';
 import { usePathname } from 'next/navigation';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { useDispatch, useSelector } from 'react-redux';
+import { setSelectedTestCase } from '@/store/slices/dashboardSlice';
+import { RootState } from '@/store/store';
 
 interface SideBarLayoutProps {
     children: React.ReactNode;
@@ -214,7 +217,7 @@ const SideBarLayout: React.FC<SideBarLayoutProps> = ({ children }) => {
                                 </div>
                             </div>
                         </div>
-
+                        <TestCaseSwitcher />
                         {/* Profile & Notifications */}
                         <div className="flex items-center space-x-4">
                             <button className="p-2 text-gray-400 hover:text-gray-500 hover:bg-gray-100 rounded-full transition duration-150 ease-in-out">
@@ -269,5 +272,43 @@ const SideBarLayout: React.FC<SideBarLayoutProps> = ({ children }) => {
         </div>
     );
 };
+
+
+function TestCaseSwitcher() {
+    const dispatch = useDispatch();
+    const testCase = useSelector((state: RootState) => state.dashboard.selectedTestCase);
+
+    const toggleTestCase = () => {
+        const newCase = testCase === "test-case-1" ? "test-case-2" : "test-case-1";
+        dispatch(setSelectedTestCase(newCase));
+    };
+
+
+    return (
+        <div className="flex items-center justify-between gap-4 p-4  w-fit">
+            <div className='hidden md:block'>
+                <div className="text-sm font-semibold text-gray-700">
+                    {`Currently Using: Test Case ${testCase}`}
+                </div>
+                <div className="text-xs text-gray-500">
+                    Toggle to test dashboard response behavior
+                </div>
+            </div>
+            <button
+                onClick={toggleTestCase}
+                className={`relative flex items-center h-8 w-20 rounded-full transition-colors duration-300 ${testCase === "test-case-1" ? "bg-blue-600" : "bg-green-600"
+                    }`}
+            >
+                <span className={`absolute ${testCase === "test-case-1" ? 'right-1' : 'left-1'} text-white text-[9px]`}>
+                    {testCase === "test-case-1" ? "Test Case 1" : "Test Case 2"}
+                </span>
+                <div
+                    className={`absolute top-1 left-1 h-6 w-6 rounded-full bg-white shadow-md transform transition-transform duration-300 ${testCase === "test-case-2" ? "translate-x-12" : ""
+                        }`}
+                />
+            </button>
+        </div>
+    );
+}
 
 export default SideBarLayout;

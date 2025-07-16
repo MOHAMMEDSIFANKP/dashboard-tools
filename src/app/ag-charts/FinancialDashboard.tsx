@@ -4,10 +4,13 @@ import { useCallback, useEffect, useState } from "react"
 import FinancialTable from "./FinancialTable"
 import type { FinancialData } from "@/types/Schemas"
 import { CustomSelect } from "@/components/ui/inputs"
-import { 
-  useFetchAvailableYearsQuery, 
-  useLazyFetchFinancialDataQuery 
+import {
+  useFetchAvailableYearsQuery,
+  useLazyFetchFinancialDataQuery
 } from "@/lib/services/usersApi"
+import { useSelector } from "react-redux"
+import { RootState } from "@/store/store"
+import { testCase2ProductId, useLazyFetchFinancialDataTestCase2Query } from "@/lib/services/testCase2Api"
 
 interface FilterOption {
   label: string
@@ -30,6 +33,8 @@ const AllMonths: FilterOption[] = [
 ];
 
 export default function FinancialDashboard() {
+  const testCase = useSelector((state: RootState) => state.dashboard.selectedTestCase);
+
   const [monthData, setMonthData] = useState<FinancialData[]>([])
   const [yearData, setYearData] = useState<FinancialData[]>([])
 
@@ -38,13 +43,14 @@ export default function FinancialDashboard() {
   const [selectedMonth, setSelectedMonth] = useState<string>('01');
 
   // API hooks
-  const { 
-    data: yearsData, 
-    error: yearsError, 
-    isLoading: yearsLoading 
+  const {
+    data: yearsData,
+    error: yearsError,
+    isLoading: yearsLoading
   } = useFetchAvailableYearsQuery('sample_100k');
-  
+
   const [fetchFinancialData] = useLazyFetchFinancialDataQuery();
+  const [fetchFinancialDataTestCase2] = useLazyFetchFinancialDataTestCase2Query()
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -57,7 +63,7 @@ export default function FinancialDashboard() {
         value: year.value
       }));
       setAvailableYears(formattedYears);
-      
+
       // Set default year if not already set
       if (!selectedYear && formattedYears.length > 0) {
         setSelectedYear(formattedYears[formattedYears.length - 1].value); // Latest year
@@ -82,17 +88,37 @@ export default function FinancialDashboard() {
 
     try {
       // Fetch current month and YTD data from API
-      const result = await fetchFinancialData({
-        tableName: 'sample_100k',
-        year: selectedYear,
-        month: selectedMonth
-      }).unwrap();
+      const result: any = testCase === 'test-case-1'
+        ? await fetchFinancialData({
+          tableName: 'sample_100k',
+          year: selectedYear,
+          month: selectedMonth
+        }).unwrap()
+        : await fetchFinancialDataTestCase2({
+          productId: testCase2ProductId,
+          year: selectedYear,
+          month: selectedMonth
+        })
 
-      if (result.success) {
+
+
+      const isSuccess = testCase === 'test-case-1'
+        ? result?.success
+        : !!result?.data?.success;
+
+      if (isSuccess) {
+        const monthData = testCase === 'test-case-1'
+          ? result.month_data
+          : result.data?.month_data;
+
+        const ytdData = testCase === 'test-case-1'
+          ? result.ytd_data
+          : result.data?.ytd_data;
+
         // Set month data
-        if (result.month_data && result.month_data.length > 0) {
+        if (monthData && monthData.length > 0) {
           // Transform API response to match FinancialData interface
-          const transformedMonthData = result.month_data.map((item: any) => ({
+          const transformedMonthData =monthData.map((item: any) => ({
             fiscalyear: parseInt(item.fiscalyear),
             period: item.period,
             revenue: item.revenue || 0,
@@ -111,8 +137,8 @@ export default function FinancialDashboard() {
         }
 
         // Set YTD data
-        if (result.ytd_data && result.ytd_data.length > 0) {
-          const transformedYearData = result.ytd_data.map((item: any) => ({
+        if (ytdData && ytdData.length > 0) {
+          const transformedYearData = ytdData.map((item: any) => ({
             fiscalyear: parseInt(item.fiscalyear),
             period: item.period,
             revenue: item.revenue || 0,
@@ -142,7 +168,7 @@ export default function FinancialDashboard() {
     } finally {
       setIsLoading(false);
     }
-  }, [selectedYear, selectedMonth, fetchFinancialData]);
+  }, [selectedYear, selectedMonth, fetchFinancialData, testCase]);
 
   // Fetch data when filters change
   useEffect(() => {
@@ -208,19 +234,19 @@ export default function FinancialDashboard() {
               />
             </div>
           </div>
-          
+
           {/* Error Display */}
           {hasError && (
             <div className="mx-4 mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
               <p className="text-sm">
-                {typeof hasError === 'string' ? hasError : 
-                 error || 
-                 'Failed to load data. Please try again.'}
+                {typeof hasError === 'string' ? hasError :
+                  error ||
+                  'Failed to load data. Please try again.'}
               </p>
             </div>
           )}
         </div>
-        
+
         <div className="w-full">
           {isDataLoading ? (
             <div className="flex justify-center items-center p-8">
@@ -234,13 +260,13 @@ export default function FinancialDashboard() {
             />
           )}
         </div>
-        
+
         {/* Data Status */}
         <div className="text-xs text-gray-500 text-center">
           {!isDataLoading && !hasError && (
             <p>
               Month records: {monthData.length} | YTD records: {yearData.length}
-              {monthData.length === 0 && yearData.length === 0 && 
+              {monthData.length === 0 && yearData.length === 0 &&
                 " | No data available for selected period"}
             </p>
           )}

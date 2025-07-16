@@ -1,4 +1,4 @@
-import { ApiResponse, FinancialDataResponse, Post } from "@/types/Schemas";
+import { ApiResponse, Post } from "@/types/Schemas";
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
 export const databaseName = "sample_1m";
@@ -99,7 +99,6 @@ export const api = createApi({
     }),
 
     // Chart Data Endpoints
-    // New Chart Endpoints
     fetchChartData: builder.mutation<ApiResponse, { tableName?: string; body: ChartRequestBody }>({
       query: ({ tableName = databaseName, body }) => ({
         url: `dashboard/all-charts?table_name=${tableName}`,
@@ -175,13 +174,6 @@ export const {
   useFetchSearchableDataQuery,
   useLazyFetchSearchableDataQuery,
   useFetchSearchInfoQuery,
-
-  // Database queries
-  // useFetchTestTableDataQuery,
-  // useFetchTableSchemaQuery,
-  // useFetchTableAnalyticsQuery,
-  // useFetchAllTablesQuery,
-  // useLazyFetchTestTableDataQuery,
   
   // Dashboard queries
   useFetchDimensionsDataQuery,

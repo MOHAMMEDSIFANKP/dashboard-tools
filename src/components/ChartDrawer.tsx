@@ -37,7 +37,6 @@ export default function ReusableChartDrawer({
   maxHeight = '85vh',
   className = ''
 }: ReusableChartDrawerProps) {
-  console.log('ReusableChartDrawer rendered with state:', drillDownState);
   
   const handleClose = () => {
     if (onClose) {

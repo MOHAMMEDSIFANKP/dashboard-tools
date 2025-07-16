@@ -1,5 +1,5 @@
 'use client';
-import React, { useCallback, useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   useReactTable,
   getCoreRowModel,
@@ -13,12 +13,24 @@ import {
   ColumnOrderState,
 } from '@tanstack/react-table';
 
-import { databaseName, useFetchSearchableDataQuery, useFetchSearchInfoQuery } from "@/lib/services/usersApi";
+import { databaseName, useFetchSearchableDataQuery } from "@/lib/services/usersApi";
 import { FinancialSchema } from '@/types/Schemas';
 import DashboardInfoCard from '@/components/DashboardInfoCard';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/store/store';
+import { testCase2ProductId, useFetchTestCase2TableDataQuery } from '@/lib/services/testCase2Api';
 
 interface FinancialRow extends FinancialSchema {
   id: string;
+  // Test Case 2 specific fields
+  countryName?: string | null;
+  continentName?: string | null;
+  accountTypeCode?: string | null;
+  accountCategoryCode?: string | null;
+  normalBalanceType?: string | null;
+  level1DivisionName?: string | null;
+  level2DepartmentName?: string | null;
+  level3CategoryName?: string | null;
 }
 
 interface EditableCell {
@@ -31,6 +43,11 @@ export default function TanstackTable() {
   // State for filters and pagination
   const [search, setSearch] = useState<string>("");
   const [filterCategory, setFilterCategory] = useState<string>("All");
+
+  const testCase = useSelector((state: RootState) => state.dashboard.selectedTestCase);
+
+  const isTestCase1 = testCase === "test-case-1";
+  const isTestCase2 = testCase === "test-case-2";
 
   // TanStack Table states
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -50,7 +67,11 @@ export default function TanstackTable() {
     const columnFilters: Record<string, string | number> = {};
 
     if (filterCategory !== "All") {
-      columnFilters.catfinancialview = filterCategory; // Note: API uses lowercase
+      if (isTestCase1) {
+        columnFilters.catfinancialview = filterCategory;
+      } else {
+        columnFilters.cat_financial_view = filterCategory;
+      }
     }
 
     return {
@@ -60,47 +81,79 @@ export default function TanstackTable() {
       limit: pagination.pageSize,
       offset: pagination.pageIndex * pagination.pageSize,
     };
-  }, [search, filterCategory, pagination.pageIndex, pagination.pageSize]);
+  }, [search, filterCategory, pagination.pageIndex, pagination.pageSize, isTestCase1]);
+
 
   // API queries
   const {
-    data: searchData,
-    error: searchError,
-    isLoading: isSearchLoading,
-    refetch: refetchData,
+    data: data1,
+    error: error1,
+    isLoading: isLoading1,
+    refetch: refetch1,
   } = useFetchSearchableDataQuery(searchParams);
 
   const {
-    data: searchInfo,
-    error: searchInfoError,
-    isLoading: isSearchInfoLoading,
-  } = useFetchSearchInfoQuery({ tableName: databaseName });
+    data: data2,
+    error: error2,
+    isLoading: isLoading2,
+    refetch: refetch2,
+  } = useFetchTestCase2TableDataQuery({
+    productId: testCase2ProductId,
+    limit: searchParams.limit,
+    offset: searchParams.offset,
+    search: searchParams.search || '',
+    // @ts-ignore
+    column_filters: searchParams.column_filters || {},
+    excludeNullRevenue: false,
+    includeEnrichment: true,
+  }, {
+    skip: !isTestCase2,
+  });
+
+  const searchData = isTestCase1 ? data1 : data2;
+  const searchError = isTestCase1 ? error1 : error2;
+  const isSearchLoading = isTestCase1 ? isLoading1 : isLoading2;
+  const refetchData = isTestCase1 ? refetch1 : refetch2;
 
   // Transform API data for table
   const tableData = useMemo(() => {
     if (!searchData?.data) return [];
 
     const nodesWithIds = searchData.data.map((item: any, index: number) => ({
-      ...item,
       id: `row-${index}-${pagination.pageIndex * pagination.pageSize}`,
-      // Map API field names to component field names if needed
-      fiscalYear: item.fiscalyear || item.fiscalYear,
-      catFinancialView: item.catfinancialview || item.catFinancialView,
-      catAccountingView: item.cataccountingview || item.catAccountingView,
-      netProfit: item.netprofit || item.netProfit,
+      // Common fields with fallbacks for both test cases
+      period: item.period || item.fiscal_period_code,
+      fiscalYear: item.fiscalyear || item.fiscal_year_number,
+      catFinancialView: item.catfinancialview || item.cat_financial_view,
+      catAccountingView: item.cataccountingview || item.cat_accounting_view,
+      netProfit: item.netprofit || item.net_profit_amount_usd,
+      revenue: item.revenue || item.revenue_amount_usd,
+      grossmargin: item.grossmargin || item.gross_margin_amount_usd,
+      operatingexpenses: item.operatingexpenses || item.operating_expenses_amount_usd,
+      operatingprofit: item.operatingprofit || item.operating_profit,
+      earningsbeforetax: item.earningsbeforetax || item.earnings_before_tax,
+      nonrecurringresult: item.nonrecurringresult || item.non_recurring_result,
+      otherincome: item.otherincome || null,
+      financialresult: item.financialresult || null,
+      // Test Case 2 specific fields
+      countryName: item.country_name || null,
+      continentName: item.continent_name || null,
+      accountTypeCode: item.account_type_code || null,
+      accountCategoryCode: item.account_category_code || null,
+      normalBalanceType: item.normal_balance_type || null,
+      level1DivisionName: item.level_1_division_name || null,
+      level2DepartmentName: item.level_2_department_name || null,
+      level3CategoryName: item.level_3_category_name || null,
     }));
 
     return nodesWithIds;
   }, [searchData, pagination.pageIndex, pagination.pageSize]);
 
+
   // Get available categories from search info
   const categories = useMemo(() => {
-    if (!searchInfo?.columns) return [];
-
-    // You might need to make a separate API call to get unique values
-    // For now, return some default categories based on your sample data
     return ["Non opérationnel", "Financier", "Exceptionnel"];
-  }, [searchInfo]);
+  }, []);
 
   // Cell editing handlers
   const handleCellClick = (item: FinancialRow, field: keyof FinancialRow) => {
@@ -150,7 +203,7 @@ export default function TanstackTable() {
   }, [search, filterCategory]);
 
   const createEditableColumn = (
-    accessorKey: keyof FinancialSchema,
+    accessorKey: keyof FinancialRow,
     header: string,
     type: 'text' | 'number' = 'text'
   ): ColumnDef<FinancialRow> => ({
@@ -198,63 +251,93 @@ export default function TanstackTable() {
     },
   });
 
-  const columns: ColumnDef<FinancialRow>[] = [
-    {
-      id: 'select',
-      header: ({ table }) => (
-        <input
-          type="checkbox"
-          checked={table.getIsAllPageRowsSelected()}
-          onChange={table.getToggleAllPageRowsSelectedHandler()}
-        />
-      ),
-      cell: ({ row }) => (
-        <input
-          type="checkbox"
-          checked={row.getIsSelected()}
-          onChange={row.getToggleSelectedHandler()}
-        />
-      ),
-    },
-    {
-      accessorKey: 'fiscalYear',
-      header: 'Fiscal Year',
-      cell: ({ getValue }) => (
-        <div className="cursor-pointer hover:bg-gray-50 p-1 rounded">
-          {getValue() as string}
-        </div>
-      ),
-    },
-    {
-      accessorKey: 'period',
-      header: 'Period',
-      cell: ({ getValue }) => (
-        <div className="cursor-pointer hover:bg-gray-50 p-1 rounded">
-          {getValue() as string}
-        </div>
-      ),
-    },
-    createEditableColumn('catAccountingView', 'Cat Accounting View'),
-    createEditableColumn('catFinancialView', 'Cat Financial View'),
-    createEditableColumn('revenue', 'Revenue', 'number'),
-    createEditableColumn('otherincome', 'Other Income', 'number'),
-    createEditableColumn('grossmargin', 'Gross Margin', 'number'),
-    createEditableColumn('operatingexpenses', 'Operating Expenses', 'number'),
-    createEditableColumn('operatingprofit', 'Operating Profit', 'number'),
-    createEditableColumn('financialresult', 'Financial Result', 'number'),
-    createEditableColumn('earningsbeforetax', 'Earnings Before Tax', 'number'),
-    createEditableColumn('nonrecurringresult', 'Non-Recurring Result', 'number'),
-    createEditableColumn('netProfit', 'Net Profit', 'number'),
-  ];
+  const columns: ColumnDef<FinancialRow>[] = useMemo(() => {
+    const baseColumns: ColumnDef<FinancialRow>[] = [
+      {
+        id: 'select',
+        header: ({ table }) => (
+          <input
+            type="checkbox"
+            checked={table.getIsAllPageRowsSelected()}
+            onChange={table.getToggleAllPageRowsSelectedHandler()}
+          />
+        ),
+        cell: ({ row }) => (
+          <input
+            type="checkbox"
+            checked={row.getIsSelected()}
+            onChange={row.getToggleSelectedHandler()}
+          />
+        ),
+      },
+      {
+        accessorKey: 'fiscalYear',
+        header: 'Fiscal Year',
+        cell: ({ getValue }) => (
+          <div className="cursor-pointer hover:bg-gray-50 p-1 rounded">
+            {getValue() as string}
+          </div>
+        ),
+      },
+      {
+        accessorKey: 'period',
+        header: 'Period',
+        cell: ({ getValue }) => (
+          <div className="cursor-pointer hover:bg-gray-50 p-1 rounded">
+            {getValue() as string}
+          </div>
+        ),
+      },
+      createEditableColumn('catAccountingView', 'Cat Accounting View'),
+      createEditableColumn('catFinancialView', 'Cat Financial View'),
+      createEditableColumn('revenue', 'Revenue', 'number'),
+      createEditableColumn('grossmargin', 'Gross Margin', 'number'),
+      createEditableColumn('operatingexpenses', 'Operating Expenses', 'number'),
+      createEditableColumn('operatingprofit', 'Operating Profit', 'number'),
+      createEditableColumn('earningsbeforetax', 'Earnings Before Tax', 'number'),
+      createEditableColumn('nonrecurringresult', 'Non-Recurring Result', 'number'),
+      createEditableColumn('netProfit', 'Net Profit', 'number'),
+    ];
+
+    // Add Test Case 1 specific columns
+    if (isTestCase1) {
+      baseColumns.splice(-1, 0,
+        createEditableColumn('otherincome', 'Other Income', 'number'),
+        createEditableColumn('financialresult', 'Financial Result', 'number')
+      );
+    }
+
+    // Add Test Case 2 specific columns
+    if (isTestCase2) {
+      baseColumns.push(
+        createEditableColumn('countryName', 'Country Name'),
+        createEditableColumn('continentName', 'Continent Name'),
+        createEditableColumn('accountTypeCode', 'Account Type Code'),
+        createEditableColumn('accountCategoryCode', 'Account Category Code'),
+        // createEditableColumn('normalBalanceType', 'Normal Balance Type'),
+        // createEditableColumn('level1DivisionName', 'Level 1 Division Name'),
+        // createEditableColumn('level2DepartmentName', 'Level 2 Department Name'),
+        // createEditableColumn('level3CategoryName', 'Level 3 Category Name')
+      );
+    }
+
+    return baseColumns;
+  }, [isTestCase1, isTestCase2]);
+
 
   // Calculate pagination info
-  const totalPages = Math.ceil((searchData?.total_rows || 0) / pagination.pageSize);
-  const totalRows = searchData?.total_rows || 0;
-  const filteredRows = searchData?.filtered_rows || 0;
+  // @ts-ignore
+  const totalPages = Math.ceil((isTestCase1 ? (searchData?.total_rows || 0) : (searchData?.pagination?.total_records || 0)) / pagination.pageSize);
+  // @ts-ignore
+  const totalRows = isTestCase1 ? (searchData?.total_rows || 0) : (searchData?.pagination?.total_records || 0);
+  // @ts-ignore
+  const filteredRows = isTestCase1 ? (searchData?.filtered_rows || 0) : (searchData?.pagination?.filtered_records || 0);
+
 
   // TanStack Table instance
   const table = useReactTable({
     data: tableData,
+    // @ts-ignore
     columns,
     state: {
       sorting,
@@ -282,8 +365,11 @@ export default function TanstackTable() {
 
   const dashboardInfoDatas = {
     apiEndpoints: [
-      { method: "GET", apiName: "api/duckdb/tables/sample_1m/data", api: "https://testcase.mohammedsifankp.online/api/duckdb/tables/sample_1m/data?limit=10&offset=0", description: "Fetch all table data" },
-      { method: "GET", apiName: "api/duckdb/tables/sample_1m/data?column_filters=%7B%22otherincome%22%3A%22300%22%7D&limit=10&offset=0", api: "https://testcase.mohammedsifankp.online/api/duckdb/tables/sample_1m/data?column_filters=%7B%22otherincome%22%3A%22300%22%7D&limit=10&offset=0", description: "Fetch data filter" },
+      { testCase: "test-case-1", method: "GET", apiName: "api/duckdb/tables/sample_1m/data", api: "https://testcase.mohammedsifankp.online/api/duckdb/tables/sample_1m/data?limit=10&offset=0", description: "Fetch all table data" },
+      { testCase: "test-case-1", method: "GET", apiName: "api/duckdb/tables/sample_1m/data?column_filters=%7B%22otherincome%22%3A%22300%22%7D&limit=10&offset=0", api: "https://testcase.mohammedsifankp.online/api/duckdb/tables/sample_1m/data?column_filters=%7B%22otherincome%22%3A%22300%22%7D&limit=10&offset=0", description: "Fetch data by filter" },
+
+      { testCase: "test-case-2", method: "GET", apiName: "api/data-products/data-products/sample_100k_product_v1/records?limit=10&offset=0&exclude_null_revenue=false&include_enrichment=true", api: "https://testcase2.mohammedsifankp.online/api/data-products/data-products/sample_100k_product_v1/records?limit=10&offset=0&exclude_null_revenue=false&include_enrichment=true", description: "Fetch all table data" },
+      { testCase: "test-case-2", method: "GET", apiName: "/api/data-products/data-products/sample_100k_product_v1/records?limit=10&offset=0&exclude_null_revenue=false&include_enrichment=true&column_filters=%7B%22fiscal_year_number%22%3A%222022%22%7D", api: "https://testcase2.mohammedsifankp.online/api/data-products/data-products/sample_100k_product_v1/records?limit=10&offset=0&exclude_null_revenue=false&include_enrichment=true&column_filters=%7B%22fiscal_year_number%22%3A%222022%22%7D", description: "Fetch data by filter" },
     ],
     availableFeatures: [
       { feature: "Filter", supported: true },
@@ -297,20 +383,23 @@ export default function TanstackTable() {
       { feature: "UI Customization", supported: true },
       { feature: "Open Source", supported: true },
     ],
-    dataRecords: "1 Million Records"
+     dataRecords: {
+      "test-case-1": "1,000,000 Records",
+      "test-case-2": "Records"
+    }
   }
 
   // Handle loading and error states
-  if (isSearchLoading || isSearchInfoLoading) {
+  if (isSearchLoading) {
     return <div className="p-4 text-center">Loading data...</div>;
   }
 
-  if (searchError || searchInfoError) {
+  if (searchError) {
     return (
       <div className="p-4 text-red-600">
         Error: {
           // @ts-ignore
-          searchError?.error?.toString() || searchInfoError?.error?.toString()}
+          searchError?.error?.toString()}
         <button
           onClick={() => refetchData()}
           className="ml-2 px-3 py-1 bg-red-100 hover:bg-red-200 rounded"
@@ -322,7 +411,7 @@ export default function TanstackTable() {
   }
 
   return (
-    <section className="p-8">
+    <section className="p-8 w-full">
       <h1 className="text-2xl font-bold mb-4">TanStack Table - API Integrated</h1>
 
       <DashboardInfoCard
@@ -396,11 +485,9 @@ export default function TanstackTable() {
 
       {/* Data Info */}
       <div className="mb-4 text-sm text-gray-600">
-        {searchData?.search_applied && (
-          <span className="mr-4">
-            🔍 Search: "{searchData.search_term}"
-          </span>
-        )}
+        {
+          // @ts-ignore
+          searchData?.search_applied && (<span className="mr-4">🔍 Search: "{searchData.search_term}"</span>)}
         <span>
           Showing {filteredRows} of {totalRows} records
         </span>
@@ -411,8 +498,8 @@ export default function TanstackTable() {
         <div className="p-4 text-center">No data found matching your filters</div>
       ) : (
         <>
-          <div className="border rounded shadow-sm overflow-auto max-h-[70vh]">
-            <table className="min-w-full border border-gray-300">
+          <div className="border rounded w-full shadow-sm overflow-auto max-h-[70vh]">
+            <table className="w-full border overflow-auto border-gray-300">
               <thead>
                 {table.getHeaderGroups().map((headerGroup) => (
                   <tr key={headerGroup.id} className="bg-gray-100">

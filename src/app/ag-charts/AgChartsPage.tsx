@@ -1,24 +1,52 @@
 "use client";
-import React, { useState, useEffect, useRef, useCallback } from "react";
+
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+} from "react";
+import { useSelector } from "react-redux";
 import { AgCharts } from "ag-charts-react";
 import { AgChartOptions } from "ag-charts-community";
-import { GroupModal } from "../../components/GroupManagement";
+
+// Redux + API
+import { RootState } from "@/store/store";
 import {
   useFetchDrillDownDataMutation,
   databaseName,
-  useFetchChartDataMutation
+  useFetchChartDataMutation,
 } from "@/lib/services/usersApi";
+import {
+  testCase2ProductId,
+  useFetchTestCase2ChartDataMutation,
+  useFetchTestCase2DrillDownDataMutation,
+} from "@/lib/services/testCase2Api";
 
-import { buildRequestBody, handleCrossChartFilteringFunc } from "@/lib/services/buildWhereClause";
-import { ActionButton } from "@/components/ui/action-button";
-import { ErrorAlert, LoadingAlert } from "@/components/ui/status-alerts";
+// Utilities
+import {
+  buildRequestBody,
+  handleCrossChartFilteringFunc,
+} from "@/lib/services/buildWhereClause";
+import { transformTestCase2DrillDownData, transformTestCase2ToCommonFormat } from "@/lib/testCase2Transformer";
 
 // Types
-import { BarChartData, Dimensions, DonutChartData, LineChartData, PieChartData } from '@/types/Schemas';
+import {
+  BarChartData,
+  Dimensions,
+  DonutChartData,
+  LineChartData,
+  PieChartData,
+} from "@/types/Schemas";
+
+// UI Components
+import { ActionButton } from "@/components/ui/action-button";
+import { ErrorAlert, LoadingAlert } from "@/components/ui/status-alerts";
 import { ChartSkelten } from "@/components/ui/ChartSkelten";
-import ChartDrawer, { useChartDrawer } from "@/components/ChartDrawer";
-import ReusableChartDrawer from "@/components/ChartDrawer";
+import { GroupModal } from "@/components/GroupManagement";
+import ReusableChartDrawer, { useChartDrawer } from "@/components/ChartDrawer";
 import DashboardInfoCard from "@/components/DashboardInfoCard";
+
 
 // Common props for components
 interface CommonProps {
@@ -34,10 +62,15 @@ const AgChartsPage: React.FC = () => {
   const [isGroupModalOpen, setIsGroupModalOpen] = useState<boolean>(false);
   const [dimensions, setDimensions] = useState<Dimensions | null>(null);
 
-  // API Mutations
+  const testCase = useSelector((state: RootState) => state.dashboard.selectedTestCase);
+
+  // Test Case 1 API Mutations
   const [fetchAllChartData] = useFetchChartDataMutation();
   const [fetchDrillDownData] = useFetchDrillDownDataMutation();
 
+  // Test Case 2 API Mutations
+  const [FetchTestCase2AllChartData] = useFetchTestCase2ChartDataMutation();
+  const [fetchTestCase2DrillDownData] = useFetchTestCase2DrillDownDataMutation();
 
   // Chart data states
   const [chartData, setChartData] = useState<{
@@ -72,10 +105,27 @@ const AgChartsPage: React.FC = () => {
   const { drillDownState, openDrawer, closeDrawer, isOpen } = useChartDrawer();
 
 
-
   const handleCrossChartFiltering = (data: string) => {
     // @ts-ignore   
-    setDimensions(handleCrossChartFilteringFunc(data))
+    setDimensions(handleCrossChartFilteringFunc(String(data)));
+  }
+
+  const fetchChartDataByTestCase = async () => {
+    try {
+      if (testCase === "test-case-1") {
+        const res = await fetchAllChartData({ body: buildRequestBody(dimensions, 'all') }).unwrap();
+        if (!res?.success) throw new Error(res.message || "Error");
+        return res;
+      } else {
+        const raw = await FetchTestCase2AllChartData({ body: buildRequestBody(dimensions, 'all'), productId: testCase2ProductId, excludeNullRevenue: false }).unwrap();
+        const transformed = transformTestCase2ToCommonFormat(raw);
+        if (!transformed?.success) throw new Error(transformed.message || "Error");
+        return transformed;
+      }
+    } catch (error) {
+      console.log(error, 'Error fetching chart data');
+
+    }
   }
 
   // Fetch all chart data
@@ -83,14 +133,11 @@ const AgChartsPage: React.FC = () => {
     setIsLoading(true);
     setError(null);
 
+
     try {
       // Fetch all chart data
-      const result = await fetchAllChartData({
-        body: buildRequestBody(dimensions, 'all')
-      }).unwrap();
-      if (!result || !result.success) {
-        throw new Error(result?.message || "Failed to fetch chart data");
-      }
+      const result: any = await fetchChartDataByTestCase();
+
       // Process line chart data
       const lineData = result?.charts?.line?.success ? result?.charts?.line?.data || [] : [];
       const lineOpts = lineData.length ? {
@@ -258,13 +305,21 @@ const AgChartsPage: React.FC = () => {
     setError(null);
 
     try {
-      const result = await fetchDrillDownData({
-        table_name: databaseName,
-        chart_type: chartType,
-        category: category,
-        data_type: dataType,
-        value: value
-      }).unwrap();
+      const result: any = testCase === "test-case-1"
+        ? await fetchDrillDownData({
+          table_name: databaseName,
+          chart_type: chartType,
+          category: category,
+          data_type: dataType,
+          value: value
+        }).unwrap()
+        : transformTestCase2DrillDownData(await fetchTestCase2DrillDownData({
+          productId: testCase2ProductId,
+          chartType: chartType,
+          category: category,
+          dataType: dataType,
+          value: value
+        }).unwrap());
 
       if (result.success && result.data && result.data.length > 0) {
         const drillData = result.data;
@@ -275,7 +330,7 @@ const AgChartsPage: React.FC = () => {
         const columns = result.columns || Object.keys(drillData[0]);
 
         // Determine chart type based on data structure
-        if (columns.includes('catfinancialview') || columns.includes('cataccountingview')) {
+        if (chartType === 'line' || chartType === 'bar') {
           options = {
             title: { text: title },
             data: drillData,
@@ -356,7 +411,7 @@ const AgChartsPage: React.FC = () => {
   // Fetch data when dimensions change
   useEffect(() => {
     fetchAllChartDataHanlde();
-  }, [dimensions]);
+  }, [dimensions, testCase]);
 
   // Event handlers
   const handleCreateGroup = useCallback((data: Dimensions): void => {
@@ -381,23 +436,30 @@ const AgChartsPage: React.FC = () => {
 
   const dashboardInfoDatas = {
     apiEndpoints: [
-      { method: "GET", apiName: "api/dashboard/all-charts?table_name=sample_1m", api: "https://testcase.mohammedsifankp.online/api/dashboard/all-charts?table_name=sample_1m", description: "Fetch all chart data for the dashboard" },
-      { method: "POST", apiName: "api/dashboard/tables/sample_1m/dimensions", api: "https://testcase.mohammedsifankp.online/api/dashboard/tables/sample_1m/dimensions", description: "Fetch dimensions for the dashboard" },
-      { method: "POST", apiName: "api/dashboard/drill-down?table_name=sample_1m&chart_type=bar&category=201907&data_type=revenue&value=4299212962.550013", api: "https://testcase.mohammedsifankp.online/api/dashboard/drill-down?table_name=sample_1m&chart_type=bar&category=201907&data_type=revenue&value=4299212962.550013", description: "Fetch Drill Down datas" },
+      { testCase: "test-case-1", method: "POST", apiName: "api/dashboard/all-charts?table_name=sample_1m", api: "https://testcase.mohammedsifankp.online/api/dashboard/all-charts?table_name=sample_1m", description: "Fetch all chart data for the dashboard" },
+      { testCase: "test-case-1", method: "POST", apiName: "api/dashboard/drill-down?table_name=sample_1m&chart_type=bar&category=201907&data_type=revenue&value=4299212962.550013", api: "https://testcase.mohammedsifankp.online/api/dashboard/drill-down?table_name=sample_1m&chart_type=bar&category=201907&data_type=revenue&value=4299212962.550013", description: "Fetch Drill Down datas" },
+      { testCase: "test-case-1", method: "GET", apiName: "api/dashboard/tables/sample_1m/dimensions", api: "https://testcase.mohammedsifankp.online/api/dashboard/tables/sample_1m/dimensions", description: "Fetch dimensions for the dashboard" },
+
+      { testCase: "test-case-2", method: "POST", apiName: "api/dashboard/all-charts?product_id=sample_100k_product_v1&exclude_null_revenue=false", api: "https://testcase2.mohammedsifankp.online/api/dashboard/all-charts?product_id=sample_100k_product_v1&exclude_null_revenue=false", description: "Fetch all chart data for the dashboard" },
+      { testCase: "test-case-2", method: "POST", apiName: "api/dashboard/drill-down?product_id=sample_100k_product_v1&chart_type=line&category=202010&data_type=revenue&drill_down_level=detailed&include_reference_context=true&exclude_null_revenue=false", api: "https://testcase2.mohammedsifankp.online/api/dashboard/drill-down?product_id=sample_100k_product_v1&chart_type=line&category=202010&data_type=revenue&drill_down_level=detailed&include_reference_context=true&exclude_null_revenue=false", description: "Fetch Drill Down datas" },
+      { testCase: "test-case-2", method: "GET", apiName: "api/dashboard/tables/sample_100k_product_v1/dimensions?include_reference_tables=true", api: "https://testcase2.mohammedsifankp.online/api/dashboard/tables/sample_100k_product_v1/dimensions?include_reference_tables=false", description: "Fetch dimensions for the dashboard" },
     ],
-  availableFeatures : [
-  { feature: "Drill Down", supported: true },
-  { feature: "Cross-Chart Filtering (But only Enterprise version)", supported: true },
-  { feature: "Interactive Charts", supported: true },
-  { feature: "Legend Toggle", supported: true },
-  { feature: "Export Options (PNG, CSV)", supported: true },
-  { feature: "Real-time Data Support", supported: true },
-  { feature: "Custom Options", supported: true },
-  { feature: "TypeScript Support", supported: true },
-  { feature: "Open Source", supported: true },
-  { feature: "Drag and Drop (Need Custom Code not default)", supported: false },
-],
-    dataRecords: "1 Million Records"
+    availableFeatures: [
+      { feature: "Drill Down", supported: true },
+      { feature: "Cross-Chart Filtering (But only Enterprise version)", supported: true },
+      { feature: "Interactive Charts", supported: true },
+      { feature: "Legend Toggle", supported: true },
+      { feature: "Export Options (PNG, CSV)", supported: true },
+      { feature: "Real-time Data Support", supported: true },
+      { feature: "Custom Options", supported: true },
+      { feature: "TypeScript Support", supported: true },
+      { feature: "Open Source", supported: true },
+      { feature: "Drag and Drop (Need Custom Code not default)", supported: false },
+    ],
+    dataRecords: {
+      "test-case-1": "1,000,000 Records",
+      "test-case-2": "Records"
+    }
   }
 
 
@@ -405,15 +467,16 @@ const AgChartsPage: React.FC = () => {
     <section className="p-5">
       <h1 className="text-2xl font-bold text-center mb-4">Financial Dashboard - Ag Charts</h1>
 
-       <DashboardInfoCard
+      <DashboardInfoCard
         apiEndpoints={dashboardInfoDatas?.apiEndpoints}
         availableFeatures={dashboardInfoDatas?.availableFeatures}
         dataRecords={dashboardInfoDatas?.dataRecords}
       />
-      
+
       <GroupModal
         isOpen={isGroupModalOpen}
         onClose={handleCloseModal}
+        testCase={testCase}
         // @ts-ignore
         onCreateGroup={handleCreateGroup}
       />
@@ -465,7 +528,7 @@ const AgChartsPage: React.FC = () => {
           <AgCharts options={chartOptions.drillDown} />
         )}
       </ReusableChartDrawer>
-     
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <ChartContainer title="Revenue Trends with Cross Chart Filter" isLoading={isLoading} data={chartData.line}>
           <AgCharts options={chartOptions.line || {}} />

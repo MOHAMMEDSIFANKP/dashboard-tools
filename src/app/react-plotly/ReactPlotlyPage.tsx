@@ -14,6 +14,10 @@ import { ActionButton } from "@/components/ui/action-button";
 import ReusableChartDrawer, { useChartDrawer } from "@/components/ChartDrawer";
 import { ErrorAlert, LoadingAlert } from "@/components/ui/status-alerts";
 import DashboardInfoCard from "@/components/DashboardInfoCard";
+import { testCase2ProductId, useFetchTestCase2ChartDataMutation, useFetchTestCase2DrillDownDataMutation } from "@/lib/services/testCase2Api";
+import { transformTestCase2DrillDownData, transformTestCase2ToCommonFormat } from "@/lib/testCase2Transformer";
+import { RootState } from "@/store/store";
+import { useSelector } from "react-redux";
 
 // Constants
 const DEFAULT_CONFIGURATION = {
@@ -113,9 +117,16 @@ export default function ReactPlotlyPage() {
   const [isGroupModalOpen, setIsGroupModalOpen] = useState<boolean>(false);
   const [dimensions, setDimensions] = useState<Dimensions | null>(null);
 
-  // API Mutations - Using single API like AG Charts
+  const testCase = useSelector((state: RootState) => state.dashboard.selectedTestCase);
+
+  // Test Case 1 API Mutations
   const [fetchAllChartData] = useFetchChartDataMutation();
   const [fetchDrillDownData] = useFetchDrillDownDataMutation();
+
+  // Test Case 2 API Mutations
+  const [FetchTestCase2AllChartData] = useFetchTestCase2ChartDataMutation();
+  const [fetchTestCase2DrillDownData] = useFetchTestCase2DrillDownDataMutation();
+
 
   // Chart data states
   const [chartData, setChartData] = useState<{
@@ -143,20 +154,33 @@ export default function ReactPlotlyPage() {
   // Memoized request body to prevent unnecessary API calls
   const requestBody = useMemo(() => buildRequestBody(dimensions, 'all'), [dimensions]);
 
+  const fetchChartDataByTestCase = async () => {
+    try {
+      if (testCase === "test-case-1") {
+        const res = await fetchAllChartData({ body: buildRequestBody(dimensions, 'all') }).unwrap();
+        if (!res?.success) throw new Error(res.message || "Error");
+        return res;
+      } else {
+        const raw = await FetchTestCase2AllChartData({ body: buildRequestBody(dimensions, 'all'), productId: testCase2ProductId, excludeNullRevenue: false }).unwrap();
+        const transformed = transformTestCase2ToCommonFormat(raw);
+        if (!transformed?.success) throw new Error(transformed.message || "Error");
+        return transformed;
+      }
+    } catch (error) {
+      console.log(error, 'Error fetching chart data');
+
+    }
+  }
+
+
   // Fetch all chart data using single API call
   const fetchAllChartDataHandle = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
     try {
-      // Fetch all chart data using single API call
-      const result = await fetchAllChartData({
-        body: requestBody
-      }).unwrap();
-
-      if (!result || !result.success) {
-        throw new Error(result?.message || "Failed to fetch chart data");
-      }
+      // Fetch all chart data
+      const result: any = await fetchChartDataByTestCase();
 
       // Process and store chart data from single API response
       const lineData = result?.charts?.line?.success ? result?.charts?.line?.data || [] : [];
@@ -182,7 +206,7 @@ export default function ReactPlotlyPage() {
   // Fetch data when dimensions change - using useEffect with proper dependencies
   useEffect(() => {
     fetchAllChartDataHandle();
-  }, [fetchAllChartDataHandle]);
+  }, [fetchAllChartDataHandle, testCase, dimensions]);
 
   // Event handlers
   const handleCreateGroup = useCallback((data: Dimensions): void => {
@@ -211,13 +235,21 @@ export default function ReactPlotlyPage() {
     setError(null);
 
     try {
-      const result = await fetchDrillDownData({
-        table_name: databaseName,
-        chart_type: chartType,
-        category: category,
-        data_type: dataType,
-        value: value
-      }).unwrap();
+      const result: any = testCase === "test-case-1"
+        ? await fetchDrillDownData({
+          table_name: databaseName,
+          chart_type: chartType,
+          category: category,
+          data_type: dataType,
+          value: value
+        }).unwrap()
+        : transformTestCase2DrillDownData(await fetchTestCase2DrillDownData({
+          productId: testCase2ProductId,
+          chartType: chartType,
+          category: category,
+          dataType: dataType,
+          value: value
+        }).unwrap());
 
       if (result.success && result.data && result.data.length > 0) {
         const drillData = result.data;
@@ -225,14 +257,15 @@ export default function ReactPlotlyPage() {
         const columns = result.columns || Object.keys(drillData[0]);
 
         // Convert API response to Plotly format
-        const formattedData = formatDrillDownData(drillData, columns);
+        const formattedData = formatDrillDownData(drillData, columns, chartType);
         let drillChartType: 'line' | 'bar' | 'pie' = 'bar';
 
         // Determine chart type based on data structure
-        if (columns.includes('period')) {
-          drillChartType = 'line';
-        } else if (columns.includes('catfinancialview') || columns.includes('cataccountingview')) {
+
+        if (chartType === 'line' || chartType === 'bar') {
           drillChartType = 'bar';
+        } else if (columns.includes('period')) {
+          drillChartType = 'line';
         } else {
           drillChartType = 'pie';
         }
@@ -256,36 +289,11 @@ export default function ReactPlotlyPage() {
   }, [fetchDrillDownData, openDrawer]);
 
   // Format drill down data for Plotly
-  const formatDrillDownData = useCallback((data: ChartDataPoint[], columns: string[]) => {
+  const formatDrillDownData = useCallback((data: ChartDataPoint[], columns: string[], chartType: string) => {
     // Time series data - use line chart
-    if (columns.includes('period')) {
-      if (data[0]?.fiscalYear) {
-        const fiscalYears = Array.from(new Set(data.map(d => d.fiscalYear))).sort();
-        const periods = Array.from(new Set(data.map(d => d.period))).sort();
 
-        return fiscalYears.map((year, idx) => ({
-          x: periods,
-          y: periods.map(period => {
-            const match = data.find(d => d.fiscalYear === year && d.period === period);
-            return match ? match.value : 0;
-          }),
-          type: 'scatter',
-          mode: 'lines+markers',
-          name: `Year ${year}`,
-          line: { color: CHART_COLORS[idx % CHART_COLORS.length] }
-        }));
-      }
-      return [{
-        x: data.map(d => d.period),
-        y: data.map(d => d.value),
-        type: 'scatter',
-        mode: 'lines+markers',
-        name: 'Value',
-        line: { color: CHART_COLORS[0] }
-      }];
-    }
     // Category data - use bar chart
-    else if (columns.includes('catfinancialview') || columns.includes('cataccountingview')) {
+    if (chartType === 'bar' || chartType === 'line') {
       if (data[0]?.fiscalYear) {
         const labelKey = columns.find(col => col.includes('cat')) || columns[0];
         const categories = Array.from(new Set(data.map(d => d[labelKey])));
@@ -309,6 +317,31 @@ export default function ReactPlotlyPage() {
         type: 'bar',
         name: 'Value',
         marker: { color: CHART_COLORS[0] }
+      }];
+    } else if (columns.includes('period')) {
+      if (data[0]?.fiscalYear) {
+        const fiscalYears = Array.from(new Set(data.map(d => d.fiscalYear))).sort();
+        const periods = Array.from(new Set(data.map(d => d.period))).sort();
+
+        return fiscalYears.map((year, idx) => ({
+          x: periods,
+          y: periods.map(period => {
+            const match = data.find(d => d.fiscalYear === year && d.period === period);
+            return match ? match.value : 0;
+          }),
+          type: 'scatter',
+          mode: 'lines+markers',
+          name: `Year ${year}`,
+          line: { color: CHART_COLORS[idx % CHART_COLORS.length] }
+        }));
+      }
+      return [{
+        x: data.map(d => d.period),
+        y: data.map(d => d.value),
+        type: 'scatter',
+        mode: 'lines+markers',
+        name: 'Value',
+        line: { color: CHART_COLORS[0] }
       }];
     }
     // Default to pie chart
@@ -508,9 +541,13 @@ export default function ReactPlotlyPage() {
 
   const dashboardInfoDatas = {
     apiEndpoints: [
-      { method: "GET", apiName: "api/dashboard/all-charts?table_name=sample_1m", api: "https://testcase.mohammedsifankp.online/api/dashboard/all-charts?table_name=sample_1m", description: "Fetch all chart data for the dashboard" },
-      { method: "POST", apiName: "api/dashboard/tables/sample_1m/dimensions", api: "https://testcase.mohammedsifankp.online/api/dashboard/tables/sample_1m/dimensions", description: "Fetch dimensions for the dashboard" },
-      { method: "POST", apiName: "api/dashboard/drill-down?table_name=sample_1m&chart_type=bar&category=201907&data_type=revenue&value=4299212962.550013", api: "https://testcase.mohammedsifankp.online/api/dashboard/drill-down?table_name=sample_1m&chart_type=bar&category=201907&data_type=revenue&value=4299212962.550013", description: "Fetch Drill Down datas" },
+      { testCase: "test-case-1", method: "POST", apiName: "api/dashboard/all-charts?table_name=sample_1m", api: "https://testcase.mohammedsifankp.online/api/dashboard/all-charts?table_name=sample_1m", description: "Fetch all chart data for the dashboard" },
+      { testCase: "test-case-1", method: "POST", apiName: "api/dashboard/drill-down?table_name=sample_1m&chart_type=bar&category=201907&data_type=revenue&value=4299212962.550013", api: "https://testcase.mohammedsifankp.online/api/dashboard/drill-down?table_name=sample_1m&chart_type=bar&category=201907&data_type=revenue&value=4299212962.550013", description: "Fetch Drill Down datas" },
+      { testCase: "test-case-1", method: "GET", apiName: "api/dashboard/tables/sample_1m/dimensions", api: "https://testcase.mohammedsifankp.online/api/dashboard/tables/sample_1m/dimensions", description: "Fetch dimensions for the dashboard" },
+
+      { testCase: "test-case-2", method: "POST", apiName: "api/dashboard/all-charts?product_id=sample_100k_product_v1&exclude_null_revenue=false", api: "https://testcase2.mohammedsifankp.online/api/dashboard/all-charts?product_id=sample_100k_product_v1&exclude_null_revenue=false", description: "Fetch all chart data for the dashboard" },
+      { testCase: "test-case-2", method: "POST", apiName: "api/dashboard/drill-down?product_id=sample_100k_product_v1&chart_type=line&category=202010&data_type=revenue&drill_down_level=detailed&include_reference_context=true&exclude_null_revenue=false", api: "https://testcase2.mohammedsifankp.online/api/dashboard/drill-down?product_id=sample_100k_product_v1&chart_type=line&category=202010&data_type=revenue&drill_down_level=detailed&include_reference_context=true&exclude_null_revenue=false", description: "Fetch Drill Down datas" },
+      { testCase: "test-case-2", method: "GET", apiName: "api/dashboard/tables/sample_100k_product_v1/dimensions?include_reference_tables=true", api: "https://testcase2.mohammedsifankp.online/api/dashboard/tables/sample_100k_product_v1/dimensions?include_reference_tables=false", description: "Fetch dimensions for the dashboard" },
     ],
     availableFeatures: [
       { feature: "Drill Down (Need Manual setup)", supported: false },
@@ -524,7 +561,10 @@ export default function ReactPlotlyPage() {
       { feature: "Open Source", supported: true },
       { feature: "Drag and Drop (Need Custom Code not default)", supported: false },
     ],
-    dataRecords: "1 Million Records",
+     dataRecords: {
+      "test-case-1": "1,000,000 Records",
+      "test-case-2": "Records"
+    },
   }
 
   return (

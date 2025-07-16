@@ -41,9 +41,9 @@ const DashboardHomepage = () => {
             id: 'test-case-1',
             name: 'Test Case 1 - Basic Financial Dashboard',
             subtitle: 'Single table financial data visualization with comprehensive KPIs',
-            description:"Test Case 1 validates the Elphi system’s core architecture by integrating two decoupled services—an application backend and a data platform backend.",
+            description: "Test Case 1 validates the Elphi system’s core architecture by integrating two decoupled services—an application backend and a data platform backend.",
             status: 'Complete',
-            recordsCount: '1 Million',
+            recordsCount: '1,000,000',
             apiEndpoint: '/api/v1/financial-data',
             dashboardUrl: '/dashboard/financial',
             lastUpdated: '2024-01-15',
@@ -58,13 +58,13 @@ const DashboardHomepage = () => {
             id: 'test-case-2',
             name: 'Test Case 2 - P&L Dashboard',
             subtitle: 'Multi-table join structure for Profit & Loss analysis with account categories',
-            description:"",
+            description: "",
             status: 'In Progress',
-            recordsCount: '',
+            recordsCount: '100,000',
             apiEndpoint: '/api/v1/pl-analysis',
             dashboardUrl: '/dashboard/pl-analysis',
             lastUpdated: '2024-01-20',
-            tools: [],
+            tools: ['AG Charts Enterprise','Highcharts','Syncfusion Charts'],
             features: ['P&L Statements', 'Account Categories', 'Multi-table Joins', 'Drill-down Analysis'],
             apiMethods: [
                 { method: 'GET', endpoint: '/api/v1/pl-analysis', description: 'P&L analysis data' },
@@ -230,24 +230,78 @@ const DashboardHomepage = () => {
             ],
             documentation: 'https://react-table.tanstack.com/',
             status: 'Active'
+        },
+        {
+            name: 'AG Charts Enterprise',
+            type: 'Paid',
+            category: 'Chart Library',
+            performance: 'High',
+            usedIn: ['Test Case 2'],
+            features: [
+                'Enterprise Support',
+                'Advanced Drill Down',
+                'Cross-Chart Filtering',
+                'Custom Tooltips',
+                'Export Options',
+                'Real-time Data',
+                'Next.js Integration'
+            ],
+            documentation: 'https://charts.ag-grid.com/documentation/enterprise/',
+            status: 'Not Active'
+        },
+        {
+            name: 'Highcharts',
+            type: 'Paid',
+            category: 'Chart Library',
+            performance: 'High',
+            usedIn: ['Test Case 2'],
+            features: [
+                'Built-in Drill Down',
+                'Zooming & Panning',
+                'Exporting',
+                'Cross-Chart Filtering',
+                'Theme Customization',
+                'Next.js Integration'
+            ],
+            documentation: 'https://www.highcharts.com/docs/',
+            status: 'Active'
+        },
+        {
+            name: 'Syncfusion Charts',
+            type: 'Paid',
+            category: 'Chart Library',
+            performance: 'High',
+            usedIn: ['Test Case 2'],
+            features: [
+                '50+ Chart Types',
+                'Interactive Elements',
+                'Export Options',
+                'Enterprise Grade Support',
+                'Next.js Integration'
+            ],
+            documentation: 'https://ej2.syncfusion.com/react/documentation/chart/getting-started/',
+            status: 'Not Active'
         }
     ];
 
     const apiData: ApiEntry[] = [
         // ✅ Test Case 1 - Frontend Used
-        { method: "GET", endpoint: "/dashboard/financial-data", description: "Fetch financial records", testCase: "Test Case 1", records: "1 Million", used: true },
-        { method: "POST", endpoint: "/dashboard/all-charts", description: "Get chart data with filters", testCase: "Test Case 1", records: "Variable", used: true },
-        { method: "POST", endpoint: "/dashboard/drill-down", description: "Drill-down data", testCase: "Test Case 1", records: "Variable", used: true },
-        { method: "POST", endpoint: "/dashboard/group-filter", description: "Save user group filters", testCase: "Test Case 1", records: "Variable", used: true },
-        { method: "GET", endpoint: "/dashboard/available-years/{table}", description: "Available fiscal years", testCase: "Test Case 1", records: "Dynamic", used: true },
-        { method: "GET", endpoint: "/dashboard/tables/{table}/dimensions", description: "Get dimension info", testCase: "Test Case 1", records: "Metadata", used: true },
-        { method: "GET", endpoint: "/duckdb/tables/{table}/data", description: "Table data (filtered)", testCase: "Test Case 1", records: "Paginated", used: true },
-        { method: "GET", endpoint: "/duckdb/tables/{table}/search-info", description: "Table column info", testCase: "Test Case 1", records: "Metadata", used: true },
+        { method: "GET", endpoint: "/api/dashboard/financial-data", description: "Fetch financial records", testCase: "Test Case 1", records: "1,000,000", used: true },
+        { method: "POST", endpoint: "/api/dashboard/all-charts", description: "Get chart data with filters", testCase: "Test Case 1", records: "Variable", used: true },
+        { method: "POST", endpoint: "/api/dashboard/drill-down", description: "Drill-down data", testCase: "Test Case 1", records: "Variable", used: true },
+        { method: "POST", endpoint: "/api/dashboard/group-filter", description: "Save user group filters", testCase: "Test Case 1", records: "Variable", used: true },
+        { method: "GET", endpoint: "/api/dashboard/available-years/{table}", description: "Available fiscal years", testCase: "Test Case 1", records: "Dynamic", used: true },
+        { method: "GET", endpoint: "/api/dashboard/tables/{table}/dimensions", description: "Get dimension info", testCase: "Test Case 1", records: "Metadata", used: true },
+        { method: "GET", endpoint: "/api/duckdb/tables/{table}/data", description: "Table data (filtered)", testCase: "Test Case 1", records: "1,000,000 - Paginated", used: true },
+        // { method: "GET", endpoint: "/duckdb/tables/{table}/search-info", description: "Table column info", testCase: "Test Case 1", records: "Metadata", used: true },
 
         // 🚧 Test Case 2 - Backend Only
-        // { method: "POST", endpoint: "/upload/", description: "File upload API", testCase: "Test Case 2", records: "Backend Only", used: false },
-        // { method: "POST", endpoint: "/upload/trigger-analytics", description: "Kicks off backend processing", testCase: "Test Case 2", records: "Backend Only", used: false },
-        // { method: "GET", endpoint: "/performance/history", description: "Returns performance history", testCase: "Test Case 2", records: "Backend Only", used: false },
+        { method: "POST", endpoint: "/api/dashboard/all-charts?product_id=sample_100k_product_v1&exclude_null_revenue=false", description: "Fetch all chart data for the dashboard", testCase: "Test Case 2", records: "100,000", used: false },
+        { method: "POST", endpoint: "/api/dashboard/drill-down?product_id=sample_100k_product_v1&chart_type=line&category=202010&data_type=revenue&drill_down_level=detailed&include_reference_context=true&exclude_null_revenue=false", description: "Fetch Drill Down data", testCase: "Test Case 2", records: "Variable", used: false },
+        { method: "GET", endpoint: "/api/dashboard/tables/sample_100k_product_v1/dimensions?include_reference_tables=true", description: "Fetch dimension info with references", testCase: "Test Case 2", records: "Metadata", used: false },
+        { method: "POST", endpoint: "/apidashboard/group-filter", description: "Save user group filters", testCase: "Test Case 2", records: "Variable", used: false },
+        { method: "GET", endpoint: "/api/data-products/data-products/sample_100k_product_v1/records?limit=10&offset=0&exclude_null_revenue=false&include_enrichment=true", description: "Fetch all table data", testCase: "Test Case 2", records: "100,000 - Paginated", used: false },
+        { method: "GET", endpoint: "/api/data-products/data-products/sample_100k_product_v1/records?limit=10&offset=0&exclude_null_revenue=false&include_enrichment=true&column_filters={\"fiscal_year_number\":\"2022\"}", description: "Fetch filtered data by fiscal year", testCase: "Test Case 2", records: "Filtered", used: false }
     ];
 
 
@@ -262,7 +316,7 @@ const DashboardHomepage = () => {
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white">
             {/* Header */}
-            <header className="bg-white shadow-sm border-b sticky top-0 z-50">
+            <header className="bg-white shadow-sm border-b sticky top-16 z-10">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center h-16">
                         <div className="flex items-center gap-3">
@@ -308,23 +362,32 @@ const DashboardHomepage = () => {
                                     <div className="text-sm opacity-90">Test Cases</div>
                                 </div>
                                 <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4">
+                                    <div className="text-3xl font-bold">9</div>
+                                    <div className="text-sm opacity-90">Total Chart Tools</div>
+                                </div>
+                                <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4">
                                     <div className="text-3xl font-bold">6</div>
-                                    <div className="text-sm opacity-90">Chart Tools</div>
+                                    <div className="text-sm opacity-90">Open Source Tools</div>
                                 </div>
                                 <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4">
-                                    <div className="text-3xl font-bold">1 Million</div>
-                                    <div className="text-sm opacity-90">Total Records</div>
+                                    <div className="text-3xl font-bold">3</div>
+                                    <div className="text-sm opacity-90">Paid Tools</div>
                                 </div>
-                                <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4">
-                                    <div className="text-3xl font-bold"></div>
-                                    <div className="text-sm opacity-90">API Endpoints</div>
+                                <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4 col-span-2 md:col-span-2">
+                                    <div className="text-xl font-bold">Test Case 1</div>
+                                    <div className="text-sm opacity-90">1,000,000 Records</div>
+                                </div>
+                                <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4 col-span-2 md:col-span-2">
+                                    <div className="text-xl font-bold">Test Case 2</div>
+                                    <div className="text-sm opacity-90">Records</div>
                                 </div>
                             </div>
+
                         </div>
 
                         {/* Quick Access Links */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <Card className="p-6 hover:shadow-xl transition-all duration-300 cursor-pointer group" onClick={()=>setActiveSection('apis')}>
+                            <Card className="p-6 hover:shadow-xl transition-all duration-300 cursor-pointer group" onClick={() => setActiveSection('apis')}>
                                 <div className="flex items-center gap-3 mb-4">
                                     <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center group-hover:bg-blue-200 transition-colors">
                                         <FileText className="text-blue-600" size={24} />
@@ -444,7 +507,7 @@ const DashboardHomepage = () => {
 
                                     {/* Tools Used */}
                                     <div className="">
-                                        <h4 className="text-sm font-semibold text-gray-900 mb-3">Dashboard Tools Used</h4>
+                                        <h4 className="text-sm font-semibold text-gray-900 mb-3">{testCase?.id === 'test-case-1' ? 'Dashboard Tools Used' : "Dashboard Tools (In Progress)"}</h4>
                                         <div className="flex flex-wrap gap-2">
                                             {testCase.tools.map((tool, index) => (
                                                 <span key={index} className="px-3 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
@@ -454,7 +517,7 @@ const DashboardHomepage = () => {
                                         </div>
                                     </div>
 
-                                     <p className="text-sm text-gray-600">{testCase.description}</p>
+                                    <p className="text-sm text-gray-600">{testCase.description}</p>
 
                                     {/* Action Button */}
                                     {/* <button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 px-4 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-300 flex items-center justify-center gap-2">
@@ -574,12 +637,13 @@ const DashboardHomepage = () => {
                                 <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
                                     <Globe className="text-blue-600" size={24} />
                                 </div>
-                                <div>
+                                <div className='flex flex-col'>
                                     <h3 className="text-xl font-semibold text-gray-900">General API Info</h3>
-                                    <Link href="https://testcase.mohammedsifankp.online/docs" target='_blank' className="text-sm text-gray-600">Base URL: <code>https://testcase.mohammedsifankp.online/docs/</code></Link>
+                                    <Link href="https://testcase.mohammedsifankp.online/docs" target='_blank' className="text-sm text-gray-600">Base URL (Test Case 1): <code>https://testcase.mohammedsifankp.online/docs/</code></Link>
+                                    <Link href="https://testcase2.mohammedsifankp.online/docs" target='_blank' className="text-sm text-gray-600">Base URL (Test Case 2): <code>https://testcase2.mohammedsifankp.online/docs/</code></Link>
                                 </div>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {/* <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div className="bg-white p-4 rounded-lg text-center">
                                     <div className="text-2xl font-bold text-blue-600">{apiData.length}</div>
                                     <div className="text-sm text-gray-600">Total Endpoints</div>
@@ -592,7 +656,7 @@ const DashboardHomepage = () => {
                                     <div className="text-2xl font-bold text-purple-600">2</div>
                                     <div className="text-sm text-gray-600">Test Cases</div>
                                 </div>
-                            </div>
+                            </div> */}
                         </Card>
 
                         {/* Test Case 1 */}
@@ -603,7 +667,7 @@ const DashboardHomepage = () => {
 
                         {/* Test Case 2 */}
                         <Card className="p-6">
-                            <h3 className="text-xl font-semibold text-gray-900 mb-6">🛠 Test Case 2 - Backend Side APIs (Not yet used)</h3>
+                            <h3 className="text-xl font-semibold text-gray-900 mb-6">🛠 Test Case 2 - Backend Side APIs</h3>
                             <ApiTable apis={apiData.filter(api => api.testCase === "Test Case 2")} />
                         </Card>
                     </div>
@@ -614,38 +678,37 @@ const DashboardHomepage = () => {
 };
 
 function ApiTable({ apis }: { apis: ApiEntry[] }) {
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-gray-200">
-            <th className="py-3 px-4 text-left font-semibold text-gray-900">Method</th>
-            <th className="py-3 px-4 text-left font-semibold text-gray-900">Endpoint</th>
-            <th className="py-3 px-4 text-left font-semibold text-gray-900">Description</th>
-            <th className="py-3 px-4 text-left font-semibold text-gray-900">Records</th>
-          </tr>
-        </thead>
-        <tbody>
-          {apis.map((api, index) => (
-            <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
-              <td className="py-3 px-4">
-                <span className={`px-2 py-1 text-xs font-medium rounded ${
-                  api.method === 'GET' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
-                }`}>
-                  {api.method}
-                </span>
-              </td>
-              <td className="py-3 px-4">
-                <code className="bg-gray-100 px-2 py-1 rounded text-gray-700">{api.endpoint}</code>
-              </td>
-              <td className="py-3 px-4 text-gray-600">{api.description}</td>
-              <td className="py-3 px-4 text-gray-900 font-medium">{api.records}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
+    return (
+        <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+                <thead>
+                    <tr className="border-b border-gray-200">
+                        <th className="py-3 px-4 text-left font-semibold text-gray-900">Method</th>
+                        <th className="py-3 px-4 text-left font-semibold text-gray-900">Endpoint</th>
+                        <th className="py-3 px-4 text-left font-semibold text-gray-900">Description</th>
+                        <th className="py-3 px-4 text-left font-semibold text-gray-900">Records</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {apis.map((api, index) => (
+                        <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
+                            <td className="py-3 px-4">
+                                <span className={`px-2 py-1 text-xs font-medium rounded ${api.method === 'GET' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
+                                    }`}>
+                                    {api.method}
+                                </span>
+                            </td>
+                            <td className="py-3 px-4">
+                                <code className="bg-gray-100 px-2 py-1 rounded text-gray-700 break-all">{api.endpoint}</code>
+                            </td>
+                            <td className="py-3 px-4 text-gray-600">{api.description}</td>
+                            <td className="py-3 px-4 text-gray-900 font-medium">{api.records}</td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+    );
 }
 
 
