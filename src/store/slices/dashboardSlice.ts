@@ -24,9 +24,10 @@ const initialState: DashboardState = {
     }
   },
   selectedLibrary: 'ag-charts',
-  selectedTestCase: (typeof window !== "undefined" && localStorage.getItem("selectedTestCase") === "test-case-2")
-    ? "test-case-2"
-    : "test-case-1"
+  selectedTestCase: 'test-case-1'
+  // selectedTestCase: (typeof window !== "undefined" && localStorage.getItem("selectedTestCase") === "test-case-2")
+  //   ? "test-case-2"
+  //   : "test-case-1"
 };
 
 const dashboardSlice = createSlice({
@@ -48,9 +49,9 @@ const dashboardSlice = createSlice({
     },
     setSelectedTestCase: (state, action: PayloadAction<TestCaseType>) => {
     state.selectedTestCase = action.payload;
-    if (typeof window !== "undefined") {
-      localStorage.setItem("selectedTestCase", action.payload);
-    }
+    // if (typeof window !== "undefined") {
+    //   localStorage.setItem("selectedTestCase", action.payload);
+    // }
   }
 
   }
