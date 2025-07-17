@@ -505,11 +505,13 @@ export const GroupListComponents: React.FC<GroupListComponentsProps> = ({
 
   const handleDeleteGroup = async (groupName: string) => {
     try {
-      if (testCase = 'test-case-1') {
+      if (testCase === 'test-case-1') {
         await deleteGroupTestCase1(groupName).unwrap();
       } else {
         await deleteGroupTestCase2(groupName).unwrap();
       }
+     
+      
       await refetchGroupFilters();
       alert("Group Deleted")
       console.log(`Deleted group: ${groupName}`);
