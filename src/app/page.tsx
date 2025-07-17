@@ -60,7 +60,7 @@ const DashboardHomepage = () => {
             subtitle: 'Multi-table join structure for Profit & Loss analysis with account categories',
             description: "",
             status: 'In Progress',
-            recordsCount: '100,000',
+            recordsCount: '1,000,000',
             apiEndpoint: '/api/v1/pl-analysis',
             dashboardUrl: '/dashboard/pl-analysis',
             lastUpdated: '2024-01-20',
