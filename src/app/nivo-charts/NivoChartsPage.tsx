@@ -22,6 +22,7 @@ import { testCase2ProductId, useFetchTestCase2ChartDataMutation, useFetchTestCas
 import { useSelector } from "react-redux";
 import { RootState } from "@/store/store";
 import { transformTestCase2DrillDownData, transformTestCase2ToCommonFormat } from "@/lib/testCase2Transformer";
+import { ChartContextMenu } from "@/components/charts/ChartContextMenu";
 
 // Core data types
 interface ChartDataPoint {
@@ -210,6 +211,15 @@ export default function NivoChartsPage() {
 
   // Drill down states
   const { drillDownState, openDrawer, closeDrawer, isOpen } = useChartDrawer();
+
+  const [contextMenu, setContextMenu] = useState<{
+    isOpen: boolean;
+    position: { x: number; y: number };
+    category: string;
+    value: any;
+    chartType: string;
+    dataType: string;
+  } | null>(null);
 
   const handleCreateGroup = (datas: any) => {
     setDimensions(datas);
@@ -492,43 +502,28 @@ export default function NivoChartsPage() {
     setError(null);
   }, []);
 
-  const dashboardInfoDatas = {
-    apiEndpoints: [
-      { testCase: "test-case-1", method: "POST", apiName: "api/dashboard/all-charts?table_name=sample_1m", api: "https://testcase.mohammedsifankp.online/api/dashboard/all-charts?table_name=sample_1m", description: "Fetch all chart data for the dashboard" },
-      { testCase: "test-case-1", method: "POST", apiName: "api/dashboard/drill-down?table_name=sample_1m&chart_type=bar&category=201907&data_type=revenue&value=4299212962.550013", api: "https://testcase.mohammedsifankp.online/api/dashboard/drill-down?table_name=sample_1m&chart_type=bar&category=201907&data_type=revenue&value=4299212962.550013", description: "Fetch Drill Down datas" },
-      { testCase: "test-case-1", method: "GET", apiName: "api/dashboard/tables/sample_1m/dimensions", api: "https://testcase.mohammedsifankp.online/api/dashboard/tables/sample_1m/dimensions", description: "Fetch dimensions for the dashboard" },
+  const handleContextMenuFilter = useCallback(() => {
+    if (contextMenu) {
+      // @ts-ignore
+      setDimensions(handleCrossChartFilteringFunc(String(contextMenu.category)))
+      setContextMenu(null);
+    }
+  }, [contextMenu]);
 
-      { testCase: "test-case-2", method: "POST", apiName: "api/dashboard/all-charts?product_id=sample_100k_product_v1&exclude_null_revenue=false", api: "https://testcase2.mohammedsifankp.online/api/dashboard/all-charts?product_id=sample_100k_product_v1&exclude_null_revenue=false", description: "Fetch all chart data for the dashboard" },
-      { testCase: "test-case-2", method: "POST", apiName: "api/dashboard/drill-down?product_id=sample_100k_product_v1&chart_type=line&category=202010&data_type=revenue&drill_down_level=detailed&include_reference_context=true&exclude_null_revenue=false", api: "https://testcase2.mohammedsifankp.online/api/dashboard/drill-down?product_id=sample_100k_product_v1&chart_type=line&category=202010&data_type=revenue&drill_down_level=detailed&include_reference_context=true&exclude_null_revenue=false", description: "Fetch Drill Down datas" },
-      { testCase: "test-case-2", method: "GET", apiName: "api/dashboard/tables/sample_100k_product_v1/dimensions?include_reference_tables=true", api: "https://testcase2.mohammedsifankp.online/api/dashboard/tables/sample_100k_product_v1/dimensions?include_reference_tables=false", description: "Fetch dimensions for the dashboard" },
-    ],
-    availableFeatures: [
-      { feature: "Drill Down (With custom handlers)", supported: true },
-      { feature: "Cross-Chart Filtering (Need Manual setup)", supported: false },
-      { feature: "Interactive Charts", supported: true },
-      { feature: "Legend Toggle", supported: true },
-      { feature: "Export Options (PNG, CSV) - (No built-in export, Need Manual setup)", supported: false },
-      { feature: "Real-time Data Support (Need Manual setup)", supported: false },
-      { feature: "Custom Options", supported: true },
-      { feature: "TypeScript Support", supported: true },
-      { feature: "Open Source", supported: true },
-      { feature: "Drag and Drop (Need Custom Code not default)", supported: false },
-    ],
-     dataRecords: {
-      "test-case-1": "1,000,000 Records",
-      "test-case-2": "Records"
-    },
-  }
+  const handleContextMenuDrillDown = useCallback(() => {
+    if (contextMenu) {
+      handleDrillDown(contextMenu.chartType, contextMenu.category, contextMenu.value, contextMenu.dataType);
+      setContextMenu(null);
+    }
+  }, [contextMenu]);
+
+  const handleContextMenuClose = useCallback(() => {
+    setContextMenu(null);
+  }, []);
 
   return (
     <section className="p-8 bg-gray-50">
-      <h1 className="text-3xl font-bold text-center mb-8">Financial Dashboard with Nivo Charts</h1>
-
-      <DashboardInfoCard
-        apiEndpoints={dashboardInfoDatas?.apiEndpoints}
-        availableFeatures={dashboardInfoDatas?.availableFeatures}
-        dataRecords={dashboardInfoDatas?.dataRecords}
-      />
+      <h1 className="text-3xl font-bold text-center mb-8">Financial Dashboard - Nivo Charts</h1>
 
       <GroupModal
         isOpen={isGroupModalOpen}
@@ -570,6 +565,16 @@ export default function NivoChartsPage() {
           </ActionButton>
         </div>
       </div>
+
+      <ChartContextMenu
+        isOpen={contextMenu?.isOpen || false}
+        position={contextMenu?.position || { x: 0, y: 0 }}
+        onClose={handleContextMenuClose}
+        onFilter={handleContextMenuFilter}
+        onDrillDown={handleContextMenuDrillDown}
+        category={contextMenu?.category || ''}
+        value={contextMenu?.value || ''}
+      />
 
       {error && (<ErrorAlert message={error} onDismiss={handleDismissError} />)}
 
@@ -620,12 +625,21 @@ export default function NivoChartsPage() {
               useMesh={true}
               onClick={(point, event) => {
                 if (point.data) {
-                  if (event.ctrlKey || event.metaKey) {
-                    handleDrillDown('line', point.data.x as string, point.data.y, point.serieId as string);
-                  } else {
-                    // @ts-ignore
-                    setDimensions(handleCrossChartFilteringFunc(String(point.data.x)));
-                  }
+                  setContextMenu({
+                    isOpen: true,
+                    position: { x: event.clientX, y: event.clientY },
+                    category: point.data.x as string,
+                    value: point.data.y,
+                    chartType: 'line',
+                    dataType: point.serieId as string
+                  });
+
+                  // if (event.ctrlKey || event.metaKey) {
+                  //   handleDrillDown('line', point.data.x as string, point.data.y, point.serieId as string);
+                  // } else {
+                  //   // @ts-ignore
+                  //   setDimensions(handleCrossChartFilteringFunc(String(point.data.x)));
+                  // }
                 }
               }}
               legends={[

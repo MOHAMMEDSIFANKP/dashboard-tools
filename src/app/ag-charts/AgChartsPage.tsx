@@ -45,8 +45,7 @@ import { ErrorAlert, LoadingAlert } from "@/components/ui/status-alerts";
 import { ChartSkelten } from "@/components/ui/ChartSkelten";
 import { GroupModal } from "@/components/GroupManagement";
 import ReusableChartDrawer, { useChartDrawer } from "@/components/ChartDrawer";
-import DashboardInfoCard from "@/components/DashboardInfoCard";
-
+import { ChartContextMenu } from "@/components/charts/ChartContextMenu";
 
 // Common props for components
 interface CommonProps {
@@ -104,11 +103,20 @@ const AgChartsPage: React.FC = () => {
 
   const { drillDownState, openDrawer, closeDrawer, isOpen } = useChartDrawer();
 
+  const [contextMenu, setContextMenu] = useState<{
+    isOpen: boolean;
+    position: { x: number; y: number };
+    category: string;
+    value: any;
+    chartType: string;
+    dataType: string;
+  } | null>(null);
 
-  const handleCrossChartFiltering = (data: string) => {
-    // @ts-ignore   
-    setDimensions(handleCrossChartFilteringFunc(String(data)));
-  }
+
+  // const handleCrossChartFiltering = (data: string) => {
+  //   // @ts-ignore   
+  //   setDimensions(handleCrossChartFilteringFunc(String(data)));
+  // }
 
   const fetchChartDataByTestCase = async () => {
     try {
@@ -178,13 +186,21 @@ const AgChartsPage: React.FC = () => {
 
             if (datum && datum.period) {
               const nativeEvent = event.event;
-              if (nativeEvent?.ctrlKey || nativeEvent?.metaKey) {
-                // Ctrl/Cmd + Click = Drill Down
-                handleDrillDown("line", datum.period, datum[yKey], yKey);
-              } else {
-                // Regular Click = Cross Chart Filter
-                handleCrossChartFiltering(datum.period);
-              }
+              setContextMenu({
+                isOpen: true,
+                position: { x: nativeEvent.clientX, y: nativeEvent.clientY },
+                category: datum.period,
+                value: datum[yKey],
+                chartType: 'line',
+                dataType: yKey
+              });
+              // if (nativeEvent?.ctrlKey || nativeEvent?.metaKey) {
+              //   // Ctrl/Cmd + Click = Drill Down
+              //   handleDrillDown("line", datum.period, datum[yKey], yKey);
+              // } else {
+              //   // Regular Click = Cross Chart Filter
+              //   handleCrossChartFiltering(datum.period);
+              // }
             }
           },
 
@@ -434,52 +450,36 @@ const AgChartsPage: React.FC = () => {
     setError(null);
   }, []);
 
-  const dashboardInfoDatas = {
-    apiEndpoints: [
-      { testCase: "test-case-1", method: "POST", apiName: "api/dashboard/all-charts?table_name=sample_1m", api: "https://testcase.mohammedsifankp.online/api/dashboard/all-charts?table_name=sample_1m", description: "Fetch all chart data for the dashboard" },
-      { testCase: "test-case-1", method: "POST", apiName: "api/dashboard/drill-down?table_name=sample_1m&chart_type=bar&category=201907&data_type=revenue&value=4299212962.550013", api: "https://testcase.mohammedsifankp.online/api/dashboard/drill-down?table_name=sample_1m&chart_type=bar&category=201907&data_type=revenue&value=4299212962.550013", description: "Fetch Drill Down datas" },
-      { testCase: "test-case-1", method: "GET", apiName: "api/dashboard/tables/sample_1m/dimensions", api: "https://testcase.mohammedsifankp.online/api/dashboard/tables/sample_1m/dimensions", description: "Fetch dimensions for the dashboard" },
-
-      { testCase: "test-case-2", method: "POST", apiName: "api/dashboard/all-charts?product_id=sample_100k_product_v1&exclude_null_revenue=false", api: "https://testcase2.mohammedsifankp.online/api/dashboard/all-charts?product_id=sample_100k_product_v1&exclude_null_revenue=false", description: "Fetch all chart data for the dashboard" },
-      { testCase: "test-case-2", method: "POST", apiName: "api/dashboard/drill-down?product_id=sample_100k_product_v1&chart_type=line&category=202010&data_type=revenue&drill_down_level=detailed&include_reference_context=true&exclude_null_revenue=false", api: "https://testcase2.mohammedsifankp.online/api/dashboard/drill-down?product_id=sample_100k_product_v1&chart_type=line&category=202010&data_type=revenue&drill_down_level=detailed&include_reference_context=true&exclude_null_revenue=false", description: "Fetch Drill Down datas" },
-      { testCase: "test-case-2", method: "GET", apiName: "api/dashboard/tables/sample_100k_product_v1/dimensions?include_reference_tables=true", api: "https://testcase2.mohammedsifankp.online/api/dashboard/tables/sample_100k_product_v1/dimensions?include_reference_tables=false", description: "Fetch dimensions for the dashboard" },
-    ],
-    availableFeatures: [
-      { feature: "Drill Down", supported: true },
-      { feature: "Cross-Chart Filtering (But only Enterprise version)", supported: true },
-      { feature: "Interactive Charts", supported: true },
-      { feature: "Legend Toggle", supported: true },
-      { feature: "Export Options (PNG, CSV)", supported: true },
-      { feature: "Real-time Data Support", supported: true },
-      { feature: "Custom Options", supported: true },
-      { feature: "TypeScript Support", supported: true },
-      { feature: "Open Source", supported: true },
-      { feature: "Drag and Drop (Need Custom Code not default)", supported: false },
-    ],
-    dataRecords: {
-      "test-case-1": "1,000,000 Records",
-      "test-case-2": "Records"
+  const handleContextMenuFilter = useCallback(() => {
+    if (contextMenu) {
+      // @ts-ignore
+      setDimensions(handleCrossChartFilteringFunc(String(contextMenu.category)))
+      setContextMenu(null);
     }
-  }
+  }, [contextMenu]);
 
+  const handleContextMenuDrillDown = useCallback(() => {
+    if (contextMenu) {
+      handleDrillDown(contextMenu.chartType, contextMenu.category, contextMenu.value, contextMenu.dataType);
+      setContextMenu(null);
+    }
+  }, [contextMenu]);
+
+  const handleContextMenuClose = useCallback(() => {
+    setContextMenu(null);
+  }, []);
 
   return (
     <section className="p-5">
       <h1 className="text-2xl font-bold text-center mb-4">Financial Dashboard - Ag Charts</h1>
 
-      <DashboardInfoCard
-        apiEndpoints={dashboardInfoDatas?.apiEndpoints}
-        availableFeatures={dashboardInfoDatas?.availableFeatures}
-        dataRecords={dashboardInfoDatas?.dataRecords}
-      />
-
-      <GroupModal
+     {isGroupModalOpen && <GroupModal
         isOpen={isGroupModalOpen}
         onClose={handleCloseModal}
         testCase={testCase}
         // @ts-ignore
         onCreateGroup={handleCreateGroup}
-      />
+      />}
       <div className="flex flex-col mb-4">
         {dimensions?.groupName && (
           <p className="text-sm text-gray-500">
@@ -512,6 +512,16 @@ const AgChartsPage: React.FC = () => {
           </ActionButton>
         </div>
       </div>
+
+      <ChartContextMenu
+        isOpen={contextMenu?.isOpen || false}
+        position={contextMenu?.position || { x: 0, y: 0 }}
+        onClose={handleContextMenuClose}
+        onFilter={handleContextMenuFilter}
+        onDrillDown={handleContextMenuDrillDown}
+        category={contextMenu?.category || ''}
+        value={contextMenu?.value || ''}
+      />
 
       {error && (<ErrorAlert message={error} onDismiss={handleDismissError} />)}
 

@@ -16,11 +16,11 @@ import { ChartSkelten } from "@/components/ui/ChartSkelten";
 import { useChartDrawer } from "@/components/ChartDrawer";
 import ReusableChartDrawer from "@/components/ChartDrawer";
 import { ErrorAlert } from "@/components/ui/status-alerts";
-import DashboardInfoCard from "@/components/DashboardInfoCard";
 import { testCase2ProductId, useFetchTestCase2ChartDataMutation, useFetchTestCase2DrillDownDataMutation } from "@/lib/services/testCase2Api";
 import { transformTestCase2DrillDownData, transformTestCase2ToCommonFormat } from "@/lib/testCase2Transformer";
 import { useSelector } from "react-redux";
 import { RootState } from "@/store/store";
+import { ChartContextMenu } from "@/components/charts/ChartContextMenu";
 
 
 // Define TypeScript interfaces for chart data
@@ -100,6 +100,15 @@ const EChartsPage = () => {
 
   // Drill down state
   const { drillDownState, openDrawer, closeDrawer, isOpen } = useChartDrawer();
+
+  const [contextMenu, setContextMenu] = useState<{
+    isOpen: boolean;
+    position: { x: number; y: number };
+    category: string;
+    value: any;
+    chartType: string;
+    dataType: string;
+  } | null>(null);
 
   const fetchChartDataByTestCase = async () => {
     try {
@@ -257,45 +266,30 @@ const EChartsPage = () => {
     setError(null);
   }, []);
 
-  const dashboardInfoDatas = {
-    apiEndpoints: [
-      { testCase: "test-case-1", method: "POST", apiName: "api/dashboard/all-charts?table_name=sample_1m", api: "https://testcase.mohammedsifankp.online/api/dashboard/all-charts?table_name=sample_1m", description: "Fetch all chart data for the dashboard" },
-      { testCase: "test-case-1", method: "POST", apiName: "api/dashboard/drill-down?table_name=sample_1m&chart_type=bar&category=201907&data_type=revenue&value=4299212962.550013", api: "https://testcase.mohammedsifankp.online/api/dashboard/drill-down?table_name=sample_1m&chart_type=bar&category=201907&data_type=revenue&value=4299212962.550013", description: "Fetch Drill Down datas" },
-      { testCase: "test-case-1", method: "GET", apiName: "api/dashboard/tables/sample_1m/dimensions", api: "https://testcase.mohammedsifankp.online/api/dashboard/tables/sample_1m/dimensions", description: "Fetch dimensions for the dashboard" },
-
-      { testCase: "test-case-2", method: "POST", apiName: "api/dashboard/all-charts?product_id=sample_100k_product_v1&exclude_null_revenue=false", api: "https://testcase2.mohammedsifankp.online/api/dashboard/all-charts?product_id=sample_100k_product_v1&exclude_null_revenue=false", description: "Fetch all chart data for the dashboard" },
-      { testCase: "test-case-2", method: "POST", apiName: "api/dashboard/drill-down?product_id=sample_100k_product_v1&chart_type=line&category=202010&data_type=revenue&drill_down_level=detailed&include_reference_context=true&exclude_null_revenue=false", api: "https://testcase2.mohammedsifankp.online/api/dashboard/drill-down?product_id=sample_100k_product_v1&chart_type=line&category=202010&data_type=revenue&drill_down_level=detailed&include_reference_context=true&exclude_null_revenue=false", description: "Fetch Drill Down datas" },
-      { testCase: "test-case-2", method: "GET", apiName: "api/dashboard/tables/sample_100k_product_v1/dimensions?include_reference_tables=true", api: "https://testcase2.mohammedsifankp.online/api/dashboard/tables/sample_100k_product_v1/dimensions?include_reference_tables=false", description: "Fetch dimensions for the dashboard" },
-    ],
-    availableFeatures: [
-      { feature: "Drill Down", supported: true },
-      { feature: "Cross-Chart Filtering (Need Manual setup)", supported: false },
-      { feature: "Interactive Charts", supported: true },
-      { feature: "Legend Toggle", supported: true },
-      { feature: "Export Options (PNG) - (CSV Need Manual setup)", supported: true },
-      { feature: "Real-time Data Support (Need Manual setup)", supported: false },
-      { feature: "Custom Options", supported: true },
-      { feature: "TypeScript Support", supported: true },
-      { feature: "Open Source", supported: true },
-      { feature: "Drag and Drop (Need Custom Code not default)", supported: false },
-    ],
-     dataRecords: {
-      "test-case-1": "1,000,000 Records",
-      "test-case-2": "Records"
+  const handleContextMenuFilter = useCallback(() => {
+    if (contextMenu) {
+      // @ts-ignore
+      setDimensions(handleCrossChartFilteringFunc(String(contextMenu.category)))
+      setContextMenu(null);
     }
-  }
+  }, [contextMenu]);
+
+  const handleContextMenuDrillDown = useCallback(() => {
+    if (contextMenu) {
+      handleDrillDown(contextMenu.chartType, contextMenu.category, contextMenu.value, contextMenu.dataType);
+      setContextMenu(null);
+    }
+  }, [contextMenu]);
+
+  const handleContextMenuClose = useCallback(() => {
+    setContextMenu(null);
+  }, []);
 
   return (
     <section className="p-8 bg-gray-50">
       <h1 className="text-3xl font-bold text-center mb-8">
         Financial Dashboard ECharts
       </h1>
-
-      <DashboardInfoCard
-        apiEndpoints={dashboardInfoDatas?.apiEndpoints}
-        availableFeatures={dashboardInfoDatas?.availableFeatures}
-        dataRecords={dashboardInfoDatas?.dataRecords}
-      />
 
       <GroupModal
         isOpen={isGroupModalOpen}
@@ -337,6 +331,16 @@ const EChartsPage = () => {
         </div>
       </div>
 
+      <ChartContextMenu
+        isOpen={contextMenu?.isOpen || false}
+        position={contextMenu?.position || { x: 0, y: 0 }}
+        onClose={handleContextMenuClose}
+        onFilter={handleContextMenuFilter}
+        onDrillDown={handleContextMenuDrillDown}
+        category={contextMenu?.category || ''}
+        value={contextMenu?.value || ''}
+      />
+
       {error && (<ErrorAlert message={error} onDismiss={handleDismissError} />)}
 
       <ReusableChartDrawer
@@ -371,7 +375,7 @@ const EChartsPage = () => {
             data={lineChartData}
             onDrillDown={(period, value, dataType) => handleDrillDown('line', period, value, dataType)}
             chartRef={lineChartRef}
-            setDimensions={setDimensions}
+            setContextMenu={setContextMenu}
           />
         </ChartContainer>
 
@@ -633,12 +637,12 @@ const LineChartComponent = ({
   data,
   onDrillDown,
   chartRef,
-  setDimensions,
+  setContextMenu,
 }: {
   data: LineChartDataPoint[],
   onDrillDown: (period: string, value: number, dataType: string) => void,
   chartRef: React.RefObject<any>,
-  setDimensions: React.Dispatch<React.SetStateAction<any>>;
+  setContextMenu: React.Dispatch<React.SetStateAction<any>>;
 }) => {
   if (!data || data.length === 0) return <div>No data available</div>;
 
@@ -702,12 +706,21 @@ const LineChartComponent = ({
     let dataType = 'revenue';
     if (seriesName === 'Gross Margin') dataType = 'grossMargin';
     if (seriesName === 'Net Profit') dataType = 'netProfit';
-    if (event?.event?.ctrlKey || event?.event?.metaKey) {
-      onDrillDown(name, value, dataType);
-    } else {
-      // @ts-ignore
-      setDimensions(handleCrossChartFilteringFunc(name));
-    }
+
+    setContextMenu({
+      isOpen: true,
+      position: { x: event?.event?.clientX, y: event?.event?.clientY },
+      category: name,
+      value: value,
+      chartType: 'line',
+      dataType: dataType
+    });
+    // if (event?.event?.ctrlKey || event?.event?.metaKey) {
+    //   onDrillDown(name, value, dataType);
+    // } else {
+    //   // @ts-ignore
+    //   setDimensions(handleCrossChartFilteringFunc(name));
+    // }
 
   };
 

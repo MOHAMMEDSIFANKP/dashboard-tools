@@ -172,10 +172,21 @@ export const testCase2Api = createApi({
       },
     }),
 
- // Financial Data
+    // Financial Data
     fetchFinancialDataTestCase2: builder.query<any, { productId?: string; year: string; month: string }>({
       query: ({ productId = testCase2ProductId, year, month }) => 
         `dashboard/financial-data/${productId}?year=${year}&month=${month}`,
+    }),
+    // Fetch Group Filter Datas
+    fetchTestCase2groupFilters: builder.query<any, {}>({
+      query: () => 'dashboard/group-filters',
+    }),
+    // Delete a Group Filter
+    deleteTestCase2GroupFilter: builder.mutation<any, string>({
+      query: (groupName) => ({
+        url: `dashboard/group-filters/${groupName}`,
+        method: 'DELETE',
+      }),
     }),
 
 
@@ -189,5 +200,7 @@ export const {
   useFetchTestCase2DrillDownDataMutation,
   useFetchTestCase2TableDataQuery,
   useLazyFetchFinancialDataTestCase2Query,
+  useFetchTestCase2groupFiltersQuery,
+  useDeleteTestCase2GroupFilterMutation
 
 } = testCase2Api;

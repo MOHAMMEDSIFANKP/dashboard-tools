@@ -18,6 +18,7 @@ import { testCase2ProductId, useFetchTestCase2ChartDataMutation, useFetchTestCas
 import { transformTestCase2DrillDownData, transformTestCase2ToCommonFormat } from "@/lib/testCase2Transformer";
 import { RootState } from "@/store/store";
 import { useSelector } from "react-redux";
+import { ChartContextMenu } from "@/components/charts/ChartContextMenu";
 
 // Constants
 const DEFAULT_CONFIGURATION = {
@@ -141,6 +142,15 @@ export default function ReactPlotlyPage() {
     donut: []
   });
 
+  const [contextMenu, setContextMenu] = useState<{
+    isOpen: boolean;
+    position: { x: number; y: number };
+    category: string;
+    value: any;
+    chartType: string;
+    dataType: string;
+  } | null>(null);
+
   // Refs for chart components
   const linePlotRef = useRef<any>(null);
   const barPlotRef = useRef<any>(null);
@@ -228,6 +238,26 @@ export default function ReactPlotlyPage() {
   const handleDismissError = useCallback((): void => {
     setError(null);
   }, []);
+
+  const handleContextMenuFilter = useCallback(() => {
+    if (contextMenu) {
+      // @ts-ignore
+      setDimensions(handleCrossChartFilteringFunc(String(contextMenu.category)))
+      setContextMenu(null);
+    }
+  }, [contextMenu]);
+
+  const handleContextMenuDrillDown = useCallback(() => {
+    if (contextMenu) {
+      handleDrillDown(contextMenu.chartType, contextMenu.category, contextMenu.dataType, contextMenu.value);
+      setContextMenu(null);
+    }
+  }, [contextMenu]);
+
+  const handleContextMenuClose = useCallback(() => {
+    setContextMenu(null);
+  }, []);
+
 
   // Generic drill down function using API
   const handleDrillDown = useCallback(async (chartType: string, category: string, dataType: string, value?: any) => {
@@ -368,13 +398,23 @@ export default function ReactPlotlyPage() {
 
   const handleLineChartClick = useCallback((data: any) => {
     if (data?.points?.[0]) {
-      // @ts-ignore   
-      if (data.event?.ctrlKey || data.event?.metaKey) {
-        handleChartClick('line', data.points[0]);
-      } else {
-        // @ts-ignore
-        setDimensions(handleCrossChartFilteringFunc(String(data.points[0].x)));
-      }
+      const nativeEvent = data.event;
+     
+      setContextMenu({
+        isOpen: true,
+        position: { x: nativeEvent.clientX, y: nativeEvent.clientY },
+        category: data.points[0].x || data.points[0].label,
+        value: Number(data.points[0].value || data.points[0].y),
+        chartType: 'line',
+        dataType: data.points[0].data?.name?.toLowerCase() || 'revenue'
+      });
+      // // @ts-ignore   
+      // if (data.event?.ctrlKey || data.event?.metaKey) {
+      //   handleChartClick('line', data.points[0]);
+      // } else {
+      //   // @ts-ignore
+      //   setDimensions(handleCrossChartFilteringFunc(String(data.points[0].x)));
+      // }
     }
   }, [handleChartClick]);
 
@@ -539,43 +579,9 @@ export default function ReactPlotlyPage() {
     },
   ], [chartData.bar]);
 
-  const dashboardInfoDatas = {
-    apiEndpoints: [
-      { testCase: "test-case-1", method: "POST", apiName: "api/dashboard/all-charts?table_name=sample_1m", api: "https://testcase.mohammedsifankp.online/api/dashboard/all-charts?table_name=sample_1m", description: "Fetch all chart data for the dashboard" },
-      { testCase: "test-case-1", method: "POST", apiName: "api/dashboard/drill-down?table_name=sample_1m&chart_type=bar&category=201907&data_type=revenue&value=4299212962.550013", api: "https://testcase.mohammedsifankp.online/api/dashboard/drill-down?table_name=sample_1m&chart_type=bar&category=201907&data_type=revenue&value=4299212962.550013", description: "Fetch Drill Down datas" },
-      { testCase: "test-case-1", method: "GET", apiName: "api/dashboard/tables/sample_1m/dimensions", api: "https://testcase.mohammedsifankp.online/api/dashboard/tables/sample_1m/dimensions", description: "Fetch dimensions for the dashboard" },
-
-      { testCase: "test-case-2", method: "POST", apiName: "api/dashboard/all-charts?product_id=sample_100k_product_v1&exclude_null_revenue=false", api: "https://testcase2.mohammedsifankp.online/api/dashboard/all-charts?product_id=sample_100k_product_v1&exclude_null_revenue=false", description: "Fetch all chart data for the dashboard" },
-      { testCase: "test-case-2", method: "POST", apiName: "api/dashboard/drill-down?product_id=sample_100k_product_v1&chart_type=line&category=202010&data_type=revenue&drill_down_level=detailed&include_reference_context=true&exclude_null_revenue=false", api: "https://testcase2.mohammedsifankp.online/api/dashboard/drill-down?product_id=sample_100k_product_v1&chart_type=line&category=202010&data_type=revenue&drill_down_level=detailed&include_reference_context=true&exclude_null_revenue=false", description: "Fetch Drill Down datas" },
-      { testCase: "test-case-2", method: "GET", apiName: "api/dashboard/tables/sample_100k_product_v1/dimensions?include_reference_tables=true", api: "https://testcase2.mohammedsifankp.online/api/dashboard/tables/sample_100k_product_v1/dimensions?include_reference_tables=false", description: "Fetch dimensions for the dashboard" },
-    ],
-    availableFeatures: [
-      { feature: "Drill Down (Need Manual setup)", supported: false },
-      { feature: "Cross-Chart Filtering (Need Manual setup)", supported: false },
-      { feature: "Interactive Charts", supported: true },
-      { feature: "Legend Toggle", supported: true },
-      { feature: "Export Options (PNG, CSV)", supported: true },
-      { feature: "Real-time Data Support (Need Manual setup)", supported: false },
-      { feature: "Custom Options", supported: true },
-      { feature: "TypeScript Support", supported: true },
-      { feature: "Open Source", supported: true },
-      { feature: "Drag and Drop (Need Custom Code not default)", supported: false },
-    ],
-     dataRecords: {
-      "test-case-1": "1,000,000 Records",
-      "test-case-2": "Records"
-    },
-  }
-
   return (
     <section className="p-5">
       <h1 className="text-2xl font-bold text-center mb-4">Financial Dashboard - React Plotly</h1>
-
-      <DashboardInfoCard
-        apiEndpoints={dashboardInfoDatas?.apiEndpoints}
-        availableFeatures={dashboardInfoDatas?.availableFeatures}
-        dataRecords={dashboardInfoDatas?.dataRecords}
-      />
 
       <GroupModal
         isOpen={isGroupModalOpen}
@@ -615,6 +621,16 @@ export default function ReactPlotlyPage() {
           </ActionButton>
         </div>
       </div>
+
+      <ChartContextMenu
+        isOpen={contextMenu?.isOpen || false}
+        position={contextMenu?.position || { x: 0, y: 0 }}
+        onClose={handleContextMenuClose}
+        onFilter={handleContextMenuFilter}
+        onDrillDown={handleContextMenuDrillDown}
+        category={contextMenu?.category || ''}
+        value={contextMenu?.value || ''}
+      />
 
       {error && (<ErrorAlert message={error} onDismiss={handleDismissError} />)}
 

@@ -40,8 +40,8 @@ const DashboardInfoCard: React.FC<DashboardInfoCardProps> = ({
     };
 
     return (
-        <div className={`bg-white p-4 rounded-lg shadow-lg border border-gray-100 mb-4 ${className}`}>
-            <h2 className="text-lg font-semibold text-gray-800 mb-3">Dashboard Information</h2>
+        <div className={`bg-white m-5 p-4 rounded-lg shadow-lg border border-gray-100  ${className}`}>
+            <h2 className="text-lg font-semibold text-gray-800 mb-3">Test Information</h2>
 
             <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
                 {/* API Information */}

@@ -146,6 +146,17 @@ export const api = createApi({
         body,
       }),
     }),
+     // Fetch Group Filter Datas
+    fetchGroupFilters: builder.query<any, {}>({
+      query: () => 'dashboard/group-filters',
+    }),
+    // Delete a Group Filter
+    deleteGroupFilter: builder.mutation<any, string>({
+      query: (groupName) => ({
+        url: `dashboard/group-filters/${groupName}`,
+        method: 'DELETE',
+      }),
+    }),
 
     // File Upload
     uploadFile: builder.mutation<any, FormData>({
@@ -192,6 +203,8 @@ export const {
   
   // Group management
   useSaveGroupFilterMutation,
+  useFetchGroupFiltersQuery,
+  useDeleteGroupFilterMutation,
   
   // File operations
   useUploadFileMutation,
