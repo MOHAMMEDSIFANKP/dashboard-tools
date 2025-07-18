@@ -592,7 +592,7 @@ export default function NivoChartsPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <ChartContainer
           isLoading={isLoading}
-          title="Revenue Trends Over Time ( Click: Cross Chart Filter | Ctrl+Click: Drill Down )"
+          title="Revenue Trends Over Time"
           data={rawData.line}
         >
           <div style={{ height: "400px" }}>

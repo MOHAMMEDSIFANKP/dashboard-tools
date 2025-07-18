@@ -653,7 +653,7 @@ export default function ReactPlotlyPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {chartData.line.length > 0 && (
           <ChartContainer
-            title="Revenue Trends ( Click: Cross Chart Filter | Ctrl+Click: Drill Down )"
+            title="Revenue Trends"
             onDownloadCSV={() => handleDownloadCSV(chartData.line, "Revenue_Trends")}
             onDownloadImage={() => handleDownloadImage(linePlotRef, "Revenue_Trends")}
           >

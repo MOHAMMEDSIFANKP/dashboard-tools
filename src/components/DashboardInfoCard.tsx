@@ -11,7 +11,7 @@ interface ApiEndpoint {
 
 interface DashboardInfoCardProps {
     apiEndpoints: ApiEndpoint[];
-    availableFeatures: { feature: string; supported: boolean }[];
+    availableFeatures: { feature: string; supported: boolean, link?: string }[];
     dataRecords: { [testCase: string]: string };
     className?: string;
 }
@@ -44,6 +44,46 @@ const DashboardInfoCard: React.FC<DashboardInfoCardProps> = ({
             <h2 className="text-lg font-semibold text-gray-800 mb-3">Test Information</h2>
 
             <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
+                <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                    {/* Features Information */}
+                    <div className="bg-green-50 p-3 rounded-lg">
+                        <h3 className="font-medium text-green-800 mb-2">Available Features</h3>
+                        <div className="space-y-1 text-sm">
+                            {availableFeatures.map((feature, index) => (
+                                <div key={index} className="flex items-center">
+                                    <span className={`${feature?.supported ? "text-green-500" : "text-red-500"} mr-2`}>{feature?.supported ? "✓" : "x"}</span>
+                                    <span>{feature?.feature}</span>
+                                    {feature?.link && <Link href={feature?.link} className='px-1 bg-blue-50 text-blue-800'>- {feature?.link}</Link>}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Records Information */}
+                    <div className="bg-purple-50 p-4 rounded-lg">
+                        <h3 className="text-lg font-semibold text-purple-800 mb-4 flex items-center gap-2">
+                            <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M8 16h8M8 12h8m-6 8h6a2 2 0 002-2V6a2 2 0 00-2-2H8a2 2 0 00-2 2v2"></path>
+                            </svg>
+                            Data Records Overview
+                        </h3>
+                        <div className="grid grid-cols-1 gap-3">
+                            {testCases.map((testCase) => (
+                                <div
+                                    key={testCase}
+                                    className="flex items-center justify-between bg-white rounded-md px-4 py-3 shadow border border-purple-100"
+                                >
+                                    <span className="text-gray-700 font-medium">
+                                        {testCase.replace("-", " ").toUpperCase()}
+                                    </span>
+                                    <span className="bg-purple-100 text-purple-800 text-sm font-semibold px-3 py-1 rounded-full">
+                                        {dataRecords[testCase]}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
                 {/* API Information */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 rounded">
                     {testCases.map((testCase) => (
@@ -76,47 +116,6 @@ const DashboardInfoCard: React.FC<DashboardInfoCardProps> = ({
                             </div>
                         </div>
                     ))}
-                </div>
-
-                <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-                    {/* Features Information */}
-                    <div className="bg-green-50 p-3 rounded-lg">
-                        <h3 className="font-medium text-green-800 mb-2">Available Features</h3>
-                        <div className="space-y-1 text-sm">
-                            {availableFeatures.map((feature, index) => (
-                                <div key={index} className="flex items-center">
-                                    <span className={`${feature?.supported ? "text-green-500" : "text-red-500"} mr-2`}>{feature?.supported ? "✓" : "x"}</span>
-                                    <span>{feature?.feature}</span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Records Information */}
-                    <div className="bg-purple-50 p-4 rounded-lg">
-                        <h3 className="text-lg font-semibold text-purple-800 mb-4 flex items-center gap-2">
-                            <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M8 16h8M8 12h8m-6 8h6a2 2 0 002-2V6a2 2 0 00-2-2H8a2 2 0 00-2 2v2"></path>
-                            </svg>
-                            Data Records Overview
-                        </h3>
-                        <div className="grid grid-cols-1 gap-3">
-                            {testCases.map((testCase) => (
-                                <div
-                                    key={testCase}
-                                    className="flex items-center justify-between bg-white rounded-md px-4 py-3 shadow border border-purple-100"
-                                >
-                                    <span className="text-gray-700 font-medium">
-                                        {testCase.replace("-", " ").toUpperCase()}
-                                    </span>
-                                    <span className="bg-purple-100 text-purple-800 text-sm font-semibold px-3 py-1 rounded-full">
-                                        {dataRecords[testCase]}
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
                 </div>
             </div>
         </div >

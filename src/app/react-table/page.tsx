@@ -1,12 +1,12 @@
 'use client'
 import React from 'react'
 import FinancialDashboard from '../ag-charts/FinancialDashboard'
-import { TabsContainer } from '@/components/ui/TabsContainer'
+import { TabOption, TabsContainer } from '@/components/ui/TabsContainer'
 import ReactTable from './ReactTable'
 import DashboardInfoCard from '@/components/DashboardInfoCard'
 
 function Page() {
-  const [selectedTab, setSelectedTab] = React.useState<'charts' | 'table'>('charts')
+    const [selectedTab, setSelectedTab] = React.useState<TabOption>('tool-test-info')
 
   const dashboardInfoDatas = {
     apiEndpoints: [

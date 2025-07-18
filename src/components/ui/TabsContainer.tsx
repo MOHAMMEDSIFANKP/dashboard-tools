@@ -1,12 +1,14 @@
+export type TabOption = 'charts' | 'table' | 'tool-test-info';
+
 type TabsContainerProps = {
-  selectedTab: 'charts' | 'table'
-  setSelectedTab: React.Dispatch<React.SetStateAction<'charts' | 'table'>>
+  selectedTab: TabOption
+  setSelectedTab: React.Dispatch<React.SetStateAction<TabOption>>
 }
 
 export const TabsContainer = ({ selectedTab, setSelectedTab }: TabsContainerProps) => {
   const items = [
-    { id: 'charts', label: 'Dashboard' },
     { id: 'tool-test-info', label: 'Tool / Test Info' },
+    { id: 'charts', label: 'Dashboard' },
     { id: 'table', label: 'Table' },
   ]
 
@@ -19,7 +21,7 @@ export const TabsContainer = ({ selectedTab, setSelectedTab }: TabsContainerProp
               href="#"
               onClick={(e) => {
                 e.preventDefault()
-                setSelectedTab(item.id as 'charts' | 'table')
+                setSelectedTab(item.id as TabOption)
               }}
               className={`inline-block p-4 border-b-2 rounded-t-lg hover:text-gray-600 hover:border-gray-300 ${
                 item.id === selectedTab

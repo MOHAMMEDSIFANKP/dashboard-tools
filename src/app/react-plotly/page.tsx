@@ -1,12 +1,12 @@
 'use client'
 import React from 'react'
 import FinancialDashboard from '../ag-charts/FinancialDashboard'
-import { TabsContainer } from '@/components/ui/TabsContainer'
+import { TabOption, TabsContainer } from '@/components/ui/TabsContainer'
 import ReactPlotlyPage from './ReactPlotlyPage'
 import DashboardInfoCard from '@/components/DashboardInfoCard'
 
 function Page() {
-  const [selectedTab, setSelectedTab] = React.useState<'charts' | 'table'>('charts')
+  const [selectedTab, setSelectedTab] = React.useState<TabOption>('tool-test-info')
 
   const dashboardInfoDatas = {
     apiEndpoints: [
@@ -19,8 +19,8 @@ function Page() {
       { testCase: "test-case-2", method: "GET", apiName: "api/dashboard/tables/sample_100k_product_v1/dimensions?include_reference_tables=true", api: "https://testcase2.mohammedsifankp.online/api/dashboard/tables/sample_100k_product_v1/dimensions?include_reference_tables=false", description: "Fetch dimensions for the dashboard" },
     ],
     availableFeatures: [
-      { feature: "Drill Down (Need Manual setup)", supported: false },
-      { feature: "Cross-Chart Filtering (Need Manual setup)", supported: false },
+      { feature: "Drill Down", supported: true },
+      { feature: "Cross-Chart Filtering", supported: true },
       { feature: "Interactive Charts", supported: true },
       { feature: "Legend Toggle", supported: true },
       { feature: "Export Options (PNG, CSV)", supported: true },
@@ -28,7 +28,7 @@ function Page() {
       { feature: "Custom Options", supported: true },
       { feature: "TypeScript Support", supported: true },
       { feature: "Open Source", supported: true },
-      { feature: "Drag and Drop (Need Custom Code not default)", supported: false },
+      { feature: "Drag and Drop. Click the link ->", supported: true, link:"dashboard/draggble-dashboard" },
     ],
     dataRecords: {
       "test-case-1": "1,000,000 Records",

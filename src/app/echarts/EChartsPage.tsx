@@ -367,7 +367,7 @@ const EChartsPage = () => {
         <ChartContainer
           isLoading={isLoading}
           hasData={lineChartData.length}
-          title="Revenue Trends with ( Click: Cross Chart Filter | Ctrl+Click: Drill Down )"
+          title="Revenue Trends with"
           onExportCSV={() => exportToCSV(lineChartData)}
           onExportPNG={() => exportToPNG(lineChartRef)}
         >
