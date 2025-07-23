@@ -25,8 +25,7 @@ import {
 // Types
 import { BarChartData, Dimensions, DonutChartData, LineChartData, PieChartData } from "@/types/Schemas";
 import { buildRequestBody } from "@/lib/services/buildWhereClause";
-import { ActionButton, DashboardActionButtonComponent } from "@/components/ui/action-button";
-import { ChartSkelten } from "@/components/ui/ChartSkelten";
+import { DashboardActionButtonComponent } from "@/components/ui/action-button";
 import { ErrorAlert } from "@/components/ui/status-alerts";
 import { testCase2ProductId, useFetchTestCase2ChartDataMutation, useFetchTestCase2DrillDownDataMutation } from "@/lib/services/testCase2Api";
 import { RootState } from "@/store/store";

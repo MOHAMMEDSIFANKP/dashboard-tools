@@ -26,7 +26,6 @@ import {
 // Utilities
 import {
   buildRequestBody,
-  handleCrossChartFilteringFunc,
 } from "@/lib/services/buildWhereClause";
 import { transformTestCase2DrillDownData, transformTestCase2ToCommonFormat } from "@/lib/testCase2Transformer";
 
@@ -40,12 +39,10 @@ import {
 } from "@/types/Schemas";
 
 // UI Components
-import { ActionButton, DashboardActionButtonComponent } from "@/components/ui/action-button";
+import {  DashboardActionButtonComponent } from "@/components/ui/action-button";
 import { ErrorAlert, LoadingAlert } from "@/components/ui/status-alerts";
-import { ChartSkelten } from "@/components/ui/ChartSkelten";
 import { GroupModal } from "@/components/GroupManagement";
 import { ChartContextMenu } from "@/components/charts/ChartContextMenu";
-import { BarChart3, Download, FileDown, RotateCcw, X } from "lucide-react";
 import { ChartContainerView } from "@/components/charts/ChartContainerView";
 
 // Common props for components

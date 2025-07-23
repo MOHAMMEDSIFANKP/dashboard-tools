@@ -14,7 +14,7 @@ import {
     useFetchDrillDownDataMutation,
     databaseName
 } from '@/lib/services/usersApi';
-import { ActionButton } from '@/components/ui/action-button';
+import { ActionButton, DashboardActionButtonComponent } from '@/components/ui/action-button';
 import { ErrorAlert, LoadingAlert } from '@/components/ui/status-alerts';
 import { ChartSkelten } from '@/components/ui/ChartSkelten';
 import HighchartsDrilldown from 'highcharts/modules/drilldown';
@@ -184,7 +184,7 @@ const FinancialDashboard: React.FC = () => {
                 ...CHART_CONFIG.LINE,
                 xAxis: {
                     ...CHART_CONFIG.LINE.xAxis,
-                    categories: chartData.line?.map((item) => item.period),
+                    categories: chartData.line?.map((item) => item.fiscalYear),
                 },
                 series: [
                     {
@@ -212,26 +212,26 @@ const FinancialDashboard: React.FC = () => {
                         name: 'Gross Margin',
                         data: chartData.line?.map((item) => item.grossMargin),
                         cursor: 'pointer',
-                    events: {
-                        click: function(event: any) {
-                            const point = event.point;
-                            const category = point.category;
-                            const value = point.y;
-                            
-                            if (event.originalEvent?.ctrlKey || event.originalEvent?.metaKey) {
-                                handleDrillDown('line', category, value, 'grossMargin');
-                            } else {
-                                handleCrossChartFiltering(category);
+                        events: {
+                            click: function (event: any) {
+                                const point = event.point;
+                                const category = point.category;
+                                const value = point.y;
+
+                                if (event.originalEvent?.ctrlKey || event.originalEvent?.metaKey) {
+                                    handleDrillDown('line', category, value, 'grossMargin');
+                                } else {
+                                    handleCrossChartFiltering(category);
+                                }
                             }
                         }
-                    }
 
                     },
                     {
                         type: 'line',
                         name: 'Net Profit',
                         data: chartData.line?.map((item) => item.netProfit),
-                        
+
                     },
                 ],
                 drilldown: {
@@ -249,7 +249,7 @@ const FinancialDashboard: React.FC = () => {
                 ...CHART_CONFIG.BAR,
                 xAxis: {
                     ...CHART_CONFIG.BAR.xAxis,
-                    categories: chartData.bar?.map((item) => item.period),
+                    categories: chartData.bar?.map((item) => item.fiscalYear),
                 },
                 series: [
                     {
@@ -412,31 +412,12 @@ const FinancialDashboard: React.FC = () => {
                     </p>
                 )}
 
-                <div className="flex gap-2">
-                    <ActionButton
-                        onClick={handleResetGroup}
-                        className="bg-red-400 hover:bg-red-500"
-                        disabled={isLoading}
-                    >
-                        Reset Group
-                    </ActionButton>
-
-                    <ActionButton
-                        onClick={handleOpenModal}
-                        className="bg-blue-400 hover:bg-blue-500"
-                        disabled={isLoading}
-                    >
-                        Create Group
-                    </ActionButton>
-
-                    <ActionButton
-                        onClick={fetchChartData}
-                        className="bg-green-400 hover:bg-green-500"
-                        disabled={isLoading}
-                    >
-                        {isLoading ? 'Loading...' : 'Refresh Data'}
-                    </ActionButton>
-                </div>
+                <DashboardActionButtonComponent
+                    isLoading={isLoading}
+                    handleResetGroup={handleResetGroup}
+                    handleOpenModal={handleOpenModal}
+                    fetchAllChartDataHandle={fetchChartData}
+                />
             </div>
 
             {error && (<ErrorAlert message={error} onDismiss={handleDismissError} />)}
