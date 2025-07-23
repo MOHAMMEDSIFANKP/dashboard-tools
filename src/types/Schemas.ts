@@ -70,7 +70,8 @@ export interface FinancialDataResponse {
 
 // Data interfaces matching backend response for all charts
 export interface LineChartData {
-  period: string;
+  period?: string;
+  fiscalYear :string;
   // country: string;
   revenue: number;
   grossMargin: number;
@@ -78,7 +79,8 @@ export interface LineChartData {
 }
 
 export interface BarChartData {
-  period: string;
+  period?: string;
+  fiscalYear :string;
   country: string;
   revenue: number;
   expenses: number;

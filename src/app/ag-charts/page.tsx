@@ -1,9 +1,13 @@
 'use client'
-import React from 'react'
+import React, { useEffect } from 'react'
 import FinancialDashboard from '../ag-charts/FinancialDashboard'
 import AgChartsPage from './AgChartsPage'
 import { TabOption, TabsContainer } from '@/components/ui/TabsContainer'
 import DashboardInfoCard from '@/components/DashboardInfoCard'
+import EnhancedDashboard from '../dashboard/draggble-dashboard/page'
+import { ChartLibrary } from '@/types/Schemas'
+import { useDispatch } from 'react-redux'
+import { setSelectedLibrary } from '@/store/slices/dashboardSlice'
 
 const dashboardInfoDatas = {
   apiEndpoints: [
@@ -25,7 +29,7 @@ const dashboardInfoDatas = {
     { feature: "Custom Options", supported: true },
     { feature: "TypeScript Support", supported: true },
     { feature: "Open Source", supported: true },
-    { feature: "Drag and Drop. Click the link ->", supported: true, link:"dashboard/draggble-dashboard" },
+    { feature: "Drag and Drop. ", supported: true, link: "dashboard/draggble-dashboard" },
   ],
   dataRecords: {
     "test-case-1": "1,000,000 Records",
@@ -34,21 +38,32 @@ const dashboardInfoDatas = {
 }
 
 function Page() {
+  const dispatch = useDispatch();
   const [selectedTab, setSelectedTab] = React.useState<TabOption>('tool-test-info')
+
+  const handleLibraryChange = (library: ChartLibrary) => {
+    dispatch(setSelectedLibrary(library));
+  };
+
+  useEffect(() => {
+    handleLibraryChange('ag-charts');
+  }, []);
 
   return (
     <>
       <TabsContainer selectedTab={selectedTab} setSelectedTab={setSelectedTab} />
       {selectedTab === 'charts' && <AgChartsPage />}
       {selectedTab === 'table' && <FinancialDashboard />}
-      {selectedTab !== 'charts' && selectedTab !== 'table' && (
+      {selectedTab === 'tool-test-info' && (
         <DashboardInfoCard
           apiEndpoints={dashboardInfoDatas.apiEndpoints}
           availableFeatures={dashboardInfoDatas.availableFeatures}
           dataRecords={dashboardInfoDatas.dataRecords}
         />
       )}
-
+      {selectedTab === 'drag-and-drop' && (
+        <EnhancedDashboard />
+      )}
     </>
   )
 }

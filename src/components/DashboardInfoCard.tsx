@@ -40,8 +40,17 @@ const DashboardInfoCard: React.FC<DashboardInfoCardProps> = ({
     };
 
     return (
-        <div className={`bg-white m-5 p-4 rounded-lg shadow-lg border border-gray-100  ${className}`}>
-            <h2 className="text-lg font-semibold text-gray-800 mb-3">Test Information</h2>
+        <div className={`bg-white rounded-3xl shadow-2xl shadow-gray-100 border border-gray-100 overflow-hidden transition-all duration-700 hover:shadow-3xl hover:shadow-gray-200 hover:scale-[1.01] m-5 p-5  ${className}`}>
+            <div className="relative flex items-center space-x-4 mb-5">
+                <div className="w-12 h-12 bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl flex items-center justify-center shadow-lg shadow-gray-200/50 transition-transform duration-500 hover:scale-110">
+                    <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                </div>
+                <div>
+                    <h2 className="text-2xl font-bold text-gray-800 transition-colors duration-300">Test Information</h2>
+                </div>
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
                 <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
@@ -53,7 +62,6 @@ const DashboardInfoCard: React.FC<DashboardInfoCardProps> = ({
                                 <div key={index} className="flex items-center">
                                     <span className={`${feature?.supported ? "text-green-500" : "text-red-500"} mr-2`}>{feature?.supported ? "✓" : "x"}</span>
                                     <span>{feature?.feature}</span>
-                                    {feature?.link && <Link href={feature?.link} className='px-1 bg-blue-50 text-blue-800'>- {feature?.link}</Link>}
                                 </div>
                             ))}
                         </div>
@@ -123,26 +131,3 @@ const DashboardInfoCard: React.FC<DashboardInfoCardProps> = ({
 };
 
 export default DashboardInfoCard;
-
-// Usage example:
-/*
-const apiEndpoints = [
-  { method: "GET", api: "/api/v1/financial-data", description: "Fetch financial records" },
-  { method: "POST", api: "/api/v1/chart-data", description: "Get chart data with filters" }
-];
-
-const availableFeatures = [
-  "Drill Down",
-  "Cross-Chart Filtering", 
-  "Interactive Charts",
-  "Export Options (PNG, CSV)",
-  "Real-time Data Support",
-  "Custom Buttons"
-];
-
-<DashboardInfoCard 
-  apiEndpoints={apiEndpoints}
-  availableFeatures={availableFeatures}
-  dataRecords="100K Data"
-/>
-*/

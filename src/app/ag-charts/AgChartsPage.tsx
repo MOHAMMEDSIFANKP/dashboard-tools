@@ -40,12 +40,13 @@ import {
 } from "@/types/Schemas";
 
 // UI Components
-import { ActionButton } from "@/components/ui/action-button";
+import { ActionButton, DashboardActionButtonComponent } from "@/components/ui/action-button";
 import { ErrorAlert, LoadingAlert } from "@/components/ui/status-alerts";
 import { ChartSkelten } from "@/components/ui/ChartSkelten";
 import { GroupModal } from "@/components/GroupManagement";
-import ReusableChartDrawer, { useChartDrawer } from "@/components/ChartDrawer";
 import { ChartContextMenu } from "@/components/charts/ChartContextMenu";
+import { BarChart3, Download, FileDown, RotateCcw, X } from "lucide-react";
+import { ChartContainerView } from "@/components/charts/ChartContainerView";
 
 // Common props for components
 interface CommonProps {
@@ -60,6 +61,7 @@ const AgChartsPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isGroupModalOpen, setIsGroupModalOpen] = useState<boolean>(false);
   const [dimensions, setDimensions] = useState<Dimensions | null>(null);
+  const [crossChartFilter, setCrossChartFilter] = useState<string>('');
 
   const testCase = useSelector((state: RootState) => state.dashboard.selectedTestCase);
 
@@ -88,20 +90,20 @@ const AgChartsPage: React.FC = () => {
 
   // Chart options states
   const [chartOptions, setChartOptions] = useState<{
-    line: AgChartOptions | null,
-    bar: AgChartOptions | null,
-    pie: AgChartOptions | null,
-    donut: AgChartOptions | null,
-    drillDown: AgChartOptions | null
+    line: AgChartOptions | {},
+    bar: AgChartOptions | {},
+    pie: AgChartOptions | {},
+    donut: AgChartOptions | {},
+    drillDown: AgChartOptions | {},
+    drillDownType: string | null
   }>({
-    line: null,
-    bar: null,
-    pie: null,
-    donut: null,
-    drillDown: null
+    line: {},
+    bar: {},
+    pie: {},
+    donut: {},
+    drillDown: {},
+    drillDownType: null,
   });
-
-  const { drillDownState, openDrawer, closeDrawer, isOpen } = useChartDrawer();
 
   const [contextMenu, setContextMenu] = useState<{
     isOpen: boolean;
@@ -113,15 +115,10 @@ const AgChartsPage: React.FC = () => {
   } | null>(null);
 
 
-  // const handleCrossChartFiltering = (data: string) => {
-  //   // @ts-ignore   
-  //   setDimensions(handleCrossChartFilteringFunc(String(data)));
-  // }
-
   const fetchChartDataByTestCase = async () => {
     try {
       if (testCase === "test-case-1") {
-        const res = await fetchAllChartData({ body: buildRequestBody(dimensions, 'all') }).unwrap();
+        const res = await fetchAllChartData({ body: buildRequestBody(dimensions, 'all'), crossChartFilter: crossChartFilter }).unwrap();
         if (!res?.success) throw new Error(res.message || "Error");
         return res;
       } else {
@@ -145,38 +142,38 @@ const AgChartsPage: React.FC = () => {
     try {
       // Fetch all chart data
       const result: any = await fetchChartDataByTestCase();
-
+      const Xkey = crossChartFilter ? 'period' : 'fiscalYear';
       // Process line chart data
       const lineData = result?.charts?.line?.success ? result?.charts?.line?.data || [] : [];
       const lineOpts = lineData.length ? {
         title: { text: "Revenue Trends Over Time" },
-        subtitle: { text: "Showing financial metrics by period" },
+        subtitle: { text: "Showing financial metrics by Fiscal Year" },
         data: lineData,
         series: [
           {
             type: "line",
-            xKey: "period",
+            xKey: Xkey,
             yKey: "revenue",
             yName: "Revenue",
             tooltip: { enabled: true },
           },
           {
             type: "line",
-            xKey: "period",
+            xKey: Xkey,
             yKey: "grossMargin",
             yName: "Gross Margin",
             tooltip: { enabled: true },
           },
           {
             type: "line",
-            xKey: "period",
+            xKey: Xkey,
             yKey: "netProfit",
             yName: "Net Profit",
             tooltip: { enabled: true },
           },
         ],
         axes: [
-          { type: "category", position: "bottom", title: { text: "Period" } },
+          { type: "category", position: "bottom", title: { text: Xkey } },
           { type: "number", position: "left", title: { text: "Amount ($)" } },
         ],
         listeners: {
@@ -184,12 +181,12 @@ const AgChartsPage: React.FC = () => {
           seriesNodeClick: (event) => {
             const { datum, yKey } = event;
 
-            if (datum && datum.period) {
+            if (datum && datum.fiscalYear) {
               const nativeEvent = event.event;
               setContextMenu({
                 isOpen: true,
                 position: { x: nativeEvent.clientX, y: nativeEvent.clientY },
-                category: datum.period,
+                category: datum.fiscalYear,
                 value: datum[yKey],
                 chartType: 'line',
                 dataType: yKey
@@ -211,32 +208,33 @@ const AgChartsPage: React.FC = () => {
       const barData = result?.charts?.bar?.success ? result?.charts?.bar?.data || [] : [];
       const barOpts = barData.length ? {
         title: { text: "Revenue vs Expenses" },
+        subtitle: { text: "Showing financial metrics by Fiscal Year" },
         data: barData,
         series: [
           {
             type: "bar",
-            xKey: "period",
+            xKey: Xkey,
             yKey: "revenue",
             yName: "Revenue",
             tooltip: { enabled: true }
           },
           {
             type: "bar",
-            xKey: "period",
+            xKey: Xkey,
             yKey: "expenses",
             yName: "Expenses",
             tooltip: { enabled: true }
           },
         ],
         axes: [
-          { type: 'category', position: 'bottom', title: { text: 'Period' } },
+          { type: 'category', position: 'bottom', title: { text: Xkey } },
           { type: 'number', position: 'left', title: { text: 'Amount ($)' } }
         ],
         listeners: {
           // @ts-ignore
           seriesNodeClick: ({ datum, yKey }) => {
-            if (datum && datum.period) {
-              handleDrillDown('bar', datum.period, datum[yKey], yKey);
+            if (datum && datum.fiscalYear) {
+              handleDrillDown('bar', datum.fiscalYear, datum[yKey], yKey);
             }
           }
         }
@@ -304,7 +302,8 @@ const AgChartsPage: React.FC = () => {
         bar: barOpts as any,
         pie: pieOpts as any,
         donut: donutOpts as any,
-        drillDown: null
+        drillDown: {},
+        drillDownType: null
       });
 
     } catch (err: any) {
@@ -351,11 +350,11 @@ const AgChartsPage: React.FC = () => {
             title: { text: title },
             data: drillData,
             series: [{
-              type: 'bar',
+              type: chartType === 'line' ? 'line' : 'bar',
               // @ts-ignore
-              xKey: columns.find(col => col.includes('cat')) || columns[0],
-              yKey: 'value',
-              yName: 'Value',
+              xKey: columns[0],
+              yKey: columns[1],
+              yName: columns[1],
               tooltip: { enabled: true }
             }],
             axes: [
@@ -363,7 +362,7 @@ const AgChartsPage: React.FC = () => {
               { type: 'number', position: 'left', title: { text: 'Value ($)' } }
             ],
           };
-        } else if (columns.includes('period')) {
+        } else if (chartType === 'pie' || chartType === 'donut') {
           options = {
             title: { text: title },
             data: drillData,
@@ -403,15 +402,9 @@ const AgChartsPage: React.FC = () => {
 
         setChartOptions(prev => ({
           ...prev,
-          drillDown: options
+          drillDown: options,
+          drillDownType: chartType
         }));
-
-        openDrawer({
-          chartType,
-          category,
-          title,
-          dataType
-        });
 
       } else {
         setError("No data available for this selection");
@@ -427,7 +420,7 @@ const AgChartsPage: React.FC = () => {
   // Fetch data when dimensions change
   useEffect(() => {
     fetchAllChartDataHanlde();
-  }, [dimensions, testCase]);
+  }, [dimensions, testCase, crossChartFilter]);
 
   // Event handlers
   const handleCreateGroup = useCallback((data: Dimensions): void => {
@@ -452,8 +445,7 @@ const AgChartsPage: React.FC = () => {
 
   const handleContextMenuFilter = useCallback(() => {
     if (contextMenu) {
-      // @ts-ignore
-      setDimensions(handleCrossChartFilteringFunc(String(contextMenu.category)))
+      setCrossChartFilter(contextMenu.category);
       setContextMenu(null);
     }
   }, [contextMenu]);
@@ -469,11 +461,23 @@ const AgChartsPage: React.FC = () => {
     setContextMenu(null);
   }, []);
 
+  const handleResetDrillDown = useCallback(() => {
+    setChartOptions((prev) => ({
+      ...prev,
+      drillDown: {},
+      drillDownType: null,
+    }));
+  }, []);
+
+  const handleResetCrossChartFilter = useCallback(() => {
+    setCrossChartFilter('');
+  }, []);
+
   return (
     <section className="p-5">
       <h1 className="text-2xl font-bold text-center mb-4">Financial Dashboard - Ag Charts</h1>
 
-     {isGroupModalOpen && <GroupModal
+      {isGroupModalOpen && <GroupModal
         isOpen={isGroupModalOpen}
         onClose={handleCloseModal}
         testCase={testCase}
@@ -486,31 +490,12 @@ const AgChartsPage: React.FC = () => {
             Current Group Name: <span className="capitalize font-bold">{dimensions.groupName}</span>
           </p>
         )}
-        <div className="flex gap-2">
-          <ActionButton
-            onClick={handleResetGroup}
-            className="bg-red-400 hover:bg-red-500"
-            disabled={isLoading}
-          >
-            Reset Group
-          </ActionButton>
-
-          <ActionButton
-            onClick={handleOpenModal}
-            className="bg-blue-400 hover:bg-blue-500"
-            disabled={isLoading}
-          >
-            Create Group
-          </ActionButton>
-
-          <ActionButton
-            onClick={fetchAllChartDataHanlde}
-            className="bg-green-400 hover:bg-green-500"
-            disabled={isLoading}
-          >
-            {isLoading ? 'Loading...' : 'Refresh Data'}
-          </ActionButton>
-        </div>
+        <DashboardActionButtonComponent
+          isLoading={isLoading}
+          handleResetGroup={handleResetGroup}
+          handleOpenModal={handleOpenModal}
+          fetchAllChartDataHandle={fetchAllChartDataHanlde}
+        />
       </div>
 
       <ChartContextMenu
@@ -526,31 +511,38 @@ const AgChartsPage: React.FC = () => {
       {error && (<ErrorAlert message={error} onDismiss={handleDismissError} />)}
 
       {isLoading && <LoadingAlert />}
-      <ReusableChartDrawer
-        isOpen={isOpen}
-        drillDownState={drillDownState}
-        onBack={closeDrawer}
-        isLoading={isLoading}
-        showBackButton={true}
-        showCloseButton={true}
-      >
-        {chartOptions.drillDown && (
-          <AgCharts options={chartOptions.drillDown} />
-        )}
-      </ReusableChartDrawer>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <ChartContainer title="Revenue Trends" isLoading={isLoading} data={chartData.line}>
-          <AgCharts options={chartOptions.line || {}} />
+        <ChartContainer title="Revenue Trends"
+          isLoading={isLoading}
+          isDrilled={chartOptions?.drillDownType === 'line'}
+          resetDrillDown={handleResetDrillDown}
+          data={chartOptions?.drillDownType === 'line' ? chartData?.drillDown : chartData.line}
+          isCrossChartFiltered={!!crossChartFilter}
+          resetCrossChartFilter={handleResetCrossChartFilter}
+        >
+          <AgCharts options={chartOptions?.drillDownType === 'line' ? chartOptions.drillDown : chartOptions.line || {}} />
         </ChartContainer>
-        <ChartContainer title="Revenue vs Expenses" isLoading={isLoading} data={chartData.bar}>
-          <AgCharts options={chartOptions.bar || {}} />
+        <ChartContainer title="Revenue vs Expenses"
+          isLoading={isLoading}
+          isDrilled={chartOptions?.drillDownType === 'bar'}
+          resetDrillDown={handleResetDrillDown}
+          data={chartOptions?.drillDownType === 'bar' ? chartData?.drillDown : chartData.bar}>
+          <AgCharts options={chartOptions?.drillDownType === 'bar' ? chartOptions.drillDown : chartOptions.bar || {}} />
         </ChartContainer>
-        <ChartContainer title="Financial Distribution" isLoading={isLoading} data={chartData.pie}>
-          <AgCharts options={chartOptions.pie || {}} />
+        <ChartContainer title="Financial Distribution"
+          isLoading={isLoading}
+          isDrilled={chartOptions?.drillDownType === 'pie'}
+          resetDrillDown={handleResetDrillDown}
+          data={chartOptions?.drillDownType === 'pie' ? chartData?.drillDown : chartData.pie}>
+          <AgCharts options={chartOptions?.drillDownType === 'pie' ? chartOptions?.drillDown : chartOptions.pie || {}} />
         </ChartContainer>
-        <ChartContainer title="Revenue by Category" isLoading={isLoading} data={chartData.donut}>
-          <AgCharts options={chartOptions.donut || {}} />
+        <ChartContainer title="Revenue by Category"
+          isLoading={isLoading}
+          isDrilled={chartOptions?.drillDownType === 'donut'}
+          resetDrillDown={handleResetDrillDown}
+          data={chartOptions?.drillDownType === 'donut' ? chartData?.drillDown : chartData.donut}>
+          <AgCharts options={chartOptions?.drillDownType === 'donut' ? chartOptions?.drillDown : chartOptions.donut || {}} />
         </ChartContainer>
         <p className="col-span-1 md:col-span-2 text-sm text-gray-500">
           <i>Click on any chart element to drill down into more detailed data</i>
@@ -564,9 +556,11 @@ const AgChartsPage: React.FC = () => {
 const ChartContainer: React.FC<CommonProps & {
   children: React.ReactNode;
   isDrilled?: boolean;
-  onBack?: () => void;
+  resetDrillDown?: () => void;
   isLoading: boolean;
-}> = ({ title, children, data, isDrilled, onBack, isLoading }) => {
+  isCrossChartFiltered?: boolean;
+  resetCrossChartFilter?: () => void;
+}> = ({ title, children, data, isDrilled, resetDrillDown, isLoading, isCrossChartFiltered, resetCrossChartFilter }) => {
   const chartRef = useRef<HTMLDivElement>(null);
 
   const hasData = data && data.length > 0;
@@ -616,50 +610,20 @@ const ChartContainer: React.FC<CommonProps & {
   };
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-lg border border-gray-100 hover:shadow-xl transition-shadow duration-200">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-gray-800">{title}</h3>
-        {isLoading && (
-          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
-        )}
-      </div>
-      {hasData ? (
-        <>
-          <div className="flex justify-between items-center mb-2">
-            <div className="flex items-center">
-
-              {isDrilled && (
-                <button
-                  onClick={onBack}
-                  className="ml-3 px-2 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-sm"
-                >
-                  ↩ Back
-                </button>
-              )}
-            </div>
-            <div className="flex space-x-2">
-              <button
-                onClick={exportToPNG}
-                className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
-              >
-                PNG
-              </button>
-              <button
-                onClick={exportToCSV}
-                className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
-              >
-                CSV
-              </button>
-            </div>
-          </div>
-          <div ref={chartRef}>
-            {children}
-          </div>
-        </>
-      ) : (
-        <ChartSkelten />
-      )}
-    </div>
+    <ChartContainerView
+      title={title}
+      isDrilled={isDrilled}
+      resetDrillDown={resetDrillDown}
+      isLoading={isLoading}
+      isCrossChartFiltered={isCrossChartFiltered}
+      resetCrossChartFilter={resetCrossChartFilter}
+      hasData={hasData}
+      exportToPNG={exportToPNG}
+      exportToCSV={exportToCSV}
+      children={children}
+      //@ts-ignore
+      chartRef={chartRef}
+    />
   );
 };
 

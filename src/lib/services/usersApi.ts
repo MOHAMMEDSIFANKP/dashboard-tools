@@ -99,9 +99,9 @@ export const api = createApi({
     }),
 
     // Chart Data Endpoints
-    fetchChartData: builder.mutation<ApiResponse, { tableName?: string; body: ChartRequestBody }>({
-      query: ({ tableName = databaseName, body }) => ({
-        url: `dashboard/all-charts?table_name=${tableName}`,
+    fetchChartData: builder.mutation<ApiResponse, { tableName?: string; body: ChartRequestBody; crossChartFilter?:string }>({
+      query: ({ tableName = databaseName, body, crossChartFilter }) => ({
+        url: `dashboard/all-charts?table_name=${tableName}${crossChartFilter ? `&year=${crossChartFilter}` : ''}`,
         method: 'POST',
         body,
       }),

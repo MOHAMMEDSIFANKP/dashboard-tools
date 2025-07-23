@@ -23,7 +23,7 @@ import {
 } from "@/lib/services/usersApi";
 import { Dimensions } from "@/types/Schemas";
 import { buildRequestBody, handleCrossChartFilteringFunc } from "@/lib/services/buildWhereClause";
-import { ActionButton } from "@/components/ui/action-button";
+import { ActionButton, DashboardActionButtonComponent } from "@/components/ui/action-button";
 import { ErrorAlert } from "@/components/ui/status-alerts";
 import { ChartSkelten } from "@/components/ui/ChartSkelten";
 
@@ -34,6 +34,7 @@ import { RootState } from "@/store/store";
 import { testCase2ProductId, useFetchTestCase2ChartDataMutation, useFetchTestCase2DrillDownDataMutation } from "@/lib/services/testCase2Api";
 import { transformTestCase2DrillDownData, transformTestCase2ToCommonFormat } from "@/lib/testCase2Transformer";
 import { ChartContextMenu } from "@/components/charts/ChartContextMenu";
+import { ChartContainerView } from "@/components/charts/ChartContainerView";
 
 // Core data types
 interface ChartDataPoint {
@@ -56,7 +57,6 @@ interface ChartData {
   pie: ChartDataPoint[];
   donut: ChartDataPoint[];
   drillDown: any[];
-  chartType?: string;
 }
 
 // Update the VictoryLegendProps interface to use the imported type
@@ -100,11 +100,15 @@ interface VisibleSeries {
 const ChartContainer: React.FC<{
   title: string;
   children: React.ReactNode;
-  onBack?: () => void;
+  resetDrillDown?: () => void;
   isDrilled?: boolean;
   data?: any[];
-  isLoading?: boolean;
-}> = ({ title, children, onBack, isDrilled, data, isLoading }) => {
+  isLoading: boolean;
+  isCrossChartFiltered?: boolean;
+  resetCrossChartFilter?: () => void;
+
+
+}> = ({ title, children, resetDrillDown, isDrilled, data, isLoading, isCrossChartFiltered, resetCrossChartFilter }) => {
   const chartRef = useRef<HTMLDivElement>(null);
 
   const hasData = data && data.length > 0;
@@ -176,52 +180,21 @@ const ChartContainer: React.FC<{
   };
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-lg border border-gray-100 hover:shadow-xl transition-shadow duration-200">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-gray-800">{title}</h3>
-        {isLoading && (
-          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
-        )}
-      </div>
-      {hasData ? (
-        <>
-          <div className="flex justify-between items-center mb-2">
-            <div className="flex items-center">
-
-              {isDrilled && (
-                <button
-                  onClick={onBack}
-                  className="ml-3 px-2 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-sm"
-                >
-                  ↩ Back
-                </button>
-              )}
-            </div>
-            <div className="flex space-x-2">
-              <button
-                onClick={exportToPNG}
-                className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
-                disabled={!data || data.length === 0}
-              >
-                PNG
-              </button>
-              <button
-                onClick={exportToCSV}
-                className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
-                disabled={!data || data.length === 0}
-              >
-                CSV
-              </button>
-            </div>
-          </div>
-          <div className="w-full" ref={chartRef}>
-            {children}
-          </div>
-        </>
-      ) : (
-        <ChartSkelten />
-      )}
-    </div>
+    <ChartContainerView
+      title={title}
+      isLoading={isLoading}
+      isDrilled={isDrilled}
+      resetDrillDown={resetDrillDown}
+      exportToPNG={exportToPNG}
+      exportToCSV={exportToCSV}
+      // @ts-ignore
+      chartRef={chartRef}
+      hasData={hasData}
+      isCrossChartFiltered={isCrossChartFiltered}
+      resetCrossChartFilter={resetCrossChartFilter}
+      children={children}
+      className="w-full"
+    />
   );
 };
 
@@ -231,6 +204,8 @@ const VictoryChartsPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isGroupModalOpen, setIsGroupModalOpen] = useState<boolean>(false);
   const [dimensions, setDimensions] = useState<Dimensions | null>(null);
+  const [crossChartFilter, setCrossChartFilter] = useState<string>('');
+
 
   const testCase = useSelector((state: RootState) => state.dashboard.selectedTestCase);
 
@@ -249,11 +224,20 @@ const VictoryChartsPage: React.FC = () => {
     pie: [],
     donut: [],
     drillDown: [],
-    chartType: ''
+  });
+
+  const [drillDownState, setDrillDownState] = useState<{
+    isDrilled: boolean;
+    chartType: string | null;
+    title: string;
+  }>({
+    isDrilled: false,
+    chartType: null,
+    title: ''
   });
 
   // Drill down state
-  const { drillDownState, openDrawer, closeDrawer, isOpen } = useChartDrawer();
+  // const { drillDownState, openDrawer, closeDrawer, isOpen } = useChartDrawer();
 
   const [contextMenu, setContextMenu] = useState<{
     isOpen: boolean;
@@ -271,7 +255,7 @@ const VictoryChartsPage: React.FC = () => {
   const fetchChartDataByTestCase = async () => {
     try {
       if (testCase === "test-case-1") {
-        const res = await fetchAllChartData({ body: buildRequestBody(dimensions, 'all') }).unwrap();
+        const res = await fetchAllChartData({ body: buildRequestBody(dimensions, 'all'), crossChartFilter: crossChartFilter }).unwrap();
         if (!res?.success) throw new Error(res.message || "Error");
         return res;
       } else {
@@ -341,15 +325,21 @@ const VictoryChartsPage: React.FC = () => {
         setChartData(prev => ({
           ...prev,
           drillDown: drillData,
-          chartType: chartType,
         }));
 
-        openDrawer({
-          chartType,
-          category,
-          title,
-          dataType
+        setDrillDownState({
+          isDrilled: true,
+          chartType: chartType,
+          title: title
         });
+
+
+        // openDrawer({
+        //   chartType,
+        //   category,
+        //   title,
+        //   dataType
+        // });
 
       } else {
         setError("No data available for this selection");
@@ -365,7 +355,7 @@ const VictoryChartsPage: React.FC = () => {
   // Fetch data when dimensions change
   useEffect(() => {
     fetchAllChartDataHanlde();
-  }, [dimensions, testCase]);
+  }, [dimensions, testCase, crossChartFilter]);
   // Handle reset group and modal actions
   const handleResetGroup = useCallback((): void => {
     setDimensions(null);
@@ -385,21 +375,38 @@ const VictoryChartsPage: React.FC = () => {
 
   const handleContextMenuFilter = useCallback(() => {
     if (contextMenu) {
-      // @ts-ignore
-      setDimensions(handleCrossChartFilteringFunc(String(contextMenu.category)))
+      setCrossChartFilter(contextMenu.category);
       setContextMenu(null);
     }
   }, [contextMenu]);
 
   const handleContextMenuDrillDown = useCallback(() => {
     if (contextMenu) {
-      handleDrillDown(contextMenu.chartType, contextMenu.category,contextMenu.value, contextMenu.dataType);
+      handleDrillDown(contextMenu.chartType, contextMenu.category, contextMenu.value, contextMenu.dataType);
       setContextMenu(null);
     }
   }, [contextMenu]);
 
   const handleContextMenuClose = useCallback(() => {
     setContextMenu(null);
+  }, []);
+
+  const handleResetDrillDown = useCallback(() => {
+    setDrillDownState({
+      isDrilled: false,
+      chartType: null,
+      title: ''
+    });
+    setChartData(prev => ({
+      ...prev,
+      drillDown: [],
+    }));
+  }, []);
+
+
+  const handleResetCrossChartFilter = useCallback(() => {
+    setCrossChartFilter('');
+    handleResetDrillDown();
   }, []);
 
   return (
@@ -420,31 +427,12 @@ const VictoryChartsPage: React.FC = () => {
             Current Group Name: <span className="capitalize font-bold">{dimensions.groupName}</span>
           </p>
         )}
-        <div className="flex gap-2">
-          <ActionButton
-            onClick={handleResetGroup}
-            className="bg-red-400 hover:bg-red-500"
-            disabled={isLoading}
-          >
-            Reset Group
-          </ActionButton>
-
-          <ActionButton
-            onClick={handleOpenModal}
-            className="bg-blue-400 hover:bg-blue-500"
-            disabled={isLoading}
-          >
-            Create Group
-          </ActionButton>
-
-          <ActionButton
-            onClick={fetchAllChartDataHanlde}
-            className="bg-green-400 hover:bg-green-500"
-            disabled={isLoading}
-          >
-            {isLoading ? 'Loading...' : 'Refresh Data'}
-          </ActionButton>
-        </div>
+        <DashboardActionButtonComponent
+          isLoading={isLoading}
+          handleResetGroup={handleResetGroup}
+          handleOpenModal={handleOpenModal}
+          fetchAllChartDataHandle={fetchAllChartDataHanlde}
+        />
       </div>
 
       <ChartContextMenu
@@ -459,7 +447,7 @@ const VictoryChartsPage: React.FC = () => {
 
       {error && (<ErrorAlert message={error} onDismiss={handleDismissError} />)}
 
-      <ReusableChartDrawer
+      {/* <ReusableChartDrawer
         isOpen={isOpen}
         drillDownState={drillDownState}
         onBack={closeDrawer}
@@ -470,23 +458,71 @@ const VictoryChartsPage: React.FC = () => {
         <div style={{ height: '500px' }}>
           <DrillDownChart data={chartData.drillDown} chartType={chartData?.chartType || ''} />
         </div>
-      </ReusableChartDrawer>
+      </ReusableChartDrawer> */}
       <>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <ChartContainer isLoading={isLoading} title="Revenue Trends" data={chartData.line}>
-            <LineChart data={chartData.line} setContextMenu={setContextMenu} onDrillDown={handleDrillDown} />
+          <ChartContainer
+            isLoading={isLoading}
+            title={drillDownState?.chartType === 'line' ? drillDownState?.title : "Revenue Trends"}
+            isDrilled={drillDownState?.isDrilled && drillDownState?.chartType === 'line'}
+            resetDrillDown={handleResetDrillDown}
+            data={drillDownState.chartType === 'line' ? chartData?.drillDown : chartData.line}
+            isCrossChartFiltered={!!crossChartFilter}
+            resetCrossChartFilter={handleResetCrossChartFilter}
+
+          >
+            <LineChart
+              data={drillDownState.chartType === 'line' ? normalizeSpecificKeys(chartData.drillDown) : chartData.line}
+              setContextMenu={setContextMenu}
+              onDrillDown={handleDrillDown}
+              isDrilled={drillDownState?.isDrilled && drillDownState?.chartType === 'line'}
+              isCrossChartFiltered={!!crossChartFilter}
+            />
           </ChartContainer>
 
-          <ChartContainer isLoading={isLoading} title="Revenue vs Expenses" data={chartData.bar}>
-            <BarChart data={chartData.bar} onDrillDown={handleDrillDown} />
+          <ChartContainer
+            isLoading={isLoading}
+            title={drillDownState?.chartType === 'bar' ? drillDownState?.title : "Revenue vs Expenses"}
+            isDrilled={drillDownState?.isDrilled && drillDownState?.chartType === 'bar'}
+            resetDrillDown={handleResetDrillDown}
+            data={drillDownState.chartType === 'bar' ? chartData?.drillDown : chartData.bar}
+          >
+            <BarChart
+              data={drillDownState.chartType === 'bar' ? chartData.drillDown : chartData.bar}
+              onDrillDown={handleDrillDown}
+              isDrilled={drillDownState?.isDrilled && drillDownState?.chartType === 'bar'}
+              isCrossChartFiltered={!!crossChartFilter}
+            />
           </ChartContainer>
 
-          <ChartContainer isLoading={isLoading} title="Financial Distribution" data={chartData.pie}>
-            <PieChart data={chartData.pie} onDrillDown={handleDrillDown} />
+          <ChartContainer
+            isLoading={isLoading}
+            title={drillDownState?.chartType === 'pie' ? drillDownState?.title : "Financial Distribution"}
+            isDrilled={drillDownState?.isDrilled && drillDownState?.chartType === 'pie'}
+            resetDrillDown={handleResetDrillDown}
+            data={drillDownState?.chartType === 'pie' ? chartData?.drillDown : chartData.pie}>
+            {drillDownState.chartType === 'pie' ? (
+              <LineChartDrillDown
+                data={chartData.drillDown}
+              />
+            ) : (
+              <PieChart data={chartData.pie} onDrillDown={handleDrillDown} />
+            )}
           </ChartContainer>
 
-          <ChartContainer isLoading={isLoading} title="Revenue by Category" data={chartData.donut}>
-            <DonutChart data={chartData.donut} onDrillDown={handleDrillDown} />
+          <ChartContainer
+            isLoading={isLoading}
+            title={drillDownState?.chartType === 'donut' ? drillDownState?.title : "Revenue by Category"}
+            isDrilled={drillDownState?.isDrilled && drillDownState?.chartType === 'donut'}
+            resetDrillDown={handleResetDrillDown}
+            data={drillDownState?.chartType === 'pie' ? chartData?.drillDown : chartData.donut}>
+            {drillDownState.chartType === 'donut' ? (
+              <LineChartDrillDown
+                data={chartData.drillDown}
+              />
+            ) : (
+              <DonutChart data={chartData.donut} onDrillDown={handleDrillDown} />
+            )}
           </ChartContainer>
         </div>
         <p className="mt-4 text-sm text-gray-500 text-center">
@@ -522,16 +558,47 @@ interface LineChartProps {
   data: ChartDataPoint[];
   onDrillDown: (chartType: string, category: string, value: any, dataType: string) => void;
   setContextMenu: React.Dispatch<React.SetStateAction<any>>;
+  isDrilled?: boolean;
+  isCrossChartFiltered?: boolean;
 }
 
-const LineChart: React.FC<LineChartProps> = ({ data, setContextMenu, onDrillDown }) => {
+function normalizeSpecificKeys(data: any[]): any[] {
+  return data.map(item => {
+    const newItem: any = {};
+
+    for (const key in item) {
+      if (!Object.prototype.hasOwnProperty.call(item, key)) continue;
+
+      let newKey = key;
+
+      // Custom renaming rules
+      if (key === 'grossmargin') newKey = 'grossMargin';
+      else if (key === 'netprofit') newKey = 'netProfit';
+      newItem[newKey] = item[key];
+    }
+
+    return newItem;
+  });
+}
+
+const LineChart: React.FC<LineChartProps> = ({ data, setContextMenu, onDrillDown, isDrilled, isCrossChartFiltered }) => {
   if (!data?.length) return <div className="text-center text-gray-500">No data available</div>;
 
   const [visibleSeries, setVisibleSeries] = useState<VisibleLineSeries>({
-    revenue: true,
-    grossMargin: true,
-    netProfit: true
+    revenue: false,
+    grossMargin: false,
+    netProfit: false,
   });
+  useEffect(() => {
+    if (data.length > 0) {
+      setVisibleSeries({
+        revenue: data[0]?.revenue != null,
+        grossMargin: data[0]?.grossMargin != null || data[0]?.grossmargin != null,
+        netProfit: data[0]?.netProfit != null || data[0]?.netprofit != null,
+
+      });
+    }
+  }, [data]);
 
   const series = useMemo<LineSeriesConfig[]>(() => [
     { key: 'revenue', name: 'Revenue', color: '#4bc0c0' },
@@ -583,15 +650,15 @@ const LineChart: React.FC<LineChartProps> = ({ data, setContextMenu, onDrillDown
     eventHandlers: {
       onClick: (event: any, { data: chartData, index }: EventHandlerProps) => {
         const clickedPoint = chartData[index];
-        if (!clickedPoint?.period) return;
+        if (!clickedPoint?.period && !clickedPoint?.fiscalYear) return;
 
         const value = clickedPoint[type];
-        const period = clickedPoint.period;
+        const category = clickedPoint.fiscalYear;
 
         setContextMenu({
           isOpen: true,
           position: { x: event.clientX, y: event.clientY },
-          category: period,
+          category: category,
           value: value,
           chartType: 'line',
           dataType: type
@@ -619,6 +686,8 @@ const LineChart: React.FC<LineChartProps> = ({ data, setContextMenu, onDrillDown
     }
   }), []);
 
+  const xAxix = isDrilled || isCrossChartFiltered ? "period" : "fiscalYear";
+
   return (
     <VictoryChart theme={VictoryTheme.clean} domainPadding={20} height={350} width={800}>
       <VictoryAxis
@@ -645,7 +714,7 @@ const LineChart: React.FC<LineChartProps> = ({ data, setContextMenu, onDrillDown
         <VictoryLine
           key={`line-${s.key}`}
           data={data}
-          x="period"
+          x={xAxix}
           y={s.key}
           style={{ data: { stroke: s.color, strokeWidth: 2 } }}
         />
@@ -656,12 +725,12 @@ const LineChart: React.FC<LineChartProps> = ({ data, setContextMenu, onDrillDown
         <VictoryScatter
           key={`scatter-${s.key}`}
           data={data}
-          x="period"
+          x={xAxix}
           y={s.key}
           size={4}
           style={{ data: { fill: s.color } }}
           labels={({ datum }: { datum: ChartDataPoint }) => {
-            const value = datum[s.key];
+            const value = Number(datum[s.key]);
             return `${s.name}: $${Math.round((value || 0) / 1000)}k`;
           }}
           labelComponent={<VictoryTooltip {...tooltipStyle} />}
@@ -681,15 +750,26 @@ interface SeriesConfig {
 interface BarChartProps {
   data: ChartDataPoint[];
   onDrillDown: (chartType: string, category: string, value: any, dataType: string) => void;
+  isDrilled?: boolean;
+  isCrossChartFiltered?: boolean;
 }
 
-const BarChart: React.FC<BarChartProps> = ({ data, onDrillDown }) => {
+const BarChart: React.FC<BarChartProps> = ({ data, onDrillDown, isDrilled, isCrossChartFiltered }) => {
   if (!data?.length) return <div className="text-center text-gray-500">No data available</div>;
 
   const [visibleSeries, setVisibleSeries] = useState<VisibleSeries>({
-    revenue: true,
-    expenses: true
+    revenue: false,
+    expenses: false,
   });
+
+  useEffect(() => {
+    if (data.length > 0) {
+      setVisibleSeries({
+        revenue: data[0]?.revenue != null,
+        expenses: data[0]?.expenses != null,
+      });
+    }
+  }, [data]);
 
   const series = useMemo<SeriesConfig[]>(() => [
     { key: 'revenue', name: 'Revenue', color: '#4bc0c0' },
@@ -722,10 +802,15 @@ const BarChart: React.FC<BarChartProps> = ({ data, onDrillDown }) => {
   const createBarEvents = useCallback((type: keyof Pick<ChartDataPoint, 'revenue' | 'expenses'>) => [{
     target: "data" as const,
     eventHandlers: {
-      onClick: (_e: any, { datum }: EventHandlerProps) =>
-        onDrillDown('bar', datum.period, datum[type], type)
+      onClick: (_e: any, { datum }: EventHandlerProps) => {
+        if (!isDrilled) {
+          onDrillDown('bar', datum.fiscalYear, datum[type], type);
+        }
+      }
     }
   }], [onDrillDown]);
+
+  const xAxix = isDrilled || isCrossChartFiltered ? "period" : "fiscalYear";
 
   return (
     <VictoryChart theme={VictoryTheme.clean} domainPadding={10} height={350} width={800}>
@@ -754,7 +839,7 @@ const BarChart: React.FC<BarChartProps> = ({ data, onDrillDown }) => {
             key={s.key}
             labelComponent={<VictoryTooltip />}
             data={data}
-            x="period"
+            x={xAxix}
             y={s.key}
             style={{ data: { fill: s.color } }}
             events={createBarEvents(s.key)}
@@ -955,53 +1040,68 @@ const DonutChart: React.FC<{
   );
 };
 
-// Drill-down Chart Component
-const DrillDownChart: React.FC<{ data: any[], chartType?: string }> = ({ data, chartType }) => {
-  if (!data?.length) return <div className="text-center text-gray-500">No data available</div>;
 
-  const firstItem = data[0];
-  const keys = Object.keys(firstItem);
+interface LineDrillDownChartProps {
+  data: ChartDataPoint[];
+}
 
-  // Determine chart type based on data structure
-  if (chartType === 'line' || chartType === 'bar') {
-    const categoryKey = keys.find(key => key.includes('cat')) || keys[0];
-    return (
-      <VictoryChart theme={VictoryTheme.clean} domainPadding={20} height={350}>
-        <VictoryAxis tickFormat={x => x} style={{ tickLabels: { fontSize: 10, angle: -45 } }} />
-        <VictoryAxis dependentAxis tickFormat={y => `$${Math.round(y / 1000)}k`} />
-        <VictoryBar
-          data={data}
-          x={categoryKey}
-          y="value"
-          style={{ data: { fill: "#4bc0c0" } }}
-        />
-      </VictoryChart>
-    );
-  } else if (keys.includes('period')) {
-    return (
-      <VictoryChart theme={VictoryTheme.clean} domainPadding={20} height={350} width={1000}>
-        <VictoryAxis tickFormat={x => x} style={{ tickLabels: { fontSize: 10, angle: -45 } }} />
-        <VictoryAxis dependentAxis tickFormat={y => `$${Math.round(y / 1000)}k`} />
-        <VictoryLine
-          data={data} x="period" y="value"
-          style={{ data: { stroke: "#4bc0c0", strokeWidth: 2 } }}
-        />
-      </VictoryChart>
-    );
-  } else {
-    // Pie chart for other data
-    const labelKey = keys.find(key => key !== 'value') || keys[0];
-    return (
-      <VictoryPie
-        data={data}
-        x={labelKey}
-        y="value"
-        colorScale={["#4bc0c0", "#ff6384", "#36a2eb", "#ffce56", "#9966ff", "#ff9f40"]}
-        style={{ labels: { fontSize: 10, fill: "#333" } }}
-        height={350}
-      />
-    );
+const LineChartDrillDown: React.FC<LineDrillDownChartProps> = ({ data }) => {
+  if (!data?.length) {
+    return <div className="text-center text-gray-500">No data available</div>;
   }
+
+  return (
+    <VictoryChart theme={VictoryTheme.clean} domainPadding={20} height={350} width={800}>
+      <VictoryAxis
+        tickFormat={(x: string) => x}
+        style={{ tickLabels: { fontSize: 10, angle: -65 } }}
+      />
+      <VictoryAxis
+        dependentAxis
+        tickFormat={(y: number) => `$${Math.round(y / 1000)}k`}
+      />
+      <VictoryLegend
+        x={50}
+        y={10}
+        orientation="horizontal"
+        gutter={20}
+        style={{
+          labels: { fontSize: 12, cursor: 'pointer' },
+          data: { cursor: 'pointer' },
+        }}
+        data={[
+          {
+            name: 'Value',
+            symbol: {
+              fill: '#4bc0c0',
+              opacity: 1,
+            },
+          },
+        ]}
+      />
+      <VictoryLine
+        data={data}
+        x="period"
+        y="value"
+        style={{ data: { stroke: '#4bc0c0', strokeWidth: 2 } }}
+      />
+      <VictoryScatter
+        data={data}
+        x="period"
+        y="value"
+        size={4}
+        style={{ data: { fill: '#4bc0c0' } }}
+        labels={({ datum }) => `Value: $${Math.round(datum.value / 1000)}k`}
+        labelComponent={
+          <VictoryTooltip
+            cornerRadius={5}
+            flyoutStyle={{ fill: 'white', stroke: '#d4d4d4', strokeWidth: 1 }}
+          />
+        }
+      />
+    </VictoryChart>
+  );
 };
+
 
 export default VictoryChartsPage;

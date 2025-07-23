@@ -12,6 +12,7 @@ interface ChartRequestBody {
       members: (string | number)[];
     }>;
   };
+  year?: string;
   limit?: number;
   groupBy?: string;
 }

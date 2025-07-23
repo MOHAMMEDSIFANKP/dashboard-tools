@@ -9,18 +9,17 @@ import {
 } from "@/lib/services/usersApi";
 // Types
 import { Dimensions } from "@/types/Schemas";
-import { buildRequestBody, handleCrossChartFilteringFunc } from "@/lib/services/buildWhereClause";
-import { ActionButton } from "@/components/ui/action-button";
+import { buildRequestBody } from "@/lib/services/buildWhereClause";
+import { ActionButton, DashboardActionButtonComponent } from "@/components/ui/action-button";
 import { ChartSkelten } from "@/components/ui/ChartSkelten";
 
-import { useChartDrawer } from "@/components/ChartDrawer";
-import ReusableChartDrawer from "@/components/ChartDrawer";
 import { ErrorAlert } from "@/components/ui/status-alerts";
 import { testCase2ProductId, useFetchTestCase2ChartDataMutation, useFetchTestCase2DrillDownDataMutation } from "@/lib/services/testCase2Api";
 import { transformTestCase2DrillDownData, transformTestCase2ToCommonFormat } from "@/lib/testCase2Transformer";
 import { useSelector } from "react-redux";
 import { RootState } from "@/store/store";
 import { ChartContextMenu } from "@/components/charts/ChartContextMenu";
+import { ChartContainerView } from "@/components/charts/ChartContainerView";
 
 
 // Define TypeScript interfaces for chart data
@@ -30,20 +29,25 @@ interface ChartContainerProps {
   onExportCSV?: () => void;
   onExportPNG?: () => void;
   isDrilled?: boolean;
-  onBack?: () => void;
-  isLoading?: boolean;
-  hasData?: number;
+  resetDrillDown?: () => void;
+  isLoading: boolean;
+  hasData: boolean;
+  isCrossChartFiltered?: boolean;
+  resetCrossChartFilter?: () => void;
 }
 
 interface LineChartDataPoint {
   period: string;
+  fiscalYear: string;
   revenue: number;
   grossMargin: number;
   netProfit: number;
+  [string: string]: any;
 }
 
 interface BarChartDataPoint {
   period: string;
+  fiscalYear: string;
   revenue: number;
   expenses: number;
 }
@@ -72,6 +76,7 @@ const EChartsPage = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isGroupModalOpen, setIsGroupModalOpen] = useState<boolean>(false);
   const [dimensions, setDimensions] = useState<Dimensions | null>(null);
+  const [crossChartFilter, setCrossChartFilter] = useState<string>('');
 
   const testCase = useSelector((state: RootState) => state.dashboard.selectedTestCase);
 
@@ -89,17 +94,24 @@ const EChartsPage = () => {
   const [pieChartData, setPieChartData] = useState<PieChartDataPoint[]>([]);
   const [donutChartData, setDonutChartData] = useState<DonutChartDataPoint[]>([]);
   const [drillDownData, setDrillDownData] = useState<any[]>([]);
-  const [selectedChartType, setSelectedChartType] = useState<string>('');
+
 
   // Chart refs for PNG export
   const lineChartRef = useRef(null);
   const barChartRef = useRef(null);
   const pieChartRef = useRef(null);
   const donutChartRef = useRef(null);
-  const drillDownChartRef = useRef(null);
 
   // Drill down state
-  const { drillDownState, openDrawer, closeDrawer, isOpen } = useChartDrawer();
+  const [drillDownState, setDrillDownState] = useState<{
+    isDrilled: boolean;
+    chartType: string | null;
+    title: string;
+  }>({
+    isDrilled: false,
+    chartType: null,
+    title: '',
+  });
 
   const [contextMenu, setContextMenu] = useState<{
     isOpen: boolean;
@@ -113,7 +125,7 @@ const EChartsPage = () => {
   const fetchChartDataByTestCase = async () => {
     try {
       if (testCase === "test-case-1") {
-        const res = await fetchAllChartData({ body: buildRequestBody(dimensions, 'all') }).unwrap();
+        const res = await fetchAllChartData({ body: buildRequestBody(dimensions, 'all'), crossChartFilter: crossChartFilter, }).unwrap();
         if (!res?.success) throw new Error(res.message || "Error");
         return res;
       } else {
@@ -137,26 +149,16 @@ const EChartsPage = () => {
       // Fetch all chart data
       const result: any = await fetchChartDataByTestCase();
 
-      // Process line chart data
       const lineData = result?.charts?.line?.success ? result?.charts?.line?.data || [] : [];
       setLineChartData(lineData);
 
-      // Process bar chart data - transform to include expenses
       const barData = result?.charts?.bar?.success ? result?.charts?.bar?.data || [] : [];
-      const transformedBarData = barData.map((item: any) => ({
-        period: item.period,
-        revenue: item.revenue,
-        expenses: item.expenses
-      }));
-      setBarChartData(transformedBarData);
+      setBarChartData(barData);
 
-      // Process pie chart data - use actual API data instead of dummy
       const pieData = result?.charts?.pie?.success ? result?.charts?.pie?.data || [] : [];
       setPieChartData(pieData);
 
-      // Process donut chart data
       const donutData = result?.charts?.donut?.success ? result?.charts?.donut?.data || [] : [];
-
       setDonutChartData(donutData);
 
     } catch (err: any) {
@@ -170,7 +172,7 @@ const EChartsPage = () => {
   // Fetch data when dimensions change
   useEffect(() => {
     fetchAllChartDataHanlde();
-  }, [dimensions, testCase]);
+  }, [dimensions, testCase, crossChartFilter]);
 
   const handleCreateGroup = (datas: any) => {
     setDimensions(datas);
@@ -203,13 +205,11 @@ const EChartsPage = () => {
         const title = result.title || `${dataType} Breakdown for ${category}`;
 
         setDrillDownData(drillData);
-        openDrawer({
-          chartType,
-          category,
-          title,
-          dataType
+        setDrillDownState({
+          isDrilled: true,
+          chartType: chartType,
+          title: title,
         });
-        setSelectedChartType(chartType);
 
       } else {
         setError("No data available for this selection");
@@ -240,15 +240,6 @@ const EChartsPage = () => {
     document.body.removeChild(link);
   };
 
-  // if (error) {
-  //   return (
-  //     <div className="flex justify-between bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-  //       <p>{error}</p>
-  //       <p onClick={() => setError('')} className="cursor-pointer">x</p>
-  //     </div>
-  //   );
-  // }
-
   // Event handlers
   const handleResetGroup = useCallback((): void => {
     setDimensions(null);
@@ -268,8 +259,7 @@ const EChartsPage = () => {
 
   const handleContextMenuFilter = useCallback(() => {
     if (contextMenu) {
-      // @ts-ignore
-      setDimensions(handleCrossChartFilteringFunc(String(contextMenu.category)))
+      setCrossChartFilter(contextMenu.category);
       setContextMenu(null);
     }
   }, [contextMenu]);
@@ -283,6 +273,19 @@ const EChartsPage = () => {
 
   const handleContextMenuClose = useCallback(() => {
     setContextMenu(null);
+  }, []);
+
+  const handleResetDrillDown = useCallback(() => {
+    setDrillDownState({
+      isDrilled: false,
+      chartType: null,
+      title: ''
+    });
+    setDrillDownData([]);
+  }, []);
+
+  const handleResetCrossChartFilter = useCallback(() => {
+    setCrossChartFilter('');
   }, []);
 
   return (
@@ -304,31 +307,12 @@ const EChartsPage = () => {
             Current Group Name: <span className="capitalize font-bold">{dimensions.groupName}</span>
           </p>
         )}
-        <div className="flex gap-2">
-          <ActionButton
-            onClick={handleResetGroup}
-            className="bg-red-400 hover:bg-red-500"
-            disabled={isLoading}
-          >
-            Reset Group
-          </ActionButton>
-
-          <ActionButton
-            onClick={handleOpenModal}
-            className="bg-blue-400 hover:bg-blue-500"
-            disabled={isLoading}
-          >
-            Create Group
-          </ActionButton>
-
-          <ActionButton
-            onClick={fetchAllChartDataHanlde}
-            className="bg-green-400 hover:bg-green-500"
-            disabled={isLoading}
-          >
-            {isLoading ? 'Loading...' : 'Refresh Data'}
-          </ActionButton>
-        </div>
+        <DashboardActionButtonComponent
+          isLoading={isLoading}
+          handleResetGroup={handleResetGroup}
+          handleOpenModal={handleOpenModal}
+          fetchAllChartDataHandle={fetchAllChartDataHanlde}
+          />
       </div>
 
       <ChartContextMenu
@@ -343,82 +327,81 @@ const EChartsPage = () => {
 
       {error && (<ErrorAlert message={error} onDismiss={handleDismissError} />)}
 
-      <ReusableChartDrawer
-        isOpen={isOpen}
-        drillDownState={drillDownState}
-        onBack={closeDrawer}
-        isLoading={isLoading}
-        showBackButton={true}
-        showCloseButton={true}
-      >
-        {drillDownData.length > 0 && (
-          <DrillDownChart
-            drillDownState={drillDownState}
-            drillDownData={drillDownData}
-            onBack={closeDrawer}
-            chartRef={drillDownChartRef}
-            selectedChartType={selectedChartType}
-          />
-        )}
-      </ReusableChartDrawer>
-
-
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <ChartContainer
           isLoading={isLoading}
-          hasData={lineChartData.length}
-          title="Revenue Trends with"
-          onExportCSV={() => exportToCSV(lineChartData)}
+          hasData={lineChartData.length > 0}
+          title={drillDownState?.chartType === 'line' ? drillDownState?.title : "Revenue Trends with"}
+          onExportCSV={() => exportToCSV(drillDownState?.chartType === 'line' ? drillDownData : lineChartData)}
           onExportPNG={() => exportToPNG(lineChartRef)}
+          isCrossChartFiltered={!!crossChartFilter}
+          resetCrossChartFilter={handleResetCrossChartFilter}
+          isDrilled={drillDownState.isDrilled && drillDownState.chartType === 'line'}
+          resetDrillDown={handleResetDrillDown}
         >
           <LineChartComponent
-            data={lineChartData}
+            data={drillDownState?.chartType === 'line' ? drillDownData : lineChartData}
+            isDrilled={drillDownState.isDrilled && drillDownState.chartType === 'line'}
             onDrillDown={(period, value, dataType) => handleDrillDown('line', period, value, dataType)}
             chartRef={lineChartRef}
             setContextMenu={setContextMenu}
+            crossChartFilter={!!crossChartFilter}
           />
         </ChartContainer>
 
         <ChartContainer
           isLoading={isLoading}
-          hasData={barChartData.length}
-          title="Revenue vs Expenses"
-          onExportCSV={() => exportToCSV(barChartData)}
+          hasData={barChartData.length > 0}
+          title={drillDownState?.chartType === 'bar' ? drillDownState?.title : "Revenue vs Expenses"}
+          onExportCSV={() => exportToCSV(drillDownState?.chartType === 'bar' ? drillDownData : barChartData)}
           onExportPNG={() => exportToPNG(barChartRef)}
+          isDrilled={drillDownState.isDrilled && drillDownState.chartType === 'bar'}
+          resetDrillDown={handleResetDrillDown}
         >
           <BarChartComponent
-            data={barChartData}
+            data={drillDownState?.chartType === 'bar' ? drillDownData : barChartData}
+            isDrilled={drillDownState.isDrilled && drillDownState.chartType === 'bar'}
             onDrillDown={(period, value, dataType) => handleDrillDown('bar', period, value, dataType)}
             chartRef={barChartRef}
+            crossChartFilter={!!crossChartFilter}
           />
         </ChartContainer>
 
         <ChartContainer
           isLoading={isLoading}
-          hasData={pieChartData.length}
+          hasData={pieChartData.length > 0}
           title="Financial Distribution"
-          onExportCSV={() => exportToCSV(pieChartData)}
+          onExportCSV={() => exportToCSV(drillDownState?.chartType === 'pie' ? drillDownData : pieChartData)}
           onExportPNG={() => exportToPNG(pieChartRef)}
+          isDrilled={drillDownState.isDrilled && drillDownState.chartType === 'pie'}
+          resetDrillDown={handleResetDrillDown}
         >
-          <PieChartComponent
-            data={pieChartData}
-            onDrillDown={(category, value) => handleDrillDown('pie', category, value, 'revenue')}
-            chartRef={pieChartRef}
-          />
+          {drillDownState?.chartType === 'pie' ?
+            (<LineDrillDownChartComponents drillDownData={drillDownData} title={drillDownState?.title} chartRef={pieChartRef} />)
+            : (<PieChartComponent
+              data={pieChartData}
+              onDrillDown={(category, value) => handleDrillDown('pie', category, value, 'revenue')}
+              chartRef={pieChartRef}
+            />)}
         </ChartContainer>
 
         <ChartContainer
           isLoading={isLoading}
-          hasData={donutChartData.length}
+          hasData={donutChartData.length > 0}
           title="Revenue by Category"
-          onExportCSV={() => exportToCSV(donutChartData)}
+          onExportCSV={() => exportToCSV(drillDownState?.chartType === 'donut' ? drillDownData : donutChartData)}
           onExportPNG={() => exportToPNG(donutChartRef)}
+          isDrilled={drillDownState.isDrilled && drillDownState.chartType === 'donut'}
+          resetDrillDown={handleResetDrillDown}
         >
-          <DonutChartComponent
-            data={donutChartData}
-            onDrillDown={(category, value) => handleDrillDown('donut', category, value, 'revenue')}
-            chartRef={donutChartRef}
-          />
+          {drillDownState?.chartType === 'donut' ?
+            (<LineDrillDownChartComponents drillDownData={drillDownData} title={drillDownState?.title} chartRef={donutChartRef} />)
+            : (<DonutChartComponent
+              data={donutChartData}
+              onDrillDown={(category, value) => handleDrillDown('donut', category, value, 'revenue')}
+              chartRef={donutChartRef}
+            />)}
+
         </ChartContainer>
       </div>
 
@@ -432,50 +415,21 @@ const EChartsPage = () => {
 export default EChartsPage;
 
 // Chart container component
-const ChartContainer: React.FC<ChartContainerProps> = ({ title, children, onExportCSV, onExportPNG, isDrilled, onBack, hasData, isLoading }) => (
-
-  <div className="bg-white p-6 rounded-lg shadow-lg border border-gray-100 hover:shadow-xl transition-shadow duration-200">
-    <div className="flex items-center justify-between mb-4">
-      <h3 className="text-lg font-semibold text-gray-800">{title}</h3>
-      {isLoading && (
-        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
-      )}
-    </div>
-    {hasData ? (
-      <>
-        <div className="flex justify-between items-center mb-2">
-          <div className="flex items-center">
-
-            {isDrilled && (
-              <button
-                onClick={onBack}
-                className="ml-3 px-2 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-sm"
-              >
-                ↩ Back
-              </button>
-            )}
-          </div>
-          <div className="flex space-x-2">
-            {onExportPNG && <button
-              onClick={onExportPNG}
-              className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
-            >
-              PNG
-            </button>}
-            {onExportCSV && <button
-              onClick={onExportCSV}
-              className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
-            >
-              CSV
-            </button>}
-          </div>
-        </div>
-        <div className="h-64">{children}</div>
-      </>
-    ) : (
-      <ChartSkelten />
-    )}
-  </div>
+const ChartContainer: React.FC<ChartContainerProps> = ({ title, children, onExportCSV, onExportPNG, isDrilled, resetDrillDown, hasData, isLoading, isCrossChartFiltered, resetCrossChartFilter }) => (
+<ChartContainerView
+  title={title}
+  isDrilled={isDrilled}
+  resetDrillDown={resetDrillDown}
+  isLoading={isLoading}
+  isCrossChartFiltered={isCrossChartFiltered}
+  resetCrossChartFilter={resetCrossChartFilter}
+  exportToCSV={onExportCSV}
+  exportToPNG={onExportPNG}
+  hasData={hasData}
+  chartRef={undefined}
+  children={children}
+  className="h-64"
+  />
 );
 
 const exportToPNG = (chartRef: any) => {
@@ -501,134 +455,52 @@ const exportToPNG = (chartRef: any) => {
   }
 };
 
-// Drill Down Chart Component
-const DrillDownChart: React.FC<{
-  drillDownState: any;
+// Drill Down Chart Component (using for pie and donut drill-downs)
+const LineDrillDownChartComponents: React.FC<{
   drillDownData: any[];
-  onBack: () => void;
+  title: string;
   chartRef: React.RefObject<any>;
-  selectedChartType?: string;
-}> = ({ drillDownState, drillDownData, onBack, chartRef, selectedChartType }) => {
-  const { title } = drillDownState;
 
-  // Determine chart type based on data structure
-  const firstDataPoint = drillDownData[0];
-  const dataKeys = firstDataPoint ? Object.keys(firstDataPoint) : [];
-
-  let option: any = {};
-
-  if (selectedChartType === 'line' || selectedChartType === 'bar') {
-    // Bar chart for financial view breakdown
-    const categoryKey = dataKeys.includes('catfinancialview') ? 'catfinancialview' : 'catFinancialView';
-    option = {
-      title: {
-        text: title,
-        left: 'center'
-      },
-      tooltip: {
-        trigger: 'axis',
-        axisPointer: { type: 'shadow' },
-        formatter: '{b}: ${c}'
-      },
-      xAxis: {
-        type: 'category',
-        data: drillDownData.map(item => item[categoryKey]),
-        axisLabel: {
-          rotate: 45,
-          fontSize: 10
-        }
-      },
-      yAxis: {
-        type: 'value',
-        axisLabel: {
-          formatter: '${value}'
-        }
-      },
-      series: [
-        {
-          type: 'bar',
-          data: drillDownData.map(item => item.value),
-          itemStyle: { color: '#4bc0c0' }
-        }
-      ]
-    };
-  } else if (dataKeys.includes('period')) {
-    // Line chart for period data
-    option = {
-      title: {
-        text: title,
-        left: 'center'
-      },
-      tooltip: {
-        trigger: 'axis',
-        formatter: '{b}: ${c}'
-      },
-      xAxis: {
-        type: 'category',
-        data: drillDownData.map(item => item.period),
-        axisLabel: {
-          rotate: 45,
-          fontSize: 10
-        }
-      },
-      yAxis: {
-        type: 'value',
-        axisLabel: {
-          formatter: '${value}'
-        }
-      },
-      series: [
-        {
-          type: 'line',
-          smooth: true,
-          data: drillDownData.map(item => item.value),
-          itemStyle: { color: '#36a2eb' }
-        }
-      ]
-    };
-  } else {
-    // Pie chart for other breakdowns
-    const labelKey = dataKeys.find(key => key !== 'value') || dataKeys[0];
-    option = {
-      title: {
-        text: title,
-        left: 'center'
-      },
-      tooltip: {
-        trigger: 'item',
-        formatter: '{b}: ${c} ({d}%)'
-      },
-      series: [
-        {
-          type: 'pie',
-          radius: '70%',
-          data: drillDownData.map(item => ({
-            name: item[labelKey],
-            value: item.value
-          })),
-          emphasis: {
-            itemStyle: {
-              shadowBlur: 10,
-              shadowOffsetX: 0,
-              shadowColor: 'rgba(0, 0, 0, 0.5)'
-            }
-          },
-          label: {
-            fontSize: 10
-          }
-        }
-      ]
-    };
-  }
+}> = ({ drillDownData, title, chartRef }) => {
+  const option = {
+    title: {
+      text: title,
+      left: 'center'
+    },
+    tooltip: {
+      trigger: 'axis',
+      formatter: '{b}: ${c}'
+    },
+    xAxis: {
+      type: 'category',
+      data: drillDownData.map(item => item.period),
+      axisLabel: {
+        rotate: 45,
+        fontSize: 10
+      }
+    },
+    yAxis: {
+      type: 'value',
+      axisLabel: {
+        formatter: '${value}'
+      }
+    },
+    series: [
+      {
+        type: 'line',
+        smooth: true,
+        data: drillDownData.map(item => item.value),
+        itemStyle: { color: '#36a2eb' }
+      }
+    ]
+  };
 
   return (
     <div className="mb-4">
       <ReactECharts
         option={option}
-        style={{ height: '400px', width: '100%' }} // Set explicit height
         ref={chartRef}
       />
-
     </div>
   );
 };
@@ -636,15 +508,21 @@ const DrillDownChart: React.FC<{
 const LineChartComponent = ({
   data,
   onDrillDown,
+  isDrilled,
   chartRef,
   setContextMenu,
+  crossChartFilter,
 }: {
   data: LineChartDataPoint[],
   onDrillDown: (period: string, value: number, dataType: string) => void,
+  isDrilled: boolean,
   chartRef: React.RefObject<any>,
   setContextMenu: React.Dispatch<React.SetStateAction<any>>;
+  crossChartFilter?: boolean;
 }) => {
   if (!data || data.length === 0) return <div>No data available</div>;
+
+  const xAxis = crossChartFilter || isDrilled ? 'period' : 'fiscalYear';
 
   const option = {
     tooltip: {
@@ -663,7 +541,7 @@ const LineChartComponent = ({
     },
     xAxis: {
       type: 'category',
-      data: data.map(item => item.period),
+      data: data.map(item => item[xAxis]),
       axisLabel: {
         rotate: 45,
         fontSize: 10
@@ -687,26 +565,27 @@ const LineChartComponent = ({
         name: 'Gross Margin',
         type: 'line',
         smooth: true,
-        data: data.map(item => item.grossMargin),
+        data: data.map(item => item.grossMargin || item.grossmargin),
         itemStyle: { color: '#36a2eb' }
       },
       {
         name: 'Net Profit',
         type: 'line',
         smooth: true,
-        data: data.map(item => item.netProfit),
+        data: data.map(item => item.netProfit || item.netprofit),
         itemStyle: { color: '#ff6384' }
       }
     ]
   };
 
   const onChartClick = (params: any) => {
-    const { name, seriesName, value, event } = params;
-
+    let { name, seriesName, value, event } = params;
     let dataType = 'revenue';
     if (seriesName === 'Gross Margin') dataType = 'grossMargin';
     if (seriesName === 'Net Profit') dataType = 'netProfit';
-
+    if (crossChartFilter) {
+      name = name.slice(0, 4)
+    }
     setContextMenu({
       isOpen: true,
       position: { x: event?.event?.clientX, y: event?.event?.clientY },
@@ -715,13 +594,6 @@ const LineChartComponent = ({
       chartType: 'line',
       dataType: dataType
     });
-    // if (event?.event?.ctrlKey || event?.event?.metaKey) {
-    //   onDrillDown(name, value, dataType);
-    // } else {
-    //   // @ts-ignore
-    //   setDimensions(handleCrossChartFilteringFunc(name));
-    // }
-
   };
 
   const onEvents = {
@@ -739,13 +611,19 @@ const LineChartComponent = ({
 const BarChartComponent = ({
   data,
   onDrillDown,
-  chartRef
+  chartRef,
+  crossChartFilter = false,
+  isDrilled = false
 }: {
   data: BarChartDataPoint[],
   onDrillDown: (period: string, value: number, dataType: string) => void,
-  chartRef: React.RefObject<any>
+  chartRef: React.RefObject<any>,
+  crossChartFilter?: boolean,
+  isDrilled?: boolean
 }) => {
   if (!data || data.length === 0) return <div>No data available</div>;
+
+  const xAxis: "period" | "fiscalYear" = crossChartFilter || isDrilled ? 'period' : 'fiscalYear';
 
   const option = {
     tooltip: {
@@ -765,7 +643,7 @@ const BarChartComponent = ({
     },
     xAxis: {
       type: 'category',
-      data: data.map(item => item.period),
+      data: data.map(item => item[xAxis]),
       axisLabel: {
         rotate: 45,
         fontSize: 10
@@ -794,8 +672,11 @@ const BarChartComponent = ({
   };
 
   const onChartClick = (params: any) => {
-    const { name, seriesName, value } = params;
+    let { name, seriesName, value } = params;
     const dataType = seriesName === 'Revenue' ? 'revenue' : 'expenses';
+    if (crossChartFilter) {
+      name = name.slice(0, 4)
+    }
     onDrillDown(name, value, dataType);
   };
 

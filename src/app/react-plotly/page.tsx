@@ -1,14 +1,15 @@
 'use client'
-import React from 'react'
+import React, { useEffect } from 'react'
 import FinancialDashboard from '../ag-charts/FinancialDashboard'
 import { TabOption, TabsContainer } from '@/components/ui/TabsContainer'
 import ReactPlotlyPage from './ReactPlotlyPage'
 import DashboardInfoCard from '@/components/DashboardInfoCard'
+import { useDispatch } from 'react-redux'
+import { setSelectedLibrary } from '@/store/slices/dashboardSlice'
+import { ChartLibrary } from '@/types/Schemas'
+import EnhancedDashboard from '../dashboard/draggble-dashboard/page'
 
-function Page() {
-  const [selectedTab, setSelectedTab] = React.useState<TabOption>('tool-test-info')
-
-  const dashboardInfoDatas = {
+const dashboardInfoDatas = {
     apiEndpoints: [
       { testCase: "test-case-1", method: "POST", apiName: "api/dashboard/all-charts?table_name=sample_1m", api: "https://testcase.mohammedsifankp.online/api/dashboard/all-charts?table_name=sample_1m", description: "Fetch all chart data for the dashboard" },
       { testCase: "test-case-1", method: "POST", apiName: "api/dashboard/drill-down?table_name=sample_1m&chart_type=bar&category=201907&data_type=revenue&value=4299212962.550013", api: "https://testcase.mohammedsifankp.online/api/dashboard/drill-down?table_name=sample_1m&chart_type=bar&category=201907&data_type=revenue&value=4299212962.550013", description: "Fetch Drill Down datas" },
@@ -28,7 +29,7 @@ function Page() {
       { feature: "Custom Options", supported: true },
       { feature: "TypeScript Support", supported: true },
       { feature: "Open Source", supported: true },
-      { feature: "Drag and Drop. Click the link ->", supported: true, link:"dashboard/draggble-dashboard" },
+      { feature: "Drag and Drop. ", supported: true, link:"dashboard/draggble-dashboard" },
     ],
     dataRecords: {
       "test-case-1": "1,000,000 Records",
@@ -36,18 +37,34 @@ function Page() {
     },
   }
 
+function Page() {
+  const dispatch = useDispatch();
+  const [selectedTab, setSelectedTab] = React.useState<TabOption>('tool-test-info')
+
+  const handleLibraryChange = (library: ChartLibrary) => {
+    dispatch(setSelectedLibrary(library));
+  };
+
+  useEffect(() => {
+    handleLibraryChange('plotly');
+  }, []);
+  
   return (
     <>
       <TabsContainer selectedTab={selectedTab} setSelectedTab={setSelectedTab} />
       {selectedTab === 'charts' && <ReactPlotlyPage />}
       {selectedTab === 'table' && <FinancialDashboard />}
-      {selectedTab !== 'charts' && selectedTab !== 'table' && (
+      {selectedTab === 'tool-test-info' && (
         <DashboardInfoCard
           apiEndpoints={dashboardInfoDatas.apiEndpoints}
           availableFeatures={dashboardInfoDatas.availableFeatures}
           dataRecords={dashboardInfoDatas.dataRecords}
         />
       )}
+        {selectedTab === 'drag-and-drop' && (
+        <EnhancedDashboard />
+      )}
+
     </>
   )
 }

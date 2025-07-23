@@ -1,12 +1,13 @@
 'use client'
-import React from 'react'
+import React, { useEffect } from 'react'
 import FinancialDashboard from '../ag-charts/FinancialDashboard'
 import { TabOption, TabsContainer } from '@/components/ui/TabsContainer'
 import EChartsPage from './EChartsPage'
 import DashboardInfoCard from '@/components/DashboardInfoCard'
-
-function Page() {
-    const [selectedTab, setSelectedTab] = React.useState<TabOption>('tool-test-info')
+import { useDispatch } from 'react-redux'
+import { ChartLibrary } from '@/types/Schemas'
+import { setSelectedLibrary } from '@/store/slices/dashboardSlice'
+import EnhancedDashboard from '../dashboard/draggble-dashboard/page'
 
   const dashboardInfoDatas = {
     apiEndpoints: [
@@ -28,7 +29,7 @@ function Page() {
       { feature: "Custom Options", supported: true },
       { feature: "TypeScript Support", supported: true },
       { feature: "Open Source", supported: true },
-       { feature: "Drag and Drop. Click the link ->", supported: true, link:"dashboard/draggble-dashboard" },
+       { feature: "Drag and Drop. ", supported: true, link:"dashboard/draggble-dashboard" },
     ],
     dataRecords: {
       "test-case-1": "1,000,000 Records",
@@ -36,17 +37,32 @@ function Page() {
     }
   }
 
+function Page() {
+  const dispatch = useDispatch();
+  const [selectedTab, setSelectedTab] = React.useState<TabOption>('tool-test-info')
+
+  const handleLibraryChange = (library: ChartLibrary) => {
+    dispatch(setSelectedLibrary(library));
+  };
+
+  useEffect(() => {
+    handleLibraryChange('echarts');
+  }, []);
+
   return (
     <>
       <TabsContainer selectedTab={selectedTab} setSelectedTab={setSelectedTab} />
       {selectedTab === 'charts' && <EChartsPage />}
       {selectedTab === 'table' && <FinancialDashboard />}
-      {selectedTab !== 'charts' && selectedTab !== 'table' && (
+      {selectedTab === 'tool-test-info' && (
         <DashboardInfoCard
           apiEndpoints={dashboardInfoDatas.apiEndpoints}
           availableFeatures={dashboardInfoDatas.availableFeatures}
           dataRecords={dashboardInfoDatas.dataRecords}
         />
+      )}
+      {selectedTab === 'drag-and-drop' && (
+        <EnhancedDashboard />
       )}
     </>
   )
