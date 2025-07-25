@@ -20,7 +20,7 @@ function Page() {
       { feature: "Filter", supported: true },
       { feature: "Sorting", supported: true },
       { feature: "Pagination", supported: true },
-      { feature: "Editable Cells (Need Custom logic)", supported: false },
+      { feature: "Editable Cells (Need Custom logic)", supported: true },
       { feature: "Row Selection", supported: true },
       { feature: "Column Reordering (Need custom logic)", supported: false },
       { feature: "Updatble (Yes, with custom logic) ", supported: true },

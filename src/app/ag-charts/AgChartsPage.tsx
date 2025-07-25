@@ -39,7 +39,7 @@ import {
 } from "@/types/Schemas";
 
 // UI Components
-import {  DashboardActionButtonComponent } from "@/components/ui/action-button";
+import { DashboardActionButtonComponent } from "@/components/ui/action-button";
 import { ErrorAlert, LoadingAlert } from "@/components/ui/status-alerts";
 import { GroupModal } from "@/components/GroupManagement";
 import { ChartContextMenu } from "@/components/charts/ChartContextMenu";
@@ -153,6 +153,18 @@ const AgChartsPage: React.FC = () => {
             yKey: "revenue",
             yName: "Revenue",
             tooltip: { enabled: true },
+            fill: '#3B82F6',
+            stroke: '#3B82F6',
+            strokeWidth: 2,
+            highlightStyle: {
+              item: {
+                fill: '#1E40AF',
+                stroke: '#1D4ED8',
+                strokeWidth: 3,
+                cursor: 'pointer'
+              }
+            },
+            cursor: 'pointer',
           },
           {
             type: "line",
@@ -160,6 +172,17 @@ const AgChartsPage: React.FC = () => {
             yKey: "grossMargin",
             yName: "Gross Margin",
             tooltip: { enabled: true },
+            stroke: '#F59E0B', // Add stroke color for gross margin
+            strokeWidth: 2,
+            highlightStyle: {
+              item: {
+                fill: '#D97706',      // Darker orange on hover
+                stroke: '#B45309',     // Even darker stroke on hover
+                strokeWidth: 3,
+                cursor: 'pointer'
+              }
+            },
+            cursor: 'pointer',
           },
           {
             type: "line",
@@ -167,6 +190,17 @@ const AgChartsPage: React.FC = () => {
             yKey: "netProfit",
             yName: "Net Profit",
             tooltip: { enabled: true },
+            stroke: '#10B981', // Add stroke color for net profit
+            strokeWidth: 2,
+            highlightStyle: {
+              item: {
+                fill: '#059669',      // Darker green on hover
+                stroke: '#047857',     // Even darker stroke on hover
+                strokeWidth: 3,
+                cursor: 'pointer'
+              }
+            },
+            cursor: 'pointer',
           },
         ],
         axes: [
@@ -214,7 +248,7 @@ const AgChartsPage: React.FC = () => {
             xKey: Xkey,
             yKey: "revenue",
             yName: "Revenue",
-            tooltip: { enabled: true }
+            tooltip: { enabled: true },
           },
           {
             type: "bar",
