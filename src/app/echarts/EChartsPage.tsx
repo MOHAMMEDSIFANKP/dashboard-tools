@@ -10,8 +10,7 @@ import {
 // Types
 import { Dimensions } from "@/types/Schemas";
 import { buildRequestBody } from "@/lib/services/buildWhereClause";
-import { ActionButton, DashboardActionButtonComponent } from "@/components/ui/action-button";
-import { ChartSkelten } from "@/components/ui/ChartSkelten";
+import { DashboardActionButtonComponent } from "@/components/ui/action-button";
 
 import { ErrorAlert } from "@/components/ui/status-alerts";
 import { testCase2ProductId, useFetchTestCase2ChartDataMutation, useFetchTestCase2DrillDownDataMutation } from "@/lib/services/testCase2Api";
@@ -129,7 +128,7 @@ const EChartsPage = () => {
         if (!res?.success) throw new Error(res.message || "Error");
         return res;
       } else {
-        const raw = await FetchTestCase2AllChartData({ body: buildRequestBody(dimensions, 'all'), productId: testCase2ProductId, excludeNullRevenue: false }).unwrap();
+        const raw = await FetchTestCase2AllChartData({ body: buildRequestBody(dimensions, 'all'), crossChartFilter: crossChartFilter, productId: testCase2ProductId, excludeNullRevenue: false }).unwrap();
         const transformed = transformTestCase2ToCommonFormat(raw);
         if (!transformed?.success) throw new Error(transformed.message || "Error");
         return transformed;
@@ -579,6 +578,7 @@ const LineChartComponent = ({
   };
 
   const onChartClick = (params: any) => {
+    if (isDrilled) return;
     let { name, seriesName, value, event } = params;
     let dataType = 'revenue';
     if (seriesName === 'Gross Margin') dataType = 'grossMargin';
@@ -672,6 +672,7 @@ const BarChartComponent = ({
   };
 
   const onChartClick = (params: any) => {
+    if (isDrilled) return;
     let { name, seriesName, value } = params;
     const dataType = seriesName === 'Revenue' ? 'revenue' : 'expenses';
     if (crossChartFilter) {

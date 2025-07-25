@@ -119,7 +119,7 @@ const AgChartsPage: React.FC = () => {
         if (!res?.success) throw new Error(res.message || "Error");
         return res;
       } else {
-        const raw = await FetchTestCase2AllChartData({ body: buildRequestBody(dimensions, 'all'), productId: testCase2ProductId, excludeNullRevenue: false }).unwrap();
+        const raw = await FetchTestCase2AllChartData({ body: buildRequestBody(dimensions, 'all'), crossChartFilter: crossChartFilter, productId: testCase2ProductId, excludeNullRevenue: false }).unwrap();
         const transformed = transformTestCase2ToCommonFormat(raw);
         if (!transformed?.success) throw new Error(transformed.message || "Error");
         return transformed;
@@ -180,6 +180,7 @@ const AgChartsPage: React.FC = () => {
 
             if (datum && datum.fiscalYear) {
               const nativeEvent = event.event;
+              
               setContextMenu({
                 isOpen: true,
                 position: { x: nativeEvent.clientX, y: nativeEvent.clientY },

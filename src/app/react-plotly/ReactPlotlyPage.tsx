@@ -173,7 +173,7 @@ export default function ReactPlotlyPage() {
 
         return res;
       } else {
-        const raw = await FetchTestCase2AllChartData({ body: buildRequestBody(dimensions, 'all'), productId: testCase2ProductId, excludeNullRevenue: false }).unwrap();
+        const raw = await FetchTestCase2AllChartData({ body: buildRequestBody(dimensions, 'all'), crossChartFilter: crossChartFilter, productId: testCase2ProductId, excludeNullRevenue: false }).unwrap();
         const transformed = transformTestCase2ToCommonFormat(raw);
         if (!transformed?.success) throw new Error(transformed.message || "Error");
         return transformed;

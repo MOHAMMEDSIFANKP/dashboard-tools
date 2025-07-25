@@ -102,9 +102,10 @@ export const testCase2Api = createApi({
       productId?: string; 
       body: ChartRequestBody;
       excludeNullRevenue?: boolean;
+      crossChartFilter?:string;
     }>({
-      query: ({ productId = testCase2ProductId, body, excludeNullRevenue = false }) => ({
-        url: `dashboard/all-charts?product_id=${productId}&exclude_null_revenue=${excludeNullRevenue}`,
+      query: ({ crossChartFilter ,productId = testCase2ProductId, body, excludeNullRevenue = false }) => ({
+        url: `dashboard/all-charts?product_id=${productId}&exclude_null_revenue=${excludeNullRevenue}&${crossChartFilter ? `&year_filter=${crossChartFilter}` : ''}`,
         method: 'POST',
         body,
       }),

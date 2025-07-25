@@ -1,4 +1,3 @@
-import { FinancialData } from "@/types/Schemas";
 
 // src\lib\testCase2Transformer.ts
 export const transformTestCase2ToCommonFormat = (data: any): any => {
@@ -11,7 +10,8 @@ export const transformTestCase2ToCommonFormat = (data: any): any => {
         line: {
           success: charts.line_chart.success,
           data: charts.line_chart.data.map((item: any) => ({
-            period: item.period,
+            fiscalYear: item.fiscalYear || null,
+            period: String(item.period) || null,
             revenue: item.revenue,
             grossMargin: item.grossMargin,
             netProfit: item.netProfit,
@@ -20,7 +20,8 @@ export const transformTestCase2ToCommonFormat = (data: any): any => {
         bar: {
           success: charts.bar_chart.success,
           data: charts.bar_chart.data.map((item: any) => ({
-            period: item.period,
+            fiscalYear: item.fiscalYear || null,
+            period: String(item.period) || null,
             revenue: item.revenue,
             expenses: item.expenses,
           })),
@@ -28,14 +29,14 @@ export const transformTestCase2ToCommonFormat = (data: any): any => {
         pie: {
           success: charts.pie_chart.success,
           data: charts.pie_chart.data.map((item: any) => ({
-            catfinancialview: item.catfinancialview,
+            catfinancialview: item.cat_financial_view,
             revenue: item.revenue,
           })),
         },
         donut: {
           success: charts.donut_chart.success,
           data: charts.donut_chart.data.map((item: any) => ({
-            cataccountingview: item.cataccountingview,
+            cataccountingview: item.cat_accounting_view,
             revenue: item.revenue,
           })),
         },
@@ -124,30 +125,104 @@ export const transformTestCase2ToTestCase1 = (
   };
 };
 
+// Type definitions
 interface TestCaseTwoDrillDownResponse {
-    fiscal_year_number: number;
-    fiscal_period_code: number;
-    value: number;
-    level_3_category_name?: string;
-    cat_financial_view?:string;
-    country_name?: string;
+  fiscal_year_number?: number;
+  fiscalyear?: number;
+  fiscal_period_code?: number;
+  period?: number;
+  value?: number;
+  revenue?: number;
+  expenses?: number;
+  grossMargin?: number;
+  netProfit?: number;
+  [key: string]: any; // Allow additional properties
 }
 
-export const transformTestCase2DrillDownData = (data: any) => {
-  if (!data?.success || !Array.isArray(data.data)) {
-    return { success: false };
+interface FinancialData {
+  fiscalyear?: number;
+  period?: number;
+  value?: number;
+  revenue?: number;
+  expenses?: number;
+  grossMargin?: number;
+  netProfit?: number;
+}
+
+interface ApiResponse {
+  success: boolean;
+  data?: TestCaseTwoDrillDownResponse[];
+}
+
+interface TransformResult {
+  success: boolean;
+  data?: FinancialData[];
+  error?: string;
+}
+
+// Helper function to check if a value is a valid number
+const isValidNumber = (value: unknown): value is number => {
+  return typeof value === 'number' && !isNaN(value) && isFinite(value);
+};
+
+export const transformTestCase2DrillDownData = (response: ApiResponse): TransformResult => {
+  // Validate input structure
+  if (!response || !response.success || !Array.isArray(response.data)) {
+    return { 
+      success: false, 
+      error: 'Invalid API response structure' 
+    };
   }
 
-  // Transform and sort the data
-  const transformedData:FinancialData[] = data.data.map((item: TestCaseTwoDrillDownResponse) => ({
-      fiscalyear: item.fiscal_year_number,
-      period: item.fiscal_period_code,
-      value: item.value,
-      catfinancialview: item.level_3_category_name || item.cat_financial_view,
-      // cataccountingview: item.level_2_department_name,
-      // country: item.country_name,
-    }))
-    .sort((a:any, b:any) => a.period - b.period);
+  if (response.data.length === 0) {
+    return { 
+      success: true, 
+      data: [] 
+    };
+  }
+
+  // Transform data
+  const transformedData: FinancialData[] = [];
+  
+  for (const item of response.data) {
+    if (!item || typeof item !== 'object') continue;
+
+    // Extract and validate values
+    const fiscalyear = isValidNumber(item.fiscal_year_number) 
+      ? item.fiscal_year_number 
+      : isValidNumber(item.fiscalyear) 
+        ? item.fiscalyear 
+        : undefined;
+
+    const period = isValidNumber(item.fiscal_period_code) 
+      ? item.fiscal_period_code 
+      : isValidNumber(item.period) 
+        ? item.period 
+        : undefined;
+
+    // Create financial data object with only valid numbers
+    const financialData: FinancialData = {};
+
+    if (isValidNumber(fiscalyear)) financialData.fiscalyear = fiscalyear;
+    if (isValidNumber(period)) financialData.period = period;
+    if (isValidNumber(item.value)) financialData.value = item.value;
+    if (isValidNumber(item.revenue)) financialData.revenue = item.revenue;
+    if (isValidNumber(item.expenses)) financialData.expenses = item.expenses;
+    if (isValidNumber(item.grossmargin)) financialData.grossMargin = item.grossmargin;
+    if (isValidNumber(item.netprofit)) financialData.netProfit = item.netprofit;
+
+    // Only add if we have at least one valid property
+    if (Object.keys(financialData).length > 0) {
+      transformedData.push(financialData);
+    }
+  }
+
+  // Sort by period, then by fiscal year
+  transformedData.sort((a, b) => {
+    const periodCompare = (a.period || 0) - (b.period || 0);
+    if (periodCompare !== 0) return periodCompare;
+    return (a.fiscalyear || 0) - (b.fiscalyear || 0);
+  });
 
   return {
     success: true,
