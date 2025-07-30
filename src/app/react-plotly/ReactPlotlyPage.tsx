@@ -19,12 +19,17 @@ import { RootState } from "@/store/store";
 import { useSelector } from "react-redux";
 import { ChartContextMenu } from "@/components/charts/ChartContextMenu";
 import { ChartContainerView } from "@/components/charts/ChartContainerView";
+import { PlotlyCaptureChartScreenshot } from "@/utils/utils";
+import { useEmailShareDrawer } from "@/hooks/useEmailShareDrawer";
+import { EmailShareDrawer } from "@/components/drawer/EmailShareDrawer";
 
 // Constants
 const DEFAULT_CONFIGURATION = {
   responsive: true,
   displayModeBar: false,
-  modeBarButtonsToRemove: ['editInChartStudio', 'zoom2d', 'select2d', 'lasso2d', 'autoScale2d', 'resetScale2d']
+  modeBarButtonsToRemove: ['editInChartStudio', 'zoom2d', 'select2d', 'lasso2d', 'autoScale2d', 'resetScale2d'],
+  scrollZoom: false,
+  showTips: false
 };
 
 const CHART_COLORS = [
@@ -61,9 +66,10 @@ interface ChartContainerProps {
   onDownloadImage?: () => void;
   isDrilled?: boolean;
   resetDrillDown?: () => void;
-  isCrossChartFiltered?: boolean;
+  isCrossChartFiltered?: string;
   resetCrossChartFilter?: () => void;
   isLoading: boolean;
+  onShareChart: () => void;
 }
 
 // Memoized Chart Container Component
@@ -76,7 +82,8 @@ const ChartContainer = React.memo(({
   resetDrillDown,
   isCrossChartFiltered,
   resetCrossChartFilter,
-  isLoading
+  isLoading,
+  onShareChart
 }: ChartContainerProps) => (
   <ChartContainerView
     title={title}
@@ -90,6 +97,7 @@ const ChartContainer = React.memo(({
     hasData={true}
     chartRef={undefined}
     children={children}
+    onShareChart={onShareChart}
     className="h-96"
   />
 
@@ -102,6 +110,7 @@ export default function ReactPlotlyPage() {
   const [dimensions, setDimensions] = useState<Dimensions | null>(null);
   const [crossChartFilter, setCrossChartFilter] = useState<string>('');
 
+  const { emailDrawer, handleOpenDrawer, handleCloseDrawer } = useEmailShareDrawer();
   const testCase = useSelector((state: RootState) => state.dashboard.selectedTestCase);
 
   // Test Case 1 API Mutations
@@ -158,9 +167,6 @@ export default function ReactPlotlyPage() {
   const barPlotRef = useRef<any>(null);
   const piePlotRef = useRef<any>(null);
   const donutPlotRef = useRef<any>(null);
-
-  // Memoized request body to prevent unnecessary API calls
-  const requestBody = useMemo(() => buildRequestBody(dimensions, 'all'), [dimensions]);
 
   const fetchChartDataByTestCase = async () => {
     try {
@@ -272,6 +278,41 @@ export default function ReactPlotlyPage() {
   const handleResetCrossChartFilter = useCallback(() => {
     setCrossChartFilter('');
   }, []);
+
+  const handleShareChart = async (
+    title: string,
+    chartType: 'line' | 'bar' | 'pie' | 'donut'
+  ) => {
+    try {
+      let plotRef;
+      switch (chartType) {
+        case 'line':
+          plotRef = linePlotRef;
+          break;
+        case 'bar':
+          plotRef = barPlotRef;
+          break;
+        case 'pie':
+          plotRef = piePlotRef;
+          break;
+        case 'donut':
+          plotRef = donutPlotRef;
+          break;
+        default:
+          throw new Error('Invalid chart type');
+      }
+
+      if (!plotRef.current) {
+        throw new Error('Chart reference not found');
+      }
+
+      const imageData = await PlotlyCaptureChartScreenshot(plotRef);
+      handleOpenDrawer(title, imageData);
+    } catch (error) {
+      console.error('Failed to capture chart:', error);
+      setError('Failed to capture chart for sharing');
+    }
+  };
 
 
   // Generic drill down function using API
@@ -544,26 +585,135 @@ export default function ReactPlotlyPage() {
         type: "scatter" as const,
         mode: "lines+markers" as const,
         name: "Revenue",
-        line: { color: "blue" },
+        line: {
+          color: "#3B82F6",
+          width: 2
+        },
+        marker: {
+          size: 8,
+          color: "#3B82F6",
+          line: {
+            color: '#1E40AF',
+            width: 2
+          }
+        },
+        // Hover effect - bigger markers and brighter colors
+        selected: {
+          marker: {
+            size: 14,
+            color: '#1D4ED8',
+            line: {
+              color: '#1E3A8A',
+              width: 3
+            }
+          }
+        },
+        unselected: {
+          marker: {
+            opacity: 0.7
+          }
+        },
+        hovertemplate: '<b>%{fullData.name}</b><br>' +
+          'Year: %{x}<br>' +
+          'Amount: $%{y:,.0f}<br>' +
+          '<extra></extra>',
+        hoverlabel: {
+          bgcolor: "#1E40AF",
+          bordercolor: "#1D4ED8",
+          font: { color: "white", size: 12 }
+        }
       },
       {
         x: chartData.line.map(d => d[xKey]),
         y: chartData.line.map(d => d.grossMargin),
         type: "scatter" as const,
         mode: "lines+markers" as const,
-        name: "grossMargin",
-        line: { color: "purple" },
+        name: "GrossMargin",
+        line: {
+          color: "#F59E0B",
+          width: 2
+        },
+        marker: {
+          size: 8,
+          color: "#F59E0B",
+          line: {
+            color: '#D97706',
+            width: 2
+          }
+        },
+        // Hover effect - bigger markers and brighter colors
+        selected: {
+          marker: {
+            size: 14,
+            color: '#D97706',
+            line: {
+              color: '#B45309',
+              width: 3
+            }
+          }
+        },
+        unselected: {
+          marker: {
+            opacity: 0.7
+          }
+        },
+        hovertemplate: '<b>%{fullData.name}</b><br>' +
+          'Year: %{x}<br>' +
+          'Amount: $%{y:,.0f}<br>' +
+          '<extra></extra>',
+        hoverlabel: {
+          bgcolor: "#D97706",
+          bordercolor: "#B45309",
+          font: { color: "white", size: 12 }
+        }
       },
       {
         x: chartData.line.map(d => d[xKey]),
         y: chartData.line.map(d => d.netProfit),
         type: "scatter" as const,
         mode: "lines+markers" as const,
-        name: "netProfit",
-        line: { color: "green" },
+        name: "NetProfit",
+        line: {
+          color: "#10B981",
+          width: 2
+        },
+        marker: {
+          size: 8,
+          color: "#10B981",
+          line: {
+            color: '#059669',
+            width: 2
+          }
+        },
+        // Hover effect - bigger markers and brighter colors
+        selected: {
+          marker: {
+            size: 14,
+            color: '#059669',
+            line: {
+              color: '#047857',
+              width: 3
+            }
+          }
+        },
+        unselected: {
+          marker: {
+            opacity: 0.7
+          }
+        },
+        hovertemplate: '<b>%{fullData.name}</b><br>' +
+          'Year: %{x}<br>' +
+          'Amount: $%{y:,.0f}<br>' +
+          '<extra></extra>',
+        hoverlabel: {
+          bgcolor: "#059669",
+          bordercolor: "#047857",
+          font: { color: "white", size: 12 }
+        }
       },
     ]
-  }, [chartData.line]);
+  }, [chartData.line, crossChartFilter]);
+
 
   const barChartData = useMemo(() => {
     const xKey = crossChartFilter ? 'period' : 'fiscalYear';
@@ -573,17 +723,48 @@ export default function ReactPlotlyPage() {
         y: chartData.bar.map(d => d.revenue),
         type: "bar" as const,
         name: "Revenue",
-        marker: { color: "teal" },
+        marker: {
+          color: "teal",
+          line: {
+            color: 'darkcyan',
+            width: 2
+          }
+        },
+        hovertemplate: '<b>%{fullData.name}</b><br>' +
+          'Year: %{x}<br>' +
+          'Amount: $%{y:,.0f}<br>' +
+          '<extra></extra>',
+        hoverlabel: {
+          bgcolor: "teal",
+          bordercolor: "darkcyan",
+          font: { color: "white", size: 12 }
+        }
       },
       {
         x: chartData.bar.map(d => d[xKey]),
         y: chartData.bar.map(d => d.expenses),
         type: "bar" as const,
         name: "Expenses",
-        marker: { color: "orange" },
+        marker: {
+          color: "orange",
+          line: {
+            color: 'darkorange',
+            width: 2
+          }
+        },
+        hovertemplate: '<b>%{fullData.name}</b><br>' +
+          'Year: %{x}<br>' +
+          'Amount: $%{y:,.0f}<br>' +
+          '<extra></extra>',
+        hoverlabel: {
+          bgcolor: "orange",
+          bordercolor: "darkorange",
+          font: { color: "white", size: 12 }
+        }
       },
     ]
-  }, [chartData.bar]);
+  }, [chartData.bar, crossChartFilter]);
+
 
   return (
     <section className="p-5">
@@ -631,9 +812,10 @@ export default function ReactPlotlyPage() {
             onDownloadImage={() => handleDownloadImage(linePlotRef, drillDownState?.chartType === 'line' ? drillDownState?.title : "Revenue Trends")}
             isDrilled={drillDownState.isDrilled && drillDownState.chartType === 'line'}
             resetDrillDown={handleResetDrillDown}
-            isCrossChartFiltered={!!crossChartFilter}
+            isCrossChartFiltered={crossChartFilter}
             resetCrossChartFilter={handleResetCrossChartFilter}
             isLoading={isLoading}
+            onShareChart={() => handleShareChart(drillDownState?.chartType === 'line' ? drillDownState?.title : "Revenue Trends", 'line')}
           >
             <Plot
               key={`line-chart-${dimensions?.groupName || 'default'}`}
@@ -643,10 +825,24 @@ export default function ReactPlotlyPage() {
                 title: "Revenue Trends Over Time",
                 autosize: true,
                 xaxis: { tickformat: 'digits' },
-                yaxis: { title: "Amount ($)" }
+                yaxis: { title: "Amount ($)" },
+                hovermode: 'closest',
+                hoverdistance: 50,
+                // Enable selection mode for hover effects
+                selectdirection: 'diagonal',
+                dragmode: false
               }}
-              style={{ width: "100%", height: "100%" }}
-              config={DEFAULT_CONFIGURATION}
+              style={{ width: "100%", height: "100%", cursor: "pointer" }}
+              config={{
+                ...DEFAULT_CONFIGURATION,
+                // Enable hover animations
+                // animate: true,
+                // animation: {
+                //   duration: 300,
+                //   easing: 'ease-out'
+                // }
+              }}
+
             />
           </ChartContainer>
         )}
@@ -656,9 +852,11 @@ export default function ReactPlotlyPage() {
             title={drillDownState?.chartType === 'bar' ? drillDownState?.title : "Revenue vs Expenses"}
             onDownloadCSV={() => handleDownloadCSV(chartData.bar, "Revenue_vs_Expenses")}
             onDownloadImage={() => handleDownloadImage(barPlotRef, "Revenue_vs_Expenses")}
+            isCrossChartFiltered={crossChartFilter}
             isDrilled={drillDownState.isDrilled && drillDownState.chartType === 'bar'}
             resetDrillDown={handleResetDrillDown}
             isLoading={isLoading}
+            onShareChart={() => handleShareChart(drillDownState?.chartType === 'bar' ? drillDownState?.title : "Revenue vs Expenses", 'bar')}
           >
             <Plot
               key={`bar-chart-${dimensions?.groupName || 'default'}`}
@@ -669,10 +867,23 @@ export default function ReactPlotlyPage() {
                 barmode: "group",
                 autosize: true,
                 xaxis: { tickformat: 'digits' },
-                yaxis: { title: "Amount ($)" }
+                yaxis: { title: "Amount ($)" },
+                hovermode: 'closest',
+                hoverdistance: 50,
+                // Bar hover effects
+                bargap: 0.15,
+                bargroupgap: 0.1
               }}
-              style={{ width: "100%", height: "100%" }}
-              config={DEFAULT_CONFIGURATION}
+              style={{ width: "100%", height: "100%", cursor: "pointer" }}
+              config={{
+                ...DEFAULT_CONFIGURATION,
+                // Enable hover animations
+                animate: true,
+                animation: {
+                  duration: 200,
+                  easing: 'ease-out'
+                }
+              }}
             />
           </ChartContainer>
         )}
@@ -682,9 +893,11 @@ export default function ReactPlotlyPage() {
             title={drillDownState?.chartType === 'pie' ? drillDownState?.title : "Financial Distribution"}
             onDownloadCSV={() => handleDownloadCSV(chartData.pie, "Financial_Distribution")}
             onDownloadImage={() => handleDownloadImage(piePlotRef, "Financial_Distribution")}
+            isCrossChartFiltered={crossChartFilter}
             isDrilled={drillDownState.isDrilled && drillDownState.chartType === 'pie'}
             resetDrillDown={handleResetDrillDown}
             isLoading={isLoading}
+            onShareChart={() => handleShareChart(drillDownState?.chartType === 'pie' ? drillDownState?.title : "Financial Distribution", 'pie')}
           >
             {drillDownState.isDrilled && drillDownState.chartType === 'pie' ? (
               <Plot
@@ -706,28 +919,49 @@ export default function ReactPlotlyPage() {
                 data={[{
                   values: pieChartData.values,
                   type: "pie",
-                  marker: { colors: CHART_COLORS },
-                  labels: pieChartData.labels
+                  marker: {
+                    colors: CHART_COLORS,
+                    line: {
+                      color: '#FFFFFF',
+                      width: 2
+                    }
+                  },
+                  labels: pieChartData.labels,
+                  hovertemplate: '<b>%{label}</b><br>' +
+                    'Value: $%{value:,.0f}<br>' +
+                    'Percentage: %{percent}<br>' +
+                    '<extra></extra>',
+                  hoverlabel: {
+                    bgcolor: "rgba(0,0,0,0.8)",
+                    bordercolor: "white",
+                    font: { color: "white", size: 12 }
+                  },
+                  pull: 0.05, // Slight pull effect on hover
+                  textinfo: 'label+percent',
+                  textposition: 'outside'
                 }]}
                 layout={{
                   title: "Financial Distribution",
-                  autosize: true
+                  autosize: true,
+                  hovermode: 'closest'
                 }}
-                style={{ width: "100%", height: "100%" }}
+                style={{ width: "100%", height: "100%", cursor: "pointer" }}
                 config={DEFAULT_CONFIGURATION}
+
               />
             )}
           </ChartContainer>
         )}
-
         {chartData.donut.length > 0 && (
           <ChartContainer
             title={drillDownState?.chartType === 'donut' ? drillDownState?.title : "Revenue by Category"}
             onDownloadCSV={() => handleDownloadCSV(chartData.donut, "Revenue_by_Category")}
             onDownloadImage={() => handleDownloadImage(donutPlotRef, "Revenue_by_Category")}
+            isCrossChartFiltered={crossChartFilter}
             isDrilled={drillDownState.isDrilled && drillDownState.chartType === 'donut'}
             resetDrillDown={handleResetDrillDown}
             isLoading={isLoading}
+            onShareChart={() => handleShareChart(drillDownState?.chartType === 'donut' ? drillDownState?.title : "Revenue by Category", 'donut')}
           >
             {drillDownState.isDrilled && drillDownState.chartType === 'donut' ? (
               <Plot
@@ -751,13 +985,32 @@ export default function ReactPlotlyPage() {
                   labels: chartData.donut.map((d: any) => d.cataccountingview || ''),
                   type: "pie",
                   hole: 0.5,
-                  marker: { colors: CHART_COLORS }
+                  marker: {
+                    colors: CHART_COLORS,
+                    line: {
+                      color: '#FFFFFF',
+                      width: 2
+                    }
+                  },
+                  hovertemplate: '<b>%{label}</b><br>' +
+                    'Revenue: $%{value:,.0f}<br>' +
+                    'Percentage: %{percent}<br>' +
+                    '<extra></extra>',
+                  hoverlabel: {
+                    bgcolor: "rgba(0,0,0,0.8)",
+                    bordercolor: "white",
+                    font: { color: "white", size: 12 }
+                  },
+                  pull: 0.05, // Slight pull effect on hover
+                  textinfo: 'label+percent',
+                  textposition: 'outside'
                 }]}
                 layout={{
                   title: "Revenue by Category",
-                  autosize: true
+                  autosize: true,
+                  hovermode: 'closest'
                 }}
-                style={{ width: "100%", height: "100%" }}
+                style={{ width: "100%", height: "100%", cursor: "pointer" }}
                 config={DEFAULT_CONFIGURATION}
               />
             )}
@@ -769,6 +1022,12 @@ export default function ReactPlotlyPage() {
           <i>Click on any chart element to drill down into more detailed data</i>
         </p>
       </div>
+      <EmailShareDrawer
+        isOpen={emailDrawer.isOpen}
+        onClose={handleCloseDrawer}
+        chartTitle={emailDrawer.chartTitle}
+        chartImage={emailDrawer.chartImage}
+      />
     </section>
   );
 };

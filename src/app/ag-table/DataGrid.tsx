@@ -15,8 +15,17 @@ import { useSelector } from 'react-redux';
 import { RootState } from '@/store/store';
 import { testCase2ProductId, useFetchTestCase2TableDataQuery } from '@/lib/services/testCase2Api';
 
+import { useEmailShareDrawer } from "@/hooks/useEmailShareDrawer";
+import { EmailShareDrawer } from "@/components/drawer/EmailShareDrawer";
+import { AGGridCaptureScreenshot } from "@/utils/utils";
+import { Share } from 'lucide-react';
+
+
 const DataGrid = ({ }) => {
+  const { emailDrawer, handleOpenDrawer, handleCloseDrawer } = useEmailShareDrawer();
+
   const testCase = useSelector((state: RootState) => state.dashboard.selectedTestCase);
+
 
   const [searchParams, setSearchParams] = useState({
     tableName: databaseName,
@@ -416,6 +425,22 @@ const DataGrid = ({ }) => {
     console.log('Cell value changed:', params);
   };
 
+  const handleShareGrid = async () => {
+    if (!gridRef.current) {
+      console.error('Grid reference not available');
+      return;
+    }
+
+    try {
+      const imageData = await AGGridCaptureScreenshot(gridRef as React.RefObject<any>);
+      handleOpenDrawer("Financial Data - AG Grid", imageData);
+    } catch (error) {
+      console.error('Failed to capture grid:', error);
+      // Add user-friendly error handling
+      alert('Failed to capture grid screenshot. Please try again.');
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="w-full p-4">
@@ -447,8 +472,16 @@ const DataGrid = ({ }) => {
 
   return (
     <div className="w-full p-4">
-      <h1 className="text-xl font-bold mb-4">Financial Data - Ag Table</h1>
-
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-xl font-bold mb-4">Financial Data - Ag Table</h1>
+        <button
+          onClick={handleShareGrid}
+          className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white rounded-xl shadow-lg hover:shadow-purple-200 transform hover:scale-105 transition-all duration-300 ease-out font-medium text-sm flex items-center gap-2"
+        >
+          <Share className="w-4 h-4" />
+          Share Grid
+        </button>
+      </div>
       {/* Pagination Info */}
       <div className="mb-4 flex justify-between items-center">
         <div className="text-sm text-gray-600">
@@ -569,6 +602,12 @@ const DataGrid = ({ }) => {
           </button>
         </div>
       </div>
+      <EmailShareDrawer
+        isOpen={emailDrawer.isOpen}
+        onClose={handleCloseDrawer}
+        chartTitle={emailDrawer.chartTitle}
+        chartImage={emailDrawer.chartImage}
+      />
     </div>
   );
 };

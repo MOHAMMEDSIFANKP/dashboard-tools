@@ -20,6 +20,10 @@ import { RootState } from "@/store/store";
 import { ChartContextMenu } from "@/components/charts/ChartContextMenu";
 import { ChartContainerView } from "@/components/charts/ChartContainerView";
 
+import { useEmailShareDrawer } from "@/hooks/useEmailShareDrawer";
+import { EChartsCaptureChartScreenshot } from "@/utils/utils";
+import { EmailShareDrawer } from "@/components/drawer/EmailShareDrawer";
+
 
 // Define TypeScript interfaces for chart data
 interface ChartContainerProps {
@@ -31,8 +35,9 @@ interface ChartContainerProps {
   resetDrillDown?: () => void;
   isLoading: boolean;
   hasData: boolean;
-  isCrossChartFiltered?: boolean;
+  isCrossChartFiltered?: string;
   resetCrossChartFilter?: () => void;
+  handleShareChart: (title: string, chartRef: React.RefObject<any>) => void;
 }
 
 interface LineChartDataPoint {
@@ -77,6 +82,7 @@ const EChartsPage = () => {
   const [dimensions, setDimensions] = useState<Dimensions | null>(null);
   const [crossChartFilter, setCrossChartFilter] = useState<string>('');
 
+  const { emailDrawer, handleOpenDrawer, handleCloseDrawer } = useEmailShareDrawer();
   const testCase = useSelector((state: RootState) => state.dashboard.selectedTestCase);
 
   // Test Case 1 API Mutations
@@ -287,6 +293,19 @@ const EChartsPage = () => {
     setCrossChartFilter('');
   }, []);
 
+  const handleShareChart = async (
+    title: string,
+    chartRef: React.RefObject<any>
+  ) => {
+    try {
+      const imageData = await EChartsCaptureChartScreenshot(chartRef);
+      handleOpenDrawer(title, imageData);
+    } catch (error) {
+      console.error('Failed to capture chart:', error);
+      setError('Failed to capture chart for sharing');
+    }
+  };
+
   return (
     <section className="p-8 bg-gray-50">
       <h1 className="text-3xl font-bold text-center mb-8">
@@ -311,7 +330,7 @@ const EChartsPage = () => {
           handleResetGroup={handleResetGroup}
           handleOpenModal={handleOpenModal}
           fetchAllChartDataHandle={fetchAllChartDataHanlde}
-          />
+        />
       </div>
 
       <ChartContextMenu
@@ -333,10 +352,11 @@ const EChartsPage = () => {
           title={drillDownState?.chartType === 'line' ? drillDownState?.title : "Revenue Trends with"}
           onExportCSV={() => exportToCSV(drillDownState?.chartType === 'line' ? drillDownData : lineChartData)}
           onExportPNG={() => exportToPNG(lineChartRef)}
-          isCrossChartFiltered={!!crossChartFilter}
+          isCrossChartFiltered={crossChartFilter}
           resetCrossChartFilter={handleResetCrossChartFilter}
           isDrilled={drillDownState.isDrilled && drillDownState.chartType === 'line'}
           resetDrillDown={handleResetDrillDown}
+          handleShareChart={handleShareChart}
         >
           <LineChartComponent
             data={drillDownState?.chartType === 'line' ? drillDownData : lineChartData}
@@ -353,9 +373,11 @@ const EChartsPage = () => {
           hasData={barChartData.length > 0}
           title={drillDownState?.chartType === 'bar' ? drillDownState?.title : "Revenue vs Expenses"}
           onExportCSV={() => exportToCSV(drillDownState?.chartType === 'bar' ? drillDownData : barChartData)}
+          isCrossChartFiltered={crossChartFilter}
           onExportPNG={() => exportToPNG(barChartRef)}
           isDrilled={drillDownState.isDrilled && drillDownState.chartType === 'bar'}
           resetDrillDown={handleResetDrillDown}
+          handleShareChart={handleShareChart}
         >
           <BarChartComponent
             data={drillDownState?.chartType === 'bar' ? drillDownData : barChartData}
@@ -372,8 +394,10 @@ const EChartsPage = () => {
           title="Financial Distribution"
           onExportCSV={() => exportToCSV(drillDownState?.chartType === 'pie' ? drillDownData : pieChartData)}
           onExportPNG={() => exportToPNG(pieChartRef)}
+          isCrossChartFiltered={crossChartFilter}
           isDrilled={drillDownState.isDrilled && drillDownState.chartType === 'pie'}
           resetDrillDown={handleResetDrillDown}
+          handleShareChart={handleShareChart}
         >
           {drillDownState?.chartType === 'pie' ?
             (<LineDrillDownChartComponents drillDownData={drillDownData} title={drillDownState?.title} chartRef={pieChartRef} />)
@@ -390,8 +414,10 @@ const EChartsPage = () => {
           title="Revenue by Category"
           onExportCSV={() => exportToCSV(drillDownState?.chartType === 'donut' ? drillDownData : donutChartData)}
           onExportPNG={() => exportToPNG(donutChartRef)}
+          isCrossChartFiltered={crossChartFilter}
           isDrilled={drillDownState.isDrilled && drillDownState.chartType === 'donut'}
           resetDrillDown={handleResetDrillDown}
+          handleShareChart={handleShareChart}
         >
           {drillDownState?.chartType === 'donut' ?
             (<LineDrillDownChartComponents drillDownData={drillDownData} title={drillDownState?.title} chartRef={donutChartRef} />)
@@ -407,6 +433,12 @@ const EChartsPage = () => {
       <p className="col-span-1 md:col-span-2 text-sm text-gray-500 text-center mt-4">
         <i>Click on any chart element to drill down into more detailed data</i>
       </p>
+      <EmailShareDrawer
+        isOpen={emailDrawer.isOpen}
+        onClose={handleCloseDrawer}
+        chartTitle={emailDrawer.chartTitle}
+        chartImage={emailDrawer.chartImage}
+      />
     </section>
   );
 };
@@ -414,22 +446,44 @@ const EChartsPage = () => {
 export default EChartsPage;
 
 // Chart container component
-const ChartContainer: React.FC<ChartContainerProps> = ({ title, children, onExportCSV, onExportPNG, isDrilled, resetDrillDown, hasData, isLoading, isCrossChartFiltered, resetCrossChartFilter }) => (
-<ChartContainerView
-  title={title}
-  isDrilled={isDrilled}
-  resetDrillDown={resetDrillDown}
-  isLoading={isLoading}
-  isCrossChartFiltered={isCrossChartFiltered}
-  resetCrossChartFilter={resetCrossChartFilter}
-  exportToCSV={onExportCSV}
-  exportToPNG={onExportPNG}
-  hasData={hasData}
-  chartRef={undefined}
-  children={children}
-  className="h-64"
-  />
-);
+const ChartContainer: React.FC<ChartContainerProps> = ({
+  title,
+  children,
+  onExportCSV,
+  onExportPNG,
+  isDrilled,
+  resetDrillDown,
+  hasData,
+  isLoading,
+  isCrossChartFiltered,
+  resetCrossChartFilter,
+  handleShareChart
+}) => {
+  return (
+    <ChartContainerView
+      title={title}
+      isDrilled={isDrilled}
+      resetDrillDown={resetDrillDown}
+      isLoading={isLoading}
+      isCrossChartFiltered={isCrossChartFiltered}
+      resetCrossChartFilter={resetCrossChartFilter}
+      exportToCSV={onExportCSV}
+      exportToPNG={onExportPNG}
+      hasData={hasData}
+      onShareChart={() => {
+        // Get the chartRef from the child component
+        const childElement = React.Children.only(children) as React.ReactElement;
+        //@ts-ignore
+        const chartRef = childElement.props.chartRef;
+        handleShareChart(title, chartRef);
+      }}
+      className="h-64"
+    >
+      {children}
+    </ChartContainerView>
+  );
+};
+
 
 const exportToPNG = (chartRef: any) => {
   if (!chartRef || !chartRef.current || !chartRef.current.getEchartsInstance) return;

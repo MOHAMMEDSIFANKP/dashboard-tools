@@ -11,16 +11,20 @@ import {
 } from "@/lib/services/usersApi";
 // Types
 import { Dimensions } from "@/types/Schemas";
-import { buildRequestBody, handleCrossChartFilteringFunc } from "@/lib/services/buildWhereClause";
-import { ActionButton, DashboardActionButtonComponent } from "@/components/ui/action-button";
+import { buildRequestBody } from "@/lib/services/buildWhereClause";
+import { DashboardActionButtonComponent } from "@/components/ui/action-button";
 import { ErrorAlert } from "@/components/ui/status-alerts";
-import { ChartSkelten } from "@/components/ui/ChartSkelten";
 import { testCase2ProductId, useFetchTestCase2ChartDataMutation, useFetchTestCase2DrillDownDataMutation } from "@/lib/services/testCase2Api";
 import { useSelector } from "react-redux";
 import { RootState } from "@/store/store";
 import { transformTestCase2DrillDownData, transformTestCase2ToCommonFormat } from "@/lib/testCase2Transformer";
 import { ChartContextMenu } from "@/components/charts/ChartContextMenu";
 import { ChartContainerView } from "@/components/charts/ChartContainerView";
+
+import { useEmailShareDrawer } from "@/hooks/useEmailShareDrawer";
+import { NivoCaptureChartScreenshot } from "@/utils/utils";
+import { EmailShareDrawer } from "@/components/drawer/EmailShareDrawer";
+
 
 // Core data types
 interface ChartDataPoint {
@@ -52,11 +56,13 @@ interface ChartContainerProps {
   children: React.ReactNode;
   data?: any[];
   isDrilled?: boolean;
-  isCrossChartFiltered?: boolean;
+  isCrossChartFiltered?: string;
   onBack?: () => void;
   onExport?: () => void;
   onResetFilter?: () => void;
   isLoading?: boolean;
+  handleShareChart: (title: string, chartRef: React.RefObject<HTMLDivElement>) => void;
+  chartRef: React.RefObject<any>
 }
 
 // Chart Container Component
@@ -70,6 +76,8 @@ const ChartContainer: React.FC<ChartContainerProps> = ({
   onExport,
   onResetFilter,
   isLoading = false,
+  handleShareChart,
+  chartRef
 }) => {
   const hasData = data && data.length > 0;
 
@@ -120,8 +128,9 @@ const ChartContainer: React.FC<ChartContainerProps> = ({
       resetCrossChartFilter={onResetFilter}
       exportToCSV={exportToCSV}
       hasData={hasData}
-      chartRef={undefined}
+      chartRef={chartRef}
       children={children}
+      onShareChart={() => handleShareChart(title, chartRef)}
     />
   );
 };
@@ -133,6 +142,7 @@ export default function NivoChartsPage() {
   const [dimensions, setDimensions] = useState<Dimensions | null>(null);
   const [crossChartFilter, setCrossChartFilter] = useState<string>('');
 
+  const { emailDrawer, handleOpenDrawer, handleCloseDrawer } = useEmailShareDrawer();
   const testCase = useSelector((state: RootState) => state.dashboard.selectedTestCase);
 
   // Chart data states
@@ -182,6 +192,12 @@ export default function NivoChartsPage() {
   const [fetchDrillDownData] = useFetchDrillDownDataMutation();
   const [FetchTestCase2AllChartData] = useFetchTestCase2ChartDataMutation();
   const [fetchTestCase2DrillDownData] = useFetchTestCase2DrillDownDataMutation();
+
+  const lineChartRef = useRef<HTMLDivElement>(null);
+  const barChartRef = useRef<HTMLDivElement>(null);
+  const pieChartRef = useRef<HTMLDivElement>(null);
+  const donutChartRef = useRef<HTMLDivElement>(null);
+
 
   const fetchChartDataByTestCase = async () => {
     try {
@@ -520,6 +536,20 @@ export default function NivoChartsPage() {
     fetchAllChartDataHanlde();
   }, [dimensions, testCase, crossChartFilter]);
 
+  const handleShareChart = async (
+    title: string,
+    chartContainerRef: React.RefObject<HTMLDivElement>
+  ) => {
+    try {
+      const imageData = await NivoCaptureChartScreenshot(chartContainerRef);
+      handleOpenDrawer(title, imageData);
+    } catch (error) {
+      console.error('Failed to capture chart:', error);
+      setError('Failed to capture chart for sharing');
+    }
+  };
+
+
   return (
     <section className="p-5">
       <h1 className="text-2xl font-bold text-center mb-4">Financial Dashboard - Nivo Charts</h1>
@@ -564,9 +594,11 @@ export default function NivoChartsPage() {
           isLoading={isLoading}
           data={drillDownState.chartType === 'line' ? rawData.drillDown : rawData.line}
           isDrilled={drillDownState.chartType === 'line'}
-          isCrossChartFiltered={!!crossChartFilter}
+          isCrossChartFiltered={crossChartFilter}
           onBack={handleResetDrillDown}
           onResetFilter={handleResetCrossChartFilter}
+          handleShareChart={handleShareChart}
+          chartRef={lineChartRef}
         >
           {drillDownState.chartType === 'line' ? renderDrillDown() : (
             <div style={{ height: "400px" }}>
@@ -640,7 +672,10 @@ export default function NivoChartsPage() {
           isLoading={isLoading}
           data={drillDownState.chartType === 'bar' ? rawData.drillDown : rawData.bar}
           isDrilled={drillDownState.chartType === 'bar'}
+          isCrossChartFiltered={crossChartFilter}
           onBack={handleResetDrillDown}
+          handleShareChart={handleShareChart}
+          chartRef={barChartRef}
         >
           {drillDownState.chartType === 'bar' ? renderDrillDown() : (
             <div style={{ height: "400px" }}>
@@ -652,6 +687,14 @@ export default function NivoChartsPage() {
                 padding={0.3}
                 groupMode="grouped"
                 colors={{ scheme: "paired" }}
+                borderRadius={2}
+                borderWidth={1}
+                borderColor={{ from: 'color', modifiers: [['darker', 0.3]] }}
+                enableLabel={true}
+                labelSkipWidth={12}
+                labelSkipHeight={12}
+                labelTextColor={{ from: 'color', modifiers: [['darker', 1.6]] }}
+
                 axisBottom={{
                   legend: crossChartFilter ? "Period" : "Fiscal Year",
                   legendOffset: 36,
@@ -686,6 +729,23 @@ export default function NivoChartsPage() {
                     toggleSerie: true,
                   }
                 ]}
+                tooltip={({ id, value, color, indexValue }) => (
+                  <div
+                    style={{
+                      background: 'rgba(0, 0, 0, 0.9)',
+                      color: 'white',
+                      padding: '8px 12px',
+                      borderRadius: '4px',
+                      fontSize: '12px',
+                      boxShadow: '0 4px 8px rgba(0,0,0,0.3)'
+                    }}
+                  >
+                    <strong>{id}</strong>: ${value?.toLocaleString()}
+                    <br />
+                    <span style={{ opacity: 0.8 }}>Year: {indexValue}</span>
+                  </div>
+                )}
+
               />
             </div>
           )}
@@ -696,7 +756,10 @@ export default function NivoChartsPage() {
           isLoading={isLoading}
           data={drillDownState.chartType === 'pie' ? rawData.drillDown : rawData.pie}
           isDrilled={drillDownState.chartType === 'pie'}
+          isCrossChartFiltered={crossChartFilter}
           onBack={handleResetDrillDown}
+          handleShareChart={handleShareChart}
+          chartRef={pieChartRef}
         >
           {drillDownState.chartType === 'pie' ? renderDrillDown() : (
             <div style={{ height: "400px" }}>
@@ -747,7 +810,10 @@ export default function NivoChartsPage() {
           isLoading={isLoading}
           data={drillDownState.chartType === 'donut' ? rawData.drillDown : rawData.donut}
           isDrilled={drillDownState.chartType === 'donut'}
+          isCrossChartFiltered={crossChartFilter}
           onBack={handleResetDrillDown}
+          handleShareChart={handleShareChart}
+          chartRef={donutChartRef}
         >
           {drillDownState.chartType === 'donut' ? renderDrillDown() : (
             <div style={{ height: "400px" }}>
@@ -797,6 +863,12 @@ export default function NivoChartsPage() {
           <i>Click on any chart element to drill down into more detailed data</i>
         </p>
       </div>
+      <EmailShareDrawer
+        isOpen={emailDrawer.isOpen}
+        onClose={handleCloseDrawer}
+        chartTitle={emailDrawer.chartTitle}
+        chartImage={emailDrawer.chartImage}
+      />
     </section>
   );
 }

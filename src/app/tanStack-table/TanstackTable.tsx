@@ -1,5 +1,5 @@
 'use client';
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import {
   useReactTable,
   getCoreRowModel,
@@ -15,10 +15,14 @@ import {
 
 import { databaseName, useFetchSearchableDataQuery } from "@/lib/services/usersApi";
 import { FinancialSchema } from '@/types/Schemas';
-import DashboardInfoCard from '@/components/DashboardInfoCard';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store/store';
 import { testCase2ProductId, useFetchTestCase2TableDataQuery } from '@/lib/services/testCase2Api';
+
+import { useEmailShareDrawer } from "@/hooks/useEmailShareDrawer";
+import { EmailShareDrawer } from "@/components/drawer/EmailShareDrawer";
+import { TanStackTableCaptureScreenshot } from "@/utils/utils";
+import { Share } from 'lucide-react';
 
 interface FinancialRow extends FinancialSchema {
   id: string;
@@ -40,10 +44,13 @@ interface EditableCell {
 }
 
 export default function TanstackTable() {
+  const tableRef = useRef<HTMLDivElement>(null);
+
   // State for filters and pagination
   const [search, setSearch] = useState<string>("");
   const [filterCategory, setFilterCategory] = useState<string>("All");
 
+  const { emailDrawer, handleOpenDrawer, handleCloseDrawer } = useEmailShareDrawer();
   const testCase = useSelector((state: RootState) => state.dashboard.selectedTestCase);
 
   const isTestCase1 = testCase === "test-case-1";
@@ -363,7 +370,18 @@ export default function TanstackTable() {
     }
   }, [table, columnOrder]);
 
-    // Handle loading and error states
+  const handleShareTable = async () => {
+    try {
+      const imageData = await TanStackTableCaptureScreenshot(tableRef as React.RefObject<any>);
+      handleOpenDrawer("Financial Data Table", imageData);
+    } catch (error) {
+      console.error('Failed to capture table:', error);
+      alert('Failed to capture table screenshot. Please try again.');
+    }
+  };
+
+
+  // Handle loading and error states
   if (isSearchLoading) {
     return <div className="p-4 text-center">Loading data...</div>;
   }
@@ -387,7 +405,16 @@ export default function TanstackTable() {
   return (
     <section className="p-8 w-full">
       <h1 className="text-2xl font-bold mb-4">TanStack Table - API Integrated</h1>
-
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-xl font-bold">Financial Data - TanStack Table</h1>
+        <button
+          onClick={handleShareTable}
+          className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white rounded-xl shadow-lg hover:shadow-purple-200 transform hover:scale-105 transition-all duration-300 ease-out font-medium text-sm flex items-center gap-2"
+        >
+          <Share className="w-4 h-4" />
+          Share Table
+        </button>
+      </div>
       {/* Controls */}
       <div className="flex flex-wrap items-center gap-4 mb-6">
         <input
@@ -466,8 +493,8 @@ export default function TanstackTable() {
         <div className="p-4 text-center">No data found matching your filters</div>
       ) : (
         <>
-          <div className="border rounded w-full shadow-sm overflow-auto max-h-[70vh]">
-            <table className="w-full border overflow-auto border-gray-300">
+          <div ref={tableRef} className="border rounded w-full shadow-sm overflow-auto max-h-[70vh]">
+            <table className="w-full border overflow-auto border-gray-300 bg-white">
               <thead>
                 {table.getHeaderGroups().map((headerGroup) => (
                   <tr key={headerGroup.id} className="bg-gray-100">
@@ -560,6 +587,12 @@ export default function TanstackTable() {
       <div className="mt-2 text-sm text-gray-600">
         Selected Rows: {Object.keys(rowSelection).length}
       </div>
+       <EmailShareDrawer
+        isOpen={emailDrawer.isOpen}
+        onClose={handleCloseDrawer}
+        chartTitle={emailDrawer.chartTitle}
+        chartImage={emailDrawer.chartImage}
+      />
     </section>
   );
 }

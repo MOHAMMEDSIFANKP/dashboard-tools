@@ -44,6 +44,9 @@ import { ErrorAlert, LoadingAlert } from "@/components/ui/status-alerts";
 import { GroupModal } from "@/components/GroupManagement";
 import { ChartContextMenu } from "@/components/charts/ChartContextMenu";
 import { ChartContainerView } from "@/components/charts/ChartContainerView";
+import { EmailShareDrawer } from "@/components/drawer/EmailShareDrawer";
+import { AGchartcaptureChartScreenshot } from "@/utils/utils";
+import { useEmailShareDrawer } from "@/hooks/useEmailShareDrawer";
 
 // Common props for components
 interface CommonProps {
@@ -55,11 +58,18 @@ interface CommonProps {
 // Main AG Charts Page Component
 const AgChartsPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isGroupModalOpen, setIsGroupModalOpen] = useState<boolean>(false);
   const [dimensions, setDimensions] = useState<Dimensions | null>(null);
   const [crossChartFilter, setCrossChartFilter] = useState<string>('');
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isDrillDownLoading, setIsDrillDownLoading] = useState({
+    line: false,
+    bar: false,
+    pie: false,
+    donut: false
+  });
 
+  const { emailDrawer, handleOpenDrawer, handleCloseDrawer } = useEmailShareDrawer();
   const testCase = useSelector((state: RootState) => state.dashboard.selectedTestCase);
 
   // Test Case 1 API Mutations
@@ -110,7 +120,6 @@ const AgChartsPage: React.FC = () => {
     chartType: string;
     dataType: string;
   } | null>(null);
-
 
   const fetchChartDataByTestCase = async () => {
     try {
@@ -172,12 +181,12 @@ const AgChartsPage: React.FC = () => {
             yKey: "grossMargin",
             yName: "Gross Margin",
             tooltip: { enabled: true },
-            stroke: '#F59E0B', // Add stroke color for gross margin
+            stroke: '#F59E0B',
             strokeWidth: 2,
             highlightStyle: {
               item: {
-                fill: '#D97706',      // Darker orange on hover
-                stroke: '#B45309',     // Even darker stroke on hover
+                fill: '#D97706',
+                stroke: '#B45309',
                 strokeWidth: 3,
                 cursor: 'pointer'
               }
@@ -190,12 +199,12 @@ const AgChartsPage: React.FC = () => {
             yKey: "netProfit",
             yName: "Net Profit",
             tooltip: { enabled: true },
-            stroke: '#10B981', // Add stroke color for net profit
+            stroke: '#10B981',
             strokeWidth: 2,
             highlightStyle: {
               item: {
-                fill: '#059669',      // Darker green on hover
-                stroke: '#047857',     // Even darker stroke on hover
+                fill: '#059669',
+                stroke: '#047857',
                 strokeWidth: 3,
                 cursor: 'pointer'
               }
@@ -214,7 +223,7 @@ const AgChartsPage: React.FC = () => {
 
             if (datum && datum.fiscalYear) {
               const nativeEvent = event.event;
-              
+
               setContextMenu({
                 isOpen: true,
                 position: { x: nativeEvent.clientX, y: nativeEvent.clientY },
@@ -348,9 +357,9 @@ const AgChartsPage: React.FC = () => {
 
   // Handle drill down using API
   const handleDrillDown = async (chartType: string, category: string, value: any, dataType: string) => {
-    setIsLoading(true);
+    setIsDrillDownLoading(prev => ({ ...prev, [chartType]: true }));
     setError(null);
-
+    // await new Promise(resolve => setTimeout(resolve, 1200));
     try {
       const result: any = testCase === "test-case-1"
         ? await fetchDrillDownData({
@@ -445,7 +454,7 @@ const AgChartsPage: React.FC = () => {
       setError(err?.data?.detail || err.message || "Failed to fetch drill-down data");
       console.error("Error in drill-down:", err);
     } finally {
-      setIsLoading(false);
+      setIsDrillDownLoading(prev => ({ ...prev, [chartType]: false }));
     }
   };
 
@@ -505,6 +514,20 @@ const AgChartsPage: React.FC = () => {
     setCrossChartFilter('');
   }, []);
 
+  const handleShareChart = async (
+    title: string,
+    chartRef: React.RefObject<HTMLDivElement>
+  ) => {
+    if (!chartRef.current) return;
+    try {
+      const imageData = await AGchartcaptureChartScreenshot(chartRef);
+      handleOpenDrawer(title, imageData);
+    } catch (error) {
+      console.error('Failed to capture chart:', error);
+      setError('Failed to capture chart for sharing');
+    }
+  };
+
   return (
     <section className="p-5">
       <h1 className="text-2xl font-bold text-center mb-4">Financial Dashboard - Ag Charts</h1>
@@ -542,44 +565,58 @@ const AgChartsPage: React.FC = () => {
 
       {error && (<ErrorAlert message={error} onDismiss={handleDismissError} />)}
 
-      {isLoading && <LoadingAlert />}
-
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <ChartContainer title="Revenue Trends"
-          isLoading={isLoading}
+          isLoading={isLoading || isDrillDownLoading?.line}
           isDrilled={chartOptions?.drillDownType === 'line'}
           resetDrillDown={handleResetDrillDown}
           data={chartOptions?.drillDownType === 'line' ? chartData?.drillDown : chartData.line}
-          isCrossChartFiltered={!!crossChartFilter}
+          isCrossChartFiltered={crossChartFilter}
           resetCrossChartFilter={handleResetCrossChartFilter}
+          handleShareChart={handleShareChart}
         >
           <AgCharts options={chartOptions?.drillDownType === 'line' ? chartOptions.drillDown : chartOptions.line || {}} />
         </ChartContainer>
         <ChartContainer title="Revenue vs Expenses"
-          isLoading={isLoading}
+          isLoading={isLoading || isDrillDownLoading?.bar}
           isDrilled={chartOptions?.drillDownType === 'bar'}
           resetDrillDown={handleResetDrillDown}
-          data={chartOptions?.drillDownType === 'bar' ? chartData?.drillDown : chartData.bar}>
+          isCrossChartFiltered={crossChartFilter}
+          data={chartOptions?.drillDownType === 'bar' ? chartData?.drillDown : chartData.bar}
+          handleShareChart={handleShareChart}
+        >
           <AgCharts options={chartOptions?.drillDownType === 'bar' ? chartOptions.drillDown : chartOptions.bar || {}} />
         </ChartContainer>
         <ChartContainer title="Financial Distribution"
-          isLoading={isLoading}
+          isLoading={isLoading || isDrillDownLoading?.pie}
           isDrilled={chartOptions?.drillDownType === 'pie'}
           resetDrillDown={handleResetDrillDown}
-          data={chartOptions?.drillDownType === 'pie' ? chartData?.drillDown : chartData.pie}>
+          isCrossChartFiltered={crossChartFilter}
+          data={chartOptions?.drillDownType === 'pie' ? chartData?.drillDown : chartData.pie}
+          handleShareChart={handleShareChart}
+        >
           <AgCharts options={chartOptions?.drillDownType === 'pie' ? chartOptions?.drillDown : chartOptions.pie || {}} />
         </ChartContainer>
         <ChartContainer title="Revenue by Category"
-          isLoading={isLoading}
+          isLoading={isLoading || isDrillDownLoading?.donut}
           isDrilled={chartOptions?.drillDownType === 'donut'}
           resetDrillDown={handleResetDrillDown}
-          data={chartOptions?.drillDownType === 'donut' ? chartData?.drillDown : chartData.donut}>
+          isCrossChartFiltered={crossChartFilter}
+          data={chartOptions?.drillDownType === 'donut' ? chartData?.drillDown : chartData.donut}
+          handleShareChart={handleShareChart}
+        >
           <AgCharts options={chartOptions?.drillDownType === 'donut' ? chartOptions?.drillDown : chartOptions.donut || {}} />
         </ChartContainer>
         <p className="col-span-1 md:col-span-2 text-sm text-gray-500">
           <i>Click on any chart element to drill down into more detailed data</i>
         </p>
       </div>
+      <EmailShareDrawer
+        isOpen={emailDrawer.isOpen}
+        onClose={handleCloseDrawer}
+        chartTitle={emailDrawer.chartTitle}
+        chartImage={emailDrawer.chartImage}
+      />
     </section>
   );
 };
@@ -590,11 +627,12 @@ const ChartContainer: React.FC<CommonProps & {
   isDrilled?: boolean;
   resetDrillDown?: () => void;
   isLoading: boolean;
-  isCrossChartFiltered?: boolean;
+  isCrossChartFiltered?: string;
   resetCrossChartFilter?: () => void;
-}> = ({ title, children, data, isDrilled, resetDrillDown, isLoading, isCrossChartFiltered, resetCrossChartFilter }) => {
+  handleShareChart: (title: string, chartRef: React.RefObject<HTMLDivElement>) => void;
+}> = ({ title, children, data, isDrilled, resetDrillDown, isLoading, isCrossChartFiltered, resetCrossChartFilter, handleShareChart }) => {
   const chartRef = useRef<HTMLDivElement>(null);
-
+  
   const hasData = data && data.length > 0;
 
   // Export to CSV function
@@ -652,10 +690,12 @@ const ChartContainer: React.FC<CommonProps & {
       hasData={hasData}
       exportToPNG={exportToPNG}
       exportToCSV={exportToCSV}
-      children={children}
       //@ts-ignore
       chartRef={chartRef}
-    />
+      onShareChart={() => handleShareChart(title, chartRef as React.RefObject<HTMLDivElement>)}
+    >
+      {children}
+    </ChartContainerView>
   );
 };
 

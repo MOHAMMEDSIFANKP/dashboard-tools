@@ -22,19 +22,19 @@ import {
   databaseName
 } from "@/lib/services/usersApi";
 import { Dimensions } from "@/types/Schemas";
-import { buildRequestBody, handleCrossChartFilteringFunc } from "@/lib/services/buildWhereClause";
-import { ActionButton, DashboardActionButtonComponent } from "@/components/ui/action-button";
+import { buildRequestBody } from "@/lib/services/buildWhereClause";
+import { DashboardActionButtonComponent } from "@/components/ui/action-button";
 import { ErrorAlert } from "@/components/ui/status-alerts";
-import { ChartSkelten } from "@/components/ui/ChartSkelten";
-
-import ReusableChartDrawer from "@/components/ChartDrawer";
-import { useChartDrawer } from "@/components/ChartDrawer";
 import { useSelector } from "react-redux";
 import { RootState } from "@/store/store";
 import { testCase2ProductId, useFetchTestCase2ChartDataMutation, useFetchTestCase2DrillDownDataMutation } from "@/lib/services/testCase2Api";
 import { transformTestCase2DrillDownData, transformTestCase2ToCommonFormat } from "@/lib/testCase2Transformer";
 import { ChartContextMenu } from "@/components/charts/ChartContextMenu";
 import { ChartContainerView } from "@/components/charts/ChartContainerView";
+import { useEmailShareDrawer } from "@/hooks/useEmailShareDrawer";
+import { VictoryCaptureChartScreenshot } from "@/utils/utils";
+import { EmailShareDrawer } from "@/components/drawer/EmailShareDrawer";
+
 
 // Core data types
 interface ChartDataPoint {
@@ -97,18 +97,19 @@ interface VisibleSeries {
 }
 
 // Chart Container with Export functionality
-const ChartContainer: React.FC<{
+interface ChartContainerProps {
   title: string;
   children: React.ReactNode;
   resetDrillDown?: () => void;
   isDrilled?: boolean;
   data?: any[];
   isLoading: boolean;
-  isCrossChartFiltered?: boolean;
+  isCrossChartFiltered?: string;
   resetCrossChartFilter?: () => void;
+  handleShareChart: (title: string, chartRef: React.RefObject<HTMLDivElement>) => void;
+}
 
-
-}> = ({ title, children, resetDrillDown, isDrilled, data, isLoading, isCrossChartFiltered, resetCrossChartFilter }) => {
+const ChartContainer: React.FC<ChartContainerProps> = ({ title, children, resetDrillDown, isDrilled, data, isLoading, isCrossChartFiltered, resetCrossChartFilter, handleShareChart }) => {
   const chartRef = useRef<HTMLDivElement>(null);
 
   const hasData = data && data.length > 0;
@@ -192,9 +193,11 @@ const ChartContainer: React.FC<{
       hasData={hasData}
       isCrossChartFiltered={isCrossChartFiltered}
       resetCrossChartFilter={resetCrossChartFilter}
-      children={children}
+      onShareChart={() => handleShareChart(title, chartRef as React.RefObject<HTMLDivElement>)}
       className="w-full"
-    />
+    >
+      {children}
+    </ChartContainerView>
   );
 };
 
@@ -206,7 +209,7 @@ const VictoryChartsPage: React.FC = () => {
   const [dimensions, setDimensions] = useState<Dimensions | null>(null);
   const [crossChartFilter, setCrossChartFilter] = useState<string>('');
 
-
+  const { emailDrawer, handleOpenDrawer, handleCloseDrawer } = useEmailShareDrawer();
   const testCase = useSelector((state: RootState) => state.dashboard.selectedTestCase);
 
   // Test Case 1 API Mutations
@@ -409,6 +412,19 @@ const VictoryChartsPage: React.FC = () => {
     handleResetDrillDown();
   }, []);
 
+  const handleShareChart = async (
+    title: string,
+    chartContainerRef: React.RefObject<HTMLDivElement>
+  ) => {
+    try {
+      const imageData = await VictoryCaptureChartScreenshot(chartContainerRef);
+      handleOpenDrawer(title, imageData);
+    } catch (error) {
+      console.error('Failed to capture chart:', error);
+      setError('Failed to capture chart for sharing');
+    }
+  };
+
   return (
     <section className="p-8 bg-gray-50 min-h-screen">
       <h1 className="text-3xl font-bold text-center mb-8">Financial Dashboard - Victory Charts</h1>
@@ -446,19 +462,7 @@ const VictoryChartsPage: React.FC = () => {
       />
 
       {error && (<ErrorAlert message={error} onDismiss={handleDismissError} />)}
-
-      {/* <ReusableChartDrawer
-        isOpen={isOpen}
-        drillDownState={drillDownState}
-        onBack={closeDrawer}
-        isLoading={isLoading}
-        showBackButton={true}
-        showCloseButton={true}
-      >
-        <div style={{ height: '500px' }}>
-          <DrillDownChart data={chartData.drillDown} chartType={chartData?.chartType || ''} />
-        </div>
-      </ReusableChartDrawer> */}
+      
       <>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <ChartContainer
@@ -467,9 +471,9 @@ const VictoryChartsPage: React.FC = () => {
             isDrilled={drillDownState?.isDrilled && drillDownState?.chartType === 'line'}
             resetDrillDown={handleResetDrillDown}
             data={drillDownState.chartType === 'line' ? chartData?.drillDown : chartData.line}
-            isCrossChartFiltered={!!crossChartFilter}
+            isCrossChartFiltered={crossChartFilter}
             resetCrossChartFilter={handleResetCrossChartFilter}
-
+            handleShareChart={handleShareChart}
           >
             <LineChart
               data={drillDownState.chartType === 'line' ? normalizeSpecificKeys(chartData.drillDown) : chartData.line}
@@ -486,6 +490,8 @@ const VictoryChartsPage: React.FC = () => {
             isDrilled={drillDownState?.isDrilled && drillDownState?.chartType === 'bar'}
             resetDrillDown={handleResetDrillDown}
             data={drillDownState.chartType === 'bar' ? chartData?.drillDown : chartData.bar}
+            isCrossChartFiltered={crossChartFilter}
+            handleShareChart={handleShareChart}
           >
             <BarChart
               data={drillDownState.chartType === 'bar' ? chartData.drillDown : chartData.bar}
@@ -500,7 +506,10 @@ const VictoryChartsPage: React.FC = () => {
             title={drillDownState?.chartType === 'pie' ? drillDownState?.title : "Financial Distribution"}
             isDrilled={drillDownState?.isDrilled && drillDownState?.chartType === 'pie'}
             resetDrillDown={handleResetDrillDown}
-            data={drillDownState?.chartType === 'pie' ? chartData?.drillDown : chartData.pie}>
+            data={drillDownState?.chartType === 'pie' ? chartData?.drillDown : chartData.pie}
+            isCrossChartFiltered={crossChartFilter}
+            handleShareChart={handleShareChart}
+          >
             {drillDownState.chartType === 'pie' ? (
               <LineChartDrillDown
                 data={chartData.drillDown}
@@ -515,7 +524,10 @@ const VictoryChartsPage: React.FC = () => {
             title={drillDownState?.chartType === 'donut' ? drillDownState?.title : "Revenue by Category"}
             isDrilled={drillDownState?.isDrilled && drillDownState?.chartType === 'donut'}
             resetDrillDown={handleResetDrillDown}
-            data={drillDownState?.chartType === 'pie' ? chartData?.drillDown : chartData.donut}>
+            data={drillDownState?.chartType === 'pie' ? chartData?.drillDown : chartData.donut}
+            isCrossChartFiltered={crossChartFilter}
+            handleShareChart={handleShareChart}
+          >
             {drillDownState.chartType === 'donut' ? (
               <LineChartDrillDown
                 data={chartData.drillDown}
@@ -529,6 +541,12 @@ const VictoryChartsPage: React.FC = () => {
           <i>Click on any chart element to drill down into more detailed data</i>
         </p>
       </>
+      <EmailShareDrawer
+        isOpen={emailDrawer.isOpen}
+        onClose={handleCloseDrawer}
+        chartTitle={emailDrawer.chartTitle}
+        chartImage={emailDrawer.chartImage}
+      />
     </section>
   );
 };
@@ -648,6 +666,23 @@ const LineChart: React.FC<LineChartProps> = ({ data, setContextMenu, onDrillDown
   const createScatterEvents = useCallback((type: keyof Pick<ChartDataPoint, 'revenue' | 'grossMargin' | 'netProfit'>) => [{
     target: "data" as const,
     eventHandlers: {
+      onMouseOver: () => {
+        return [
+          {
+            target: "data",
+            mutation: () => ({ style: { fill: "#1E40AF", cursor: "pointer" } })
+          }
+        ];
+      },
+      onMouseOut: () => {
+        return [
+          {
+            target: "data",
+            mutation: () => ({ style: { fill: series.find(s => s.key === type)?.color } })
+          }
+        ];
+      },
+
       onClick: (event: any, { data: chartData, index }: EventHandlerProps) => {
         const clickedPoint = chartData[index];
         if (!clickedPoint?.period && !clickedPoint?.fiscalYear) return;
@@ -802,6 +837,34 @@ const BarChart: React.FC<BarChartProps> = ({ data, onDrillDown, isDrilled, isCro
   const createBarEvents = useCallback((type: keyof Pick<ChartDataPoint, 'revenue' | 'expenses'>) => [{
     target: "data" as const,
     eventHandlers: {
+      onMouseOver: () => {
+        return [
+          {
+            target: "data",
+            mutation: () => ({
+              style: {
+                fill: "#1E40AF",
+                cursor: "pointer",
+                fillOpacity: 0.8
+              }
+            })
+          }
+        ];
+      },
+      onMouseOut: () => {
+        return [
+          {
+            target: "data",
+            mutation: () => ({
+              style: {
+                fill: series.find(s => s.key === type)?.color,
+                cursor: "pointer",
+                fillOpacity: 1
+              }
+            })
+          }
+        ];
+      },
       onClick: (_e: any, { datum }: EventHandlerProps) => {
         if (!isDrilled) {
           onDrillDown('bar', datum.fiscalYear, datum[type], type);
@@ -921,7 +984,7 @@ const PieChart: React.FC<{
         animate={{ duration: 1000 }}
         colorScale={colorScale}
         labelRadius={80}
-        style={{ labels: { fontSize: 10, fill: "#333" } }}
+        style={{ labels: { fontSize: 10, fill: "#333" }, data: { cursor: "pointer" } }}
         labels={({ datum }) => `${datum.catfinancialview}: $${Math.round(datum.revenue / 1000)}k`}
         labelComponent={<VictoryTooltip />}
         radius={100}
@@ -1021,7 +1084,10 @@ const DonutChart: React.FC<{
         colorScale={colorScale}
         innerRadius={70}
         labelRadius={90}
-        style={{ labels: { fontSize: 10, fill: "#333" } }}
+        style={{
+          labels: { fontSize: 12, cursor: "pointer" },
+          data: { cursor: "pointer" }
+        }}
         labels={({ datum }) => `${datum.cataccountingview}: $${Math.round(datum.revenue / 1000)}k`}
         labelComponent={<VictoryTooltip />}
         theme={VictoryTheme.clean}

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { CompactTable } from "@table-library/react-table-library/compact";
 import { useTheme } from "@table-library/react-table-library/theme";
 import { getTheme } from "@table-library/react-table-library/baseline";
@@ -13,6 +13,11 @@ import { FinancialSchema } from "@/types/Schemas";
 import { testCase2ProductId, useFetchTestCase2TableDataQuery } from "@/lib/services/testCase2Api";
 import { RootState } from "@/store/store";
 import { useSelector } from "react-redux";
+
+import { useEmailShareDrawer } from "@/hooks/useEmailShareDrawer";
+import { EmailShareDrawer } from "@/components/drawer/EmailShareDrawer";
+import { ReactTableCaptureScreenshot } from "@/utils/utils";
+import { Share } from 'lucide-react';
 
 interface FinancialRow extends FinancialSchema {
   id: string;
@@ -30,12 +35,14 @@ export default function ReactTable() {
   const [filterCategory, setFilterCategory] = useState<string>("All");
   const [currentPage, setCurrentPage] = useState<number>(0);
   const [pageSize, setPageSize] = useState<number>(10);
+  const tableRef = useRef<HTMLDivElement>(null);
 
   // Selection and editing state
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
   const [editingCell, setEditingCell] = useState<EditableCell | null>(null);
   const [unsavedChanges, setUnsavedChanges] = useState<Map<string, Partial<FinancialRow>>>(new Map());
 
+  const { emailDrawer, handleOpenDrawer, handleCloseDrawer } = useEmailShareDrawer();
   const testCase = useSelector((state: RootState) => state.dashboard.selectedTestCase);
   const isTestCase1 = testCase === "test-case-1";
   const isTestCase2 = testCase === "test-case-2";
@@ -394,7 +401,18 @@ export default function ReactTable() {
   // @ts-ignore
   const filteredRows = isTestCase1 ? (searchData?.filtered_rows || 0) : (searchData?.pagination?.filtered_records || 0);
 
-    // Handle loading and error states
+  const handleShareTable = async () => {
+    try {
+      const imageData = await ReactTableCaptureScreenshot(tableRef as React.RefObject<any>);
+      handleOpenDrawer("Financial Data Table", imageData);
+    } catch (error) {
+      console.error('Failed to capture table:', error);
+      alert('Failed to capture table screenshot. Please try again.');
+    }
+  };
+
+
+  // Handle loading and error states
   if (isSearchLoading) {
     return <div className="p-4 text-center">Loading data...</div>;
   }
@@ -417,7 +435,16 @@ export default function ReactTable() {
 
   return (
     <section className="p-8">
-      <h1 className="text-2xl font-bold mb-4">Financial Data Table - API Integrated</h1>
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-2xl font-bold">Financial Data Table - API Integrated</h1>
+        <button
+          onClick={handleShareTable}
+          className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white rounded-xl shadow-lg hover:shadow-purple-200 transform hover:scale-105 transition-all duration-300 ease-out font-medium text-sm flex items-center gap-2"
+        >
+          <Share className="w-4 h-4" />
+          Share Table
+        </button>
+      </div>
 
       {/* Controls */}
       <div className="flex flex-wrap items-center gap-4 mb-6">
@@ -497,7 +524,7 @@ export default function ReactTable() {
         <div className="p-4 text-center">No data found matching your filters</div>
       ) : (
         <>
-          <div className="border rounded overflow-auto max-h-[70vh]">
+          <div ref={tableRef} className="border rounded overflow-auto max-h-[70vh]">
             <CompactTable
               columns={COLUMNS}
               data={tableData}
@@ -534,6 +561,12 @@ export default function ReactTable() {
           </div>
         </>
       )}
+       <EmailShareDrawer
+        isOpen={emailDrawer.isOpen}
+        onClose={handleCloseDrawer}
+        chartTitle={emailDrawer.chartTitle}
+        chartImage={emailDrawer.chartImage}
+      />
     </section>
   );
 }

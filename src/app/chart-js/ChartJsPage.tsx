@@ -33,6 +33,9 @@ import { useSelector } from "react-redux";
 import { transformTestCase2DrillDownData, transformTestCase2ToCommonFormat } from "@/lib/testCase2Transformer";
 import { ChartContextMenu } from "@/components/charts/ChartContextMenu";
 import { ChartContainerView } from "@/components/charts/ChartContainerView";
+import { useEmailShareDrawer } from "@/hooks/useEmailShareDrawer";
+import { ChartJscaptureChartScreenshot } from "@/utils/utils";
+import { EmailShareDrawer } from "@/components/drawer/EmailShareDrawer";
 
 ChartJS.register(
   CategoryScale,
@@ -59,12 +62,13 @@ interface ChartContainerProps {
   isDrilled?: boolean;
   resetDrillDown?: () => void;
   isLoading: boolean;
-  isCrossChartFiltered?: boolean;
+  isCrossChartFiltered?: string;
   resetCrossChartFilter?: () => void;
+  handleShareChart: (title: string, chartRef: React.RefObject<HTMLDivElement>) => void
 }
 
 const ChartContainer = forwardRef<HTMLDivElement, ChartContainerProps>(
-  ({ title, chartRef, data, children, isDrilled, resetDrillDown, isLoading, isCrossChartFiltered, resetCrossChartFilter }, ref) => {
+  ({ title, chartRef, data, children, isDrilled, resetDrillDown, isLoading, isCrossChartFiltered, resetCrossChartFilter, handleShareChart }, ref) => {
     const hasData = data && data.length > 0;
 
     const handleDownloadImage = () => {
@@ -117,6 +121,7 @@ const ChartContainer = forwardRef<HTMLDivElement, ChartContainerProps>(
           exportToCSV={handleDownloadCSV}
           children={children}
           chartRef={chartRef}
+          onShareChart={() => handleShareChart(title, chartRef as React.RefObject<HTMLDivElement>)}
           className="h-64"
         />
       </>
@@ -141,8 +146,10 @@ export default function ChartJsPage() {
     chartType: null,
     title: ''
   });
+
   const [crossChartFilter, setCrossChartFilter] = useState<string>('');
 
+  const { emailDrawer, handleOpenDrawer, handleCloseDrawer } = useEmailShareDrawer();
   const testCase = useSelector((state: RootState) => state.dashboard.selectedTestCase);
 
   // Test Case 1 API Mutations
@@ -230,18 +237,30 @@ export default function ChartJsPage() {
               data: lineData.map((item: LineChartData) => item.revenue || 0),
               borderColor: "rgb(75, 192, 192)",
               backgroundColor: "rgba(75, 192, 192, 0.5)",
+              hoverBorderColor: "rgb(54, 162, 235)", // Darker blue on hover
+              hoverBackgroundColor: "rgba(54, 162, 235, 0.8)",
+              hoverBorderWidth: 3,
+              pointHoverRadius: 4,
             },
             {
               label: "grossMargin",
               data: lineData.map((item: LineChartData) => item.grossMargin || 0),
               borderColor: "rgb(53, 162, 235)",
               backgroundColor: "rgba(53, 162, 235, 0.5)",
+              hoverBorderColor: "rgb(37, 99, 235)", // Darker blue on hover
+              hoverBackgroundColor: "rgba(37, 99, 235, 0.8)",
+              hoverBorderWidth: 3,
+              pointHoverRadius: 4,
             },
             {
               label: "netProfit",
               data: lineData.map((item: LineChartData) => item.netProfit || 0),
               borderColor: "rgb(255, 99, 132)",
               backgroundColor: "rgba(255, 99, 132, 0.5)",
+              hoverBorderColor: "rgb(220, 38, 127)", // Darker pink on hover
+              hoverBackgroundColor: "rgba(220, 38, 127, 0.8)",
+              hoverBorderWidth: 3,
+              pointHoverRadius: 4,
             }
           ]
         });
@@ -257,11 +276,17 @@ export default function ChartJsPage() {
               label: "Revenue",
               data: barData.map((item: BarChartData) => item.revenue || 0),
               backgroundColor: "rgba(75, 192, 192, 0.6)",
+              hoverBackgroundColor: "rgba(54, 162, 235, 0.8)", // Darker on hover
+              hoverBorderColor: "rgb(54, 162, 235)",
+              hoverBorderWidth: 2,
             },
             {
               label: "Expenses",
               data: barData.map((item: BarChartData) => item.expenses || 0),
               backgroundColor: "rgba(255, 99, 132, 0.6)",
+              hoverBackgroundColor: "rgba(220, 38, 127, 0.8)", // Darker on hover
+              hoverBorderColor: "rgb(220, 38, 127)",
+              hoverBorderWidth: 2,
             }
           ]
         });
@@ -281,7 +306,17 @@ export default function ChartJsPage() {
               "rgba(255, 206, 86, 0.6)",
               "rgba(153, 102, 255, 0.6)",
               "rgba(255, 159, 64, 0.6)",
-            ]
+            ],
+            hoverBackgroundColor: [
+              "rgba(54, 162, 235, 0.8)",
+              "rgba(220, 38, 127, 0.8)",
+              "rgba(37, 99, 235, 0.8)",
+              "rgba(234, 179, 8, 0.8)",
+              "rgba(124, 58, 237, 0.8)",
+              "rgba(234, 88, 12, 0.8)",
+            ],
+            hoverBorderColor: "#fff",
+            hoverBorderWidth: 10,
           }]
         });
       }
@@ -300,7 +335,18 @@ export default function ChartJsPage() {
               "rgba(255, 159, 64, 0.6)",
               "rgba(54, 162, 235, 0.6)",
               "rgba(255, 99, 132, 0.6)",
-            ]
+            ],
+            hoverBackgroundColor: [
+              "rgba(234, 179, 8, 0.8)",
+              "rgba(54, 162, 235, 0.8)",
+              "rgba(124, 58, 237, 0.8)",
+              "rgba(234, 88, 12, 0.8)",
+              "rgba(37, 99, 235, 0.8)",
+              "rgba(220, 38, 127, 0.8)",
+            ],
+            hoverBorderColor: "#fff",
+            hoverBorderWidth: 10,
+            borderWidth: 2,
           }]
         });
       }
@@ -441,12 +487,6 @@ export default function ChartJsPage() {
         dataType: dataType
       });
 
-      // if (nativeEvent?.ctrlKey || nativeEvent?.metaKey) {
-      //   await handleDrillDown('line', period, dataType, value);
-      // } else {
-      //   // @ts-ignore
-      //   setDimensions(handleCrossChartFilteringFunc(String(period)));
-      // }
     } catch (error) {
       console.error("Error in line chart click handler:", error);
     }
@@ -544,7 +584,25 @@ export default function ChartJsPage() {
       title: {
         display: true
       }
+    },
+    onHover: (event, activeElements) => {
+      if (event.native?.target) {
+        (event.native.target as HTMLCanvasElement).style.cursor = activeElements.length > 0 ? 'pointer' : 'default';
+      }
+    },
+    elements: {
+      point: {
+        hoverRadius: 4,
+        hoverBorderWidth: 3
+      },
+      bar: {
+        hoverBorderWidth: 2
+      },
+      arc: {
+        hoverBorderWidth: 3
+      }
     }
+
   };
 
   const handleResetGroup = useCallback((): void => {
@@ -595,6 +653,20 @@ export default function ChartJsPage() {
     handleResetDrillDown()
   }, []);
 
+  const handleShareChart = async (
+    title: string,
+    chartRef: React.RefObject<HTMLDivElement>
+  ) => {
+    if (!chartRef.current) return;
+    try {
+      const imageData = await ChartJscaptureChartScreenshot(chartRef);
+      handleOpenDrawer(title, imageData);
+    } catch (error) {
+      console.error('Failed to capture chart:', error);
+      setError('Failed to capture chart for sharing');
+    }
+  };
+
   return (
     <section className="p-5">
       <h1 className="text-2xl font-bold text-center mb-4">Financial Dashboard - Chart.js</h1>
@@ -642,9 +714,9 @@ export default function ChartJsPage() {
             data={drillDownState.chartType === 'line' ? rawChartData.drillDown : rawChartData.line}
             isDrilled={drillDownState.isDrilled && drillDownState.chartType === 'line'}
             resetDrillDown={handleResetDrillDown}
-            isCrossChartFiltered={!!crossChartFilter}
+            isCrossChartFiltered={crossChartFilter}
             resetCrossChartFilter={handleResetCrossChartFilter}
-
+            handleShareChart={handleShareChart}
           >
             <Line
               ref={lineChartRef}
@@ -666,6 +738,8 @@ export default function ChartJsPage() {
             data={drillDownState.chartType === 'bar' ? rawChartData.drillDown : rawChartData.bar}
             isDrilled={drillDownState.isDrilled && drillDownState.chartType === 'bar'}
             resetDrillDown={handleResetDrillDown}
+            isCrossChartFiltered={crossChartFilter}
+            handleShareChart={handleShareChart}
           >
             <Bar
               ref={barChartRef}
@@ -686,6 +760,8 @@ export default function ChartJsPage() {
             data={drillDownState.chartType === 'pie' ? rawChartData.drillDown : rawChartData.pie}
             isDrilled={drillDownState.isDrilled && drillDownState.chartType === 'pie'}
             resetDrillDown={handleResetDrillDown}
+            handleShareChart={handleShareChart}
+            isCrossChartFiltered={crossChartFilter}
           >
             {drillDownState.isDrilled && drillDownState.chartType === 'pie' ? (
               <Line
@@ -720,6 +796,8 @@ export default function ChartJsPage() {
             data={drillDownState.chartType === 'donut' ? rawChartData.drillDown : rawChartData.donut}
             isDrilled={drillDownState.isDrilled && drillDownState.chartType === 'donut'}
             resetDrillDown={handleResetDrillDown}
+            handleShareChart={handleShareChart}
+            isCrossChartFiltered={crossChartFilter}
           >
             {drillDownState.isDrilled && drillDownState.chartType === 'donut' ? (
               <Line
@@ -752,6 +830,12 @@ export default function ChartJsPage() {
           <i>Click on any chart element to drill down into more detailed data</i>
         </p>
       </div>
+      <EmailShareDrawer
+        isOpen={emailDrawer.isOpen}
+        onClose={handleCloseDrawer}
+        chartTitle={emailDrawer.chartTitle}
+        chartImage={emailDrawer.chartImage}
+      />
     </section>
   );
 }

@@ -5,6 +5,7 @@ import { TabOption, TabsContainer } from '@/components/ui/TabsContainer'
 import TanstackTable from './TanstackTable'
 import DashboardInfoCard from '@/components/DashboardInfoCard'
 
+import './tanstack.css'
 function Page() {
     const [selectedTab, setSelectedTab] = React.useState<TabOption>('tool-test-info')
 
