@@ -1157,7 +1157,7 @@ const DraggableAttribute: React.FC<DraggableAttributeProps> = ({ attribute, isUs
     <div
       draggable={!isUsed}
       onDragStart={handleDragStart}
-      className={`flex items-center gap-2 p-3 rounded-lg border-2 border-dashed transition-all duration-200 cursor-move ${isUsed
+      className={`available-fields-items-card flex items-center gap-2 p-3 rounded-lg border-2 border-dashed transition-all duration-200 cursor-move ${isUsed
         ? 'border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed'
         : `${bgColor} ${hoverColor}`
         }`}
@@ -1166,7 +1166,7 @@ const DraggableAttribute: React.FC<DraggableAttributeProps> = ({ attribute, isUs
       <div style={{ color: attribute.color }}>
         {getIcon(attribute.iconName, 16)}
       </div>
-      <span className={`text-sm font-medium ${isUsed ? 'text-gray-400' : 'text-gray-700'}`}>
+      <span className={`available-fields-items-text text-sm font-medium ${isUsed ? 'text-gray-400' : 'text-gray-700'}`}>
         {attribute.label}
       </span>
       <span className={`text-xs px-2 py-1 rounded-full ${attribute.type === 'measure' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'
@@ -1567,7 +1567,7 @@ const EnhancedDashboard: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white p-6">
+    <div className="drag-and-drop min-h-screen bg-gradient-to-br from-gray-50 to-white p-6">
       <div className="max-w-7xl mx-auto hidden lg:block">
         {/* Header */}
         <div className="mb-8">
@@ -1585,14 +1585,14 @@ const EnhancedDashboard: React.FC = () => {
           onLibraryChange={handleLibraryChange}
         />
 
-        <div className="grid grid-cols-1 lg:grid-cols-1 gap-6 bg-white rounded-xl shadow-lg p-6 mb-5">
+        <div className="measures-section grid grid-cols-1 lg:grid-cols-1 gap-6 bg-white rounded-xl shadow-lg p-6 mb-5">
           {/* Measures Section */}
           <div className="mb-6">
             <h3 className="font-semibold text-blue-800 mb-4 flex items-center gap-2">
               <DollarSign size={16} />
               Available Fields
             </h3>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="available-fields grid grid-cols-2 lg:grid-cols-4 gap-4">
               {[...availableMeasures, ...availableDimensions].map((attribute) => (
                 <DraggableAttribute
                   key={attribute.key}
@@ -1604,7 +1604,7 @@ const EnhancedDashboard: React.FC = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <div className="available-attributes grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Sidebar - Available Attributes */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-xl shadow-lg p-6 sticky top-6">
