@@ -65,6 +65,7 @@ const SideBarLayout: React.FC<SideBarLayoutProps> = ({ children }) => {
     const sidebarItems = [
         // === Home ===
         { icon: Home, label: 'Home', href: '/', active: pathname === '/', section: '' },
+        { icon: Layout, label: 'Exploration', href: '/dashboard/time-explorer', active: pathname === '/dashboard/time-explorer', section: '' },
 
         // === Dashboard Tools (Open Source) ===
         { icon: BarChart3, label: 'AG Charts', href: '/ag-charts', active: pathname === '/ag-charts', section: 'Open Source Dashboard Tools' },
