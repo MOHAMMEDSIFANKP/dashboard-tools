@@ -43,13 +43,18 @@ export default function FinancialDashboard() {
   const [selectedMonth, setSelectedMonth] = useState<string>('01');
 
   // API hooks
+  const result1 = useFetchAvailableYearsQuery('sample_100k', {
+    skip: testCase !== 'test-case-1'
+  });
+  const result2 = useFetchTestCase2AvailableYearsQuery(testCase2ProductId, {
+    skip: testCase === 'test-case-1'
+  });
+
   const {
     data: yearsData,
     error: yearsError,
     isLoading: yearsLoading
-  } = testCase === 'test-case-1'
-      ? useFetchAvailableYearsQuery('sample_100k')
-      : useFetchTestCase2AvailableYearsQuery(testCase2ProductId);
+  } = testCase === 'test-case-1' ? result1 : result2;
 
   const [fetchFinancialData] = useLazyFetchFinancialDataQuery();
   const [fetchFinancialDataTestCase2] = useLazyFetchFinancialDataTestCase2Query()
