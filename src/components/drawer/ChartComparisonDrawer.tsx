@@ -1096,7 +1096,7 @@ export const EChartsRenderer: React.FC<EChartsRendererProps> = ({
 
             return {
                 title: {
-                    text: `${year} - ${chartType.charAt(0).toUpperCase() + chartType.slice(1)}`,
+                    text: `Financial Year ${year} - ${chartType.charAt(0).toUpperCase() + chartType.slice(1)}`,
                     left: 'center'
                 },
                 tooltip: {
@@ -1140,7 +1140,7 @@ export const EChartsRenderer: React.FC<EChartsRendererProps> = ({
 
             return {
                 title: {
-                    text: `${year} - ${chartType.charAt(0).toUpperCase() + chartType.slice(1)}`,
+                    text: `Financial Year ${year} - ${chartType.charAt(0).toUpperCase() + chartType.slice(1)}`,
                     left: 'center'
                 },
                 tooltip: {
