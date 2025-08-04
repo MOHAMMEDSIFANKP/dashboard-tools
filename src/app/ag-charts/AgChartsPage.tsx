@@ -629,13 +629,13 @@ const AgChartsPage: React.FC = () => {
         chartTitle={emailDrawer.chartTitle}
         chartImage={emailDrawer.chartImage}
       />
-      <ComparisonDrawer
+      {comparisonDrawer.isOpen && <ComparisonDrawer
         isOpen={comparisonDrawer.isOpen}
         onClose={handleComparisonCloseDrawer}
         chartType={comparisonDrawer.chartType}
         chartLibrary='ag-charts'
         testCase={testCase}
-      />
+      />}
     </section>
   );
 };

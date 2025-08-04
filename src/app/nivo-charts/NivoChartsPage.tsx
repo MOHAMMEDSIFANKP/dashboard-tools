@@ -889,13 +889,13 @@ export default function NivoChartsPage() {
         chartTitle={emailDrawer.chartTitle}
         chartImage={emailDrawer.chartImage}
       />
-      <ComparisonDrawer
+     {comparisonDrawer.isOpen && <ComparisonDrawer
         isOpen={comparisonDrawer.isOpen}
         onClose={handleComparisonCloseDrawer}
         chartType={comparisonDrawer.chartType}
         chartLibrary="nivo"
         testCase={testCase}
-      />
+      />}
     </section>
   );
 }

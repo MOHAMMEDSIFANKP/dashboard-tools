@@ -1046,13 +1046,13 @@ export default function ReactPlotlyPage() {
         chartTitle={emailDrawer.chartTitle}
         chartImage={emailDrawer.chartImage}
       />
-      <ComparisonDrawer
+     {comparisonDrawer.isOpen && <ComparisonDrawer
         isOpen={comparisonDrawer.isOpen}
         onClose={handleComparisonCloseDrawer}
         chartType={comparisonDrawer.chartType}
         chartLibrary="plotly"
         testCase={testCase}
-      />
+      />}
     </section>
   );
 };

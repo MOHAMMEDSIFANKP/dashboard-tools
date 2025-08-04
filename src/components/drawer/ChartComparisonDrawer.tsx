@@ -97,6 +97,7 @@ export const ComparisonDrawer: React.FC<ComparisonDrawerProps> = ({
     chartLibrary = "ag-charts",
     testCase = 'test-case-1'
 }) => {
+    
     const [selectedYear1, setSelectedYear1] = useState<number | null>(2021);
     const [selectedYear2, setSelectedYear2] = useState<number | null>(null);
     const [comparisonData, setComparisonData] = useState<ComparisonData>({
