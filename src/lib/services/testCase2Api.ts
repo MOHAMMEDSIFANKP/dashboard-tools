@@ -98,19 +98,19 @@ export const testCase2Api = createApi({
   }),
   endpoints: (builder) => ({
     // Chart Data Endpoints for Test Case 2
-    fetchTestCase2ChartData: builder.mutation<ApiResponse, { 
-      productId?: string; 
+    fetchTestCase2ChartData: builder.mutation<ApiResponse, {
+      productId?: string;
       body: ChartRequestBody;
       excludeNullRevenue?: boolean;
-      crossChartFilter?:string;
+      crossChartFilter?: string;
     }>({
-      query: ({ crossChartFilter ,productId = testCase2ProductId, body, excludeNullRevenue = false }) => ({
+      query: ({ crossChartFilter, productId = testCase2ProductId, body, excludeNullRevenue = false }) => ({
         url: `dashboard/all-charts?product_id=${productId}&exclude_null_revenue=${excludeNullRevenue}&${crossChartFilter ? `&year_filter=${crossChartFilter}` : ''}`,
         method: 'POST',
         body,
       }),
     }),
-      // 🆕 Fetch Dimensions (No Reference Tables)
+    // 🆕 Fetch Dimensions (No Reference Tables)
     fetchTestCase2Dimensions: builder.query<
       any,
       { productId?: string; includeReferenceTables?: boolean }
@@ -142,7 +142,7 @@ export const testCase2Api = createApi({
         chartType,
         category,
         dataType,
-        drillDownLevel = "detailed", 
+        drillDownLevel = "detailed",
         includeReferenceContext = true,
         excludeNullRevenue = false,
       }) => ({
@@ -176,7 +176,7 @@ export const testCase2Api = createApi({
 
     // Financial Data
     fetchFinancialDataTestCase2: builder.query<any, { productId?: string; year: string; month: string }>({
-      query: ({ productId = testCase2ProductId, year, month }) => 
+      query: ({ productId = testCase2ProductId, year, month }) =>
         `dashboard/financial-data/${productId}?year=${year}&month=${month}`,
     }),
     // Fetch Group Filter Datas
@@ -191,11 +191,28 @@ export const testCase2Api = createApi({
       }),
     }),
 
+    fetchTestCase2AvailableYears: builder.query<any, string>({
+      query: (productId = testCase2ProductId) => `dashboard/available-years/${productId}`,
+    }),
+
+    // Comparing charts
+    fetchTestCase2ComparisonData: builder.mutation<any, {
+      productId?: string;
+      chartType: string;
+      year1: number;
+      year2: number;
+    }>({
+      query: ({ productId = testCase2ProductId, chartType, year1, year2 }) => ({
+        url: `dashboard/charts/compare?product_id=${productId}&chart_type=${chartType}&year1=${year1}&year2=${year2}`,
+        method: 'POST',
+      }),
+    }),
+
 
   }),
 });
 
-export const { 
+export const {
   useFetchTestCase2ChartDataMutation,
   useFetchTestCase2DimensionsQuery,
   useTestCase2saveGroupFilterMutation,
@@ -203,6 +220,10 @@ export const {
   useFetchTestCase2TableDataQuery,
   useLazyFetchFinancialDataTestCase2Query,
   useFetchTestCase2groupFiltersQuery,
-  useDeleteTestCase2GroupFilterMutation
+  useDeleteTestCase2GroupFilterMutation,
+  useFetchTestCase2AvailableYearsQuery,
+
+  // Comparing
+  useFetchTestCase2ComparisonDataMutation
 
 } = testCase2Api;

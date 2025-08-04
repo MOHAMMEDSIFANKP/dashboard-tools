@@ -10,7 +10,7 @@ import {
 } from "@/lib/services/usersApi"
 import { useSelector } from "react-redux"
 import { RootState } from "@/store/store"
-import { testCase2ProductId, useLazyFetchFinancialDataTestCase2Query } from "@/lib/services/testCase2Api"
+import { testCase2ProductId, useFetchTestCase2AvailableYearsQuery, useLazyFetchFinancialDataTestCase2Query } from "@/lib/services/testCase2Api"
 
 interface FilterOption {
   label: string
@@ -47,7 +47,9 @@ export default function FinancialDashboard() {
     data: yearsData,
     error: yearsError,
     isLoading: yearsLoading
-  } = useFetchAvailableYearsQuery('sample_100k');
+  } = testCase === 'test-case-1'
+      ? useFetchAvailableYearsQuery('sample_100k')
+      : useFetchTestCase2AvailableYearsQuery(testCase2ProductId);
 
   const [fetchFinancialData] = useLazyFetchFinancialDataQuery();
   const [fetchFinancialDataTestCase2] = useLazyFetchFinancialDataTestCase2Query()
@@ -118,7 +120,7 @@ export default function FinancialDashboard() {
         // Set month data
         if (monthData && monthData.length > 0) {
           // Transform API response to match FinancialData interface
-          const transformedMonthData =monthData.map((item: any) => ({
+          const transformedMonthData = monthData.map((item: any) => ({
             fiscalyear: parseInt(item.fiscalyear),
             period: item.period,
             revenue: item.revenue || 0,

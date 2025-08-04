@@ -894,6 +894,7 @@ export default function NivoChartsPage() {
         onClose={handleComparisonCloseDrawer}
         chartType={comparisonDrawer.chartType}
         chartLibrary="nivo"
+        testCase={testCase}
       />
     </section>
   );

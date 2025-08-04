@@ -568,6 +568,7 @@ const VictoryChartsPage: React.FC = () => {
         onClose={handleComparisonCloseDrawer}
         chartType={comparisonDrawer.chartType}
         chartLibrary='victory'
+        testCase={testCase}
       />
     </section>
   );

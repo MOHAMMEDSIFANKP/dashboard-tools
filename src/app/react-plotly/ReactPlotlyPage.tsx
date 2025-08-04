@@ -1051,6 +1051,7 @@ export default function ReactPlotlyPage() {
         onClose={handleComparisonCloseDrawer}
         chartType={comparisonDrawer.chartType}
         chartLibrary="plotly"
+        testCase={testCase}
       />
     </section>
   );

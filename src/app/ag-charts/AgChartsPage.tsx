@@ -634,6 +634,7 @@ const AgChartsPage: React.FC = () => {
         onClose={handleComparisonCloseDrawer}
         chartType={comparisonDrawer.chartType}
         chartLibrary='ag-charts'
+        testCase={testCase}
       />
     </section>
   );

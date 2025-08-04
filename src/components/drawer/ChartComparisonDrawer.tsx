@@ -34,6 +34,7 @@ import {
 } from 'victory';
 // Echarts
 import ReactECharts from 'echarts-for-react';
+import { testCase2ProductId, useFetchTestCase2AvailableYearsQuery, useFetchTestCase2ComparisonDataMutation } from "@/lib/services/testCase2Api";
 
 ChartJS.register(...registerables);
 
@@ -45,6 +46,7 @@ interface ComparisonDrawerProps {
     title?: string;
     chartType?: string;
     chartLibrary: ChartLibrary;
+    testCase: string;
 }
 
 interface ComparisonData {
@@ -93,6 +95,7 @@ export const ComparisonDrawer: React.FC<ComparisonDrawerProps> = ({
     title = "Financial Year Comparison",
     chartType = "line",
     chartLibrary = "ag-charts",
+    testCase = 'test-case-1'
 }) => {
     const [selectedYear1, setSelectedYear1] = useState<number | null>(2021);
     const [selectedYear2, setSelectedYear2] = useState<number | null>(null);
@@ -106,9 +109,14 @@ export const ComparisonDrawer: React.FC<ComparisonDrawerProps> = ({
         data: availableYears = [],
         error: yearsError,
         isLoading: yearsLoading,
-    } = useFetchAvailableYearsQuery('sample_100k');
+    } = testCase === 'test-case-1'
+            ? useFetchAvailableYearsQuery('sample_100k')
+            : useFetchTestCase2AvailableYearsQuery(testCase2ProductId);
 
-    const [triggerComparison, { isLoading: isComparing }] = useFetchComparisonDataMutation();
+    // const [triggerComparison, { isLoading: isComparing }] = useFetchComparisonDataMutation();
+    const [triggerComparisonTC1, { isLoading: isComparingTC1 }] = useFetchComparisonDataMutation();
+    const [triggerComparisonTC2, { isLoading: isComparingTC2 }] = useFetchTestCase2ComparisonDataMutation();
+
 
     useEffect(() => {
         if (!isOpen) {
@@ -124,12 +132,24 @@ export const ComparisonDrawer: React.FC<ComparisonDrawerProps> = ({
         setComparisonData({ loading: true, error: null });
 
         try {
-            const result = await triggerComparison({
-                tableName: 'sample_100k',
-                chartType,
-                year1: selectedYear1,
-                year2: selectedYear2,
-            }).unwrap();
+            let result;
+
+
+            if (testCase === 'test-case-1') {
+                result = await triggerComparisonTC1({
+                    tableName: 'sample_100k',
+                    chartType,
+                    year1: selectedYear1,
+                    year2: selectedYear2,
+                }).unwrap();
+            } else {
+                result = await triggerComparisonTC2({
+                    productId: testCase2ProductId,
+                    chartType,
+                    year1: selectedYear1,
+                    year2: selectedYear2,
+                }).unwrap();
+            }
 
             setComparisonData({
                 year1Data: {
@@ -929,138 +949,138 @@ export const NivoRenderer: React.FC<NivoRendererProps> = ({
 
 
 interface VictoryRendererProps {
-  chartType: string;
-  data: any[];
-  columns: string[];
-  year: string;
+    chartType: string;
+    data: any[];
+    columns: string[];
+    year: string;
 }
 
 export const VictoryRenderer: React.FC<VictoryRendererProps> = ({
-  chartType,
-  data,
-  columns,
-  year,
+    chartType,
+    data,
+    columns,
+    year,
 }) => {
-  const isTimeSeries = chartType === 'line' || chartType === 'bar';
-  const isPieLike = chartType === 'pie' || chartType === 'donut';
+    const isTimeSeries = chartType === 'line' || chartType === 'bar';
+    const isPieLike = chartType === 'pie' || chartType === 'donut';
 
-  if (isTimeSeries) {
-    // Filter out period and get all measure columns
-    const yKeys = columns.filter(col => !['period', 'fiscalYear'].includes(col));
-    
-    return (
-      <div className="w-full h-full p-4">
-        <VictoryChart
-          theme={VictoryTheme.material}
-          domainPadding={20}
-        //   height={400}
-        width={1000}
-          padding={{ top: 50, bottom: 80, left: 60, right: 50 }}
-        >
-          <VictoryLegend
-            x={125}
-            y={10}
-            orientation="horizontal"
-            gutter={20}
-            data={yKeys.map(key => ({
-              name: key,
-              symbol: { fill: getColorForKey(key) }
-            }))}
-          />
-          
-          <VictoryAxis
-            tickFormat={(x) => x}
-            style={{ tickLabels: { fontSize: 10, angle: -45 } }}
-          />
-          <VictoryAxis
-            dependentAxis
-            tickFormat={(y) => formatCurrency(y)}
-          />
+    if (isTimeSeries) {
+        // Filter out period and get all measure columns
+        const yKeys = columns.filter(col => !['period', 'fiscalYear'].includes(col));
 
-          {chartType === 'line' ? (
-            <VictoryGroup>
-              {yKeys.map(key => (
-                <VictoryLine
-                  key={`line-${key}`}
-                  data={data}
-                  x="period"
-                  y={key}
-                  style={{ 
-                    data: { 
-                      stroke: getColorForKey(key),
-                      strokeWidth: 2
-                    } 
-                  }}
-                  labels={({ datum }) => `${key}: ${formatCurrency(datum[key])}`}
-                  labelComponent={<VictoryTooltip />}
+        return (
+            <div className="w-full h-full p-4">
+                <VictoryChart
+                    theme={VictoryTheme.material}
+                    domainPadding={20}
+                    //   height={400}
+                    width={1000}
+                    padding={{ top: 50, bottom: 80, left: 60, right: 50 }}
+                >
+                    <VictoryLegend
+                        x={125}
+                        y={10}
+                        orientation="horizontal"
+                        gutter={20}
+                        data={yKeys.map(key => ({
+                            name: key,
+                            symbol: { fill: getColorForKey(key) }
+                        }))}
+                    />
+
+                    <VictoryAxis
+                        tickFormat={(x) => x}
+                        style={{ tickLabels: { fontSize: 10, angle: -45 } }}
+                    />
+                    <VictoryAxis
+                        dependentAxis
+                        tickFormat={(y) => formatCurrency(y)}
+                    />
+
+                    {chartType === 'line' ? (
+                        <VictoryGroup>
+                            {yKeys.map(key => (
+                                <VictoryLine
+                                    key={`line-${key}`}
+                                    data={data}
+                                    x="period"
+                                    y={key}
+                                    style={{
+                                        data: {
+                                            stroke: getColorForKey(key),
+                                            strokeWidth: 2
+                                        }
+                                    }}
+                                    labels={({ datum }) => `${key}: ${formatCurrency(datum[key])}`}
+                                    labelComponent={<VictoryTooltip />}
+                                />
+                            ))}
+                            {yKeys.map(key => (
+                                <VictoryScatter
+                                    key={`scatter-${key}`}
+                                    data={data}
+                                    x="period"
+                                    y={key}
+                                    size={4}
+                                    style={{
+                                        data: {
+                                            fill: getColorForKey(key),
+                                            stroke: getColorForKey(key),
+                                            strokeWidth: 1
+                                        }
+                                    }}
+                                />
+                            ))}
+                        </VictoryGroup>
+                    ) : (
+                        <VictoryGroup offset={15} colorScale="qualitative">
+                            {yKeys.map(key => (
+                                <VictoryBar
+                                    key={`bar-${key}`}
+                                    data={data}
+                                    x="period"
+                                    y={key}
+                                    style={{
+                                        data: {
+                                            fill: getColorForKey(key),
+                                            stroke: getColorForKey(key),
+                                            strokeWidth: 1
+                                        }
+                                    }}
+                                    labels={({ datum }) => `${key}: ${formatCurrency(datum[key])}`}
+                                    labelComponent={<VictoryTooltip />}
+                                />
+                            ))}
+                        </VictoryGroup>
+                    )}
+                </VictoryChart>
+            </div>
+        );
+    }
+
+    if (isPieLike) {
+        const labelKey = columns.find(col => col !== 'revenue');
+        const pieData = data.map(item => ({
+            x: item[labelKey!],
+            y: item.revenue
+        }));
+
+        return (
+            <div className="w-full h-full p-4">
+                <VictoryPie
+                    data={pieData}
+                    colorScale={['#4bc0c0', '#ff6384', '#36a2eb', '#ffce56', '#9966ff', '#ff9f40']}
+                    labels={({ datum }) => `${datum.x}: ${formatCurrency(datum.y)}`}
+                    labelComponent={<VictoryTooltip />}
+                    innerRadius={chartType === 'donut' ? 50 : 0}
+                    height={400}
+                    padding={{ top: 50, bottom: 50, left: 50, right: 50 }}
                 />
-              ))}
-              {yKeys.map(key => (
-                <VictoryScatter
-                  key={`scatter-${key}`}
-                  data={data}
-                  x="period"
-                  y={key}
-                  size={4}
-                  style={{ 
-                    data: { 
-                      fill: getColorForKey(key),
-                      stroke: getColorForKey(key),
-                      strokeWidth: 1
-                    } 
-                  }}
-                />
-              ))}
-            </VictoryGroup>
-          ) : (
-            <VictoryGroup offset={15} colorScale="qualitative">
-              {yKeys.map(key => (
-                <VictoryBar
-                  key={`bar-${key}`}
-                  data={data}
-                  x="period"
-                  y={key}
-                  style={{ 
-                    data: { 
-                      fill: getColorForKey(key),
-                      stroke: getColorForKey(key),
-                      strokeWidth: 1
-                    } 
-                  }}
-                  labels={({ datum }) => `${key}: ${formatCurrency(datum[key])}`}
-                  labelComponent={<VictoryTooltip />}
-                />
-              ))}
-            </VictoryGroup>
-          )}
-        </VictoryChart>
-      </div>
-    );
-  }
+            </div>
+        );
+    }
 
-  if (isPieLike) {
-    const labelKey = columns.find(col => col !== 'revenue');
-    const pieData = data.map(item => ({
-      x: item[labelKey!],
-      y: item.revenue
-    }));
-
-    return (
-      <div className="w-full h-full p-4">
-        <VictoryPie
-          data={pieData}
-          colorScale={['#4bc0c0', '#ff6384', '#36a2eb', '#ffce56', '#9966ff', '#ff9f40']}
-          labels={({ datum }) => `${datum.x}: ${formatCurrency(datum.y)}`}
-          labelComponent={<VictoryTooltip />}
-          innerRadius={chartType === 'donut' ? 50 : 0}
-          height={400}
-          padding={{ top: 50, bottom: 50, left: 50, right: 50 }}
-        />
-      </div>
-    );
-  }
-
-  return <div className="text-center text-gray-500">Unsupported chart type</div>;
+    return <div className="text-center text-gray-500">Unsupported chart type</div>;
 };
 
 function getColorForKey(key: string): string {

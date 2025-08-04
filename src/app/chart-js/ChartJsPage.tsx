@@ -856,6 +856,7 @@ export default function ChartJsPage() {
         onClose={handleComparisonCloseDrawer}
         chartType={comparisonDrawer.chartType}
         chartLibrary='chart-js'
+        testCase={testCase}
       />
     </section>
   );

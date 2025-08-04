@@ -459,6 +459,7 @@ const EChartsPage = () => {
         onClose={handleComparisonCloseDrawer}
         chartType={comparisonDrawer.chartType}
         chartLibrary='echarts'
+        testCase={testCase}
       />
     </section>
   );
