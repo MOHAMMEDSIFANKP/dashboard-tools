@@ -403,7 +403,7 @@ export default function TanstackTable() {
   }
 
   return (
-    <section className="p-8 w-full">
+    <section className="p-8 w-full tanstack-table">
       <h1 className="text-2xl font-bold mb-4">TanStack Table - API Integrated</h1>
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-xl font-bold">Financial Data - TanStack Table</h1>

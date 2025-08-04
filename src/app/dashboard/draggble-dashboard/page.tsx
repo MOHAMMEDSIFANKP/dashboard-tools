@@ -69,6 +69,7 @@ import { ChartAttribute, ChartType, ChartConfig, ChartConfigurations, DraggableA
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '@/store/store';
 import { setChartConfigurations, setSelectedLibrary, updateChartConfig } from '@/store/slices/dashboardSlice';
+import { formatCurrency } from '@/utils/utils';
 
 // Dynamically import Plotly to avoid SSR issues
 const Plotly = dynamic(() => import('react-plotly.js'), { ssr: false });
@@ -257,15 +258,6 @@ const getIcon = (iconName: string, size: number = 16) => {
     case 'Filter': return <Filter {...iconProps} />;
     default: return <BarChart3 {...iconProps} />;
   }
-};
-
-const formatCurrency = (value: number): string => {
-  if (value >= 1000000) {
-    return `$${(value / 1000000).toFixed(1)}M`;
-  } else if (value >= 1000) {
-    return `$${(value / 1000).toFixed(1)}K`;
-  }
-  return `$${value.toFixed(2)}`;
 };
 
 // Chart Library Tabs Component

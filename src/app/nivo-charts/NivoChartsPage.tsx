@@ -1,3 +1,4 @@
+//src\app\nivo-charts\NivoChartsPage.tsx
 "use client";
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { ResponsiveBar } from "@nivo/bar";
@@ -22,8 +23,10 @@ import { ChartContextMenu } from "@/components/charts/ChartContextMenu";
 import { ChartContainerView } from "@/components/charts/ChartContainerView";
 
 import { useEmailShareDrawer } from "@/hooks/useEmailShareDrawer";
-import { NivoCaptureChartScreenshot } from "@/utils/utils";
+import { formatCurrency, NivoCaptureChartScreenshot } from "@/utils/utils";
 import { EmailShareDrawer } from "@/components/drawer/EmailShareDrawer";
+import { ComparisonDrawer } from "@/components/drawer/ChartComparisonDrawer";
+import { useChartComparisonDrawer } from "@/hooks/useChartComparisonDrawer";
 
 
 // Core data types
@@ -62,7 +65,9 @@ interface ChartContainerProps {
   onResetFilter?: () => void;
   isLoading?: boolean;
   handleShareChart: (title: string, chartRef: React.RefObject<HTMLDivElement>) => void;
-  chartRef: React.RefObject<any>
+  chartRef: React.RefObject<any>;
+  onComparisonOpen: (chartType: string) => void;
+  chartType?: string;
 }
 
 // Chart Container Component
@@ -77,7 +82,9 @@ const ChartContainer: React.FC<ChartContainerProps> = ({
   onResetFilter,
   isLoading = false,
   handleShareChart,
-  chartRef
+  chartRef,
+  onComparisonOpen,
+  chartType
 }) => {
   const hasData = data && data.length > 0;
 
@@ -131,6 +138,7 @@ const ChartContainer: React.FC<ChartContainerProps> = ({
       chartRef={chartRef}
       children={children}
       onShareChart={() => handleShareChart(title, chartRef)}
+      onComparisonOpen={() => onComparisonOpen(chartType || '')}
     />
   );
 };
@@ -143,6 +151,8 @@ export default function NivoChartsPage() {
   const [crossChartFilter, setCrossChartFilter] = useState<string>('');
 
   const { emailDrawer, handleOpenDrawer, handleCloseDrawer } = useEmailShareDrawer();
+  // Comparison drawer state
+  const { comparisonDrawer, handleComparisonOpenDrawer, handleComparisonCloseDrawer } = useChartComparisonDrawer()
   const testCase = useSelector((state: RootState) => state.dashboard.selectedTestCase);
 
   // Chart data states
@@ -591,6 +601,8 @@ export default function NivoChartsPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <ChartContainer
           title={drillDownState.chartType === 'line' ? drillDownState.title : "Revenue Trends"}
+          chartType="line"
+          onComparisonOpen={handleComparisonOpenDrawer}
           isLoading={isLoading}
           data={drillDownState.chartType === 'line' ? rawData.drillDown : rawData.line}
           isDrilled={drillDownState.chartType === 'line'}
@@ -622,6 +634,7 @@ export default function NivoChartsPage() {
                   legend: "Amount",
                   legendOffset: -40,
                   legendPosition: "middle",
+                  format: value => formatCurrency(value),
                 }}
                 colors={{ scheme: "nivo" }}
                 pointSize={10}
@@ -669,6 +682,8 @@ export default function NivoChartsPage() {
 
         <ChartContainer
           title={drillDownState.chartType === 'bar' ? drillDownState.title : "Revenue vs Expenses"}
+          chartType="bar"
+          onComparisonOpen={handleComparisonOpenDrawer}
           isLoading={isLoading}
           data={drillDownState.chartType === 'bar' ? rawData.drillDown : rawData.bar}
           isDrilled={drillDownState.chartType === 'bar'}
@@ -703,6 +718,7 @@ export default function NivoChartsPage() {
                 axisLeft={{
                   legend: "Amount",
                   legendOffset: -40,
+                  format: value => formatCurrency(value),
                 }}
                 onClick={(data) => {
                   handleDrillDown(
@@ -753,6 +769,8 @@ export default function NivoChartsPage() {
 
         <ChartContainer
           title={drillDownState.chartType === 'pie' ? drillDownState.title : "Financial Distribution"}
+          chartType="pie"
+          onComparisonOpen={handleComparisonOpenDrawer}
           isLoading={isLoading}
           data={drillDownState.chartType === 'pie' ? rawData.drillDown : rawData.pie}
           isDrilled={drillDownState.chartType === 'pie'}
@@ -807,6 +825,8 @@ export default function NivoChartsPage() {
 
         <ChartContainer
           title={drillDownState.chartType === 'donut' ? drillDownState.title : "Revenue by Category"}
+          chartType="donut"
+          onComparisonOpen={handleComparisonOpenDrawer}
           isLoading={isLoading}
           data={drillDownState.chartType === 'donut' ? rawData.drillDown : rawData.donut}
           isDrilled={drillDownState.chartType === 'donut'}
@@ -868,6 +888,12 @@ export default function NivoChartsPage() {
         onClose={handleCloseDrawer}
         chartTitle={emailDrawer.chartTitle}
         chartImage={emailDrawer.chartImage}
+      />
+      <ComparisonDrawer
+        isOpen={comparisonDrawer.isOpen}
+        onClose={handleComparisonCloseDrawer}
+        chartType={comparisonDrawer.chartType}
+        chartLibrary="nivo"
       />
     </section>
   );

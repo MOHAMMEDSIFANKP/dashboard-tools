@@ -1,3 +1,4 @@
+//src\app\react-plotly\ReactPlotlyPage.tsx
 "use client";
 import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import Plot from "react-plotly.js";
@@ -22,6 +23,8 @@ import { ChartContainerView } from "@/components/charts/ChartContainerView";
 import { PlotlyCaptureChartScreenshot } from "@/utils/utils";
 import { useEmailShareDrawer } from "@/hooks/useEmailShareDrawer";
 import { EmailShareDrawer } from "@/components/drawer/EmailShareDrawer";
+import { useChartComparisonDrawer } from "@/hooks/useChartComparisonDrawer";
+import { ComparisonDrawer } from "@/components/drawer/ChartComparisonDrawer";
 
 // Constants
 const DEFAULT_CONFIGURATION = {
@@ -70,6 +73,8 @@ interface ChartContainerProps {
   resetCrossChartFilter?: () => void;
   isLoading: boolean;
   onShareChart: () => void;
+  onComparisonOpen: (chartType: string) => void;
+  chartType?: string;
 }
 
 // Memoized Chart Container Component
@@ -83,7 +88,9 @@ const ChartContainer = React.memo(({
   isCrossChartFiltered,
   resetCrossChartFilter,
   isLoading,
-  onShareChart
+  onShareChart,
+  onComparisonOpen,
+  chartType
 }: ChartContainerProps) => (
   <ChartContainerView
     title={title}
@@ -98,6 +105,7 @@ const ChartContainer = React.memo(({
     chartRef={undefined}
     children={children}
     onShareChart={onShareChart}
+    onComparisonOpen={() => onComparisonOpen(chartType || '')}
     className="h-96"
   />
 
@@ -111,6 +119,8 @@ export default function ReactPlotlyPage() {
   const [crossChartFilter, setCrossChartFilter] = useState<string>('');
 
   const { emailDrawer, handleOpenDrawer, handleCloseDrawer } = useEmailShareDrawer();
+  // Comparison drawer state
+  const { comparisonDrawer, handleComparisonOpenDrawer, handleComparisonCloseDrawer } = useChartComparisonDrawer()
   const testCase = useSelector((state: RootState) => state.dashboard.selectedTestCase);
 
   // Test Case 1 API Mutations
@@ -808,6 +818,8 @@ export default function ReactPlotlyPage() {
         {chartData.line.length > 0 && (
           <ChartContainer
             title={drillDownState?.chartType === 'line' ? drillDownState?.title : "Revenue Trends"}
+            chartType="line"
+            onComparisonOpen={handleComparisonOpenDrawer}
             onDownloadCSV={() => handleDownloadCSV(drillDownState?.isDrilled && drillDownState?.chartType === 'line' ? chartData?.drillDown : chartData.line, drillDownState?.chartType === 'line' ? drillDownState?.title : "Revenue Trends")}
             onDownloadImage={() => handleDownloadImage(linePlotRef, drillDownState?.chartType === 'line' ? drillDownState?.title : "Revenue Trends")}
             isDrilled={drillDownState.isDrilled && drillDownState.chartType === 'line'}
@@ -850,6 +862,8 @@ export default function ReactPlotlyPage() {
         {chartData.bar.length > 0 && (
           <ChartContainer
             title={drillDownState?.chartType === 'bar' ? drillDownState?.title : "Revenue vs Expenses"}
+            chartType="bar"
+            onComparisonOpen={handleComparisonOpenDrawer}
             onDownloadCSV={() => handleDownloadCSV(chartData.bar, "Revenue_vs_Expenses")}
             onDownloadImage={() => handleDownloadImage(barPlotRef, "Revenue_vs_Expenses")}
             isCrossChartFiltered={crossChartFilter}
@@ -891,6 +905,8 @@ export default function ReactPlotlyPage() {
         {chartData.pie.length > 0 && (
           <ChartContainer
             title={drillDownState?.chartType === 'pie' ? drillDownState?.title : "Financial Distribution"}
+            chartType="pie"
+            onComparisonOpen={handleComparisonOpenDrawer}
             onDownloadCSV={() => handleDownloadCSV(chartData.pie, "Financial_Distribution")}
             onDownloadImage={() => handleDownloadImage(piePlotRef, "Financial_Distribution")}
             isCrossChartFiltered={crossChartFilter}
@@ -955,6 +971,8 @@ export default function ReactPlotlyPage() {
         {chartData.donut.length > 0 && (
           <ChartContainer
             title={drillDownState?.chartType === 'donut' ? drillDownState?.title : "Revenue by Category"}
+            chartType="donut"
+            onComparisonOpen={handleComparisonOpenDrawer}
             onDownloadCSV={() => handleDownloadCSV(chartData.donut, "Revenue_by_Category")}
             onDownloadImage={() => handleDownloadImage(donutPlotRef, "Revenue_by_Category")}
             isCrossChartFiltered={crossChartFilter}
@@ -1001,7 +1019,7 @@ export default function ReactPlotlyPage() {
                     bordercolor: "white",
                     font: { color: "white", size: 12 }
                   },
-                  pull: 0.05, // Slight pull effect on hover
+                  pull: 0.05,
                   textinfo: 'label+percent',
                   textposition: 'outside'
                 }]}
@@ -1027,6 +1045,12 @@ export default function ReactPlotlyPage() {
         onClose={handleCloseDrawer}
         chartTitle={emailDrawer.chartTitle}
         chartImage={emailDrawer.chartImage}
+      />
+      <ComparisonDrawer
+        isOpen={comparisonDrawer.isOpen}
+        onClose={handleComparisonCloseDrawer}
+        chartType={comparisonDrawer.chartType}
+        chartLibrary="plotly"
       />
     </section>
   );

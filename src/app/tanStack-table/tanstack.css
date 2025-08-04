@@ -1,19 +1,19 @@
-table {
+.tanstack-table table {
   border-collapse: collapse;
   width: 100%;
 }
 
-th, td {
+.tanstack-table th, td {
   border: 1px solid #e2e8f0;
   padding: 8px 12px;
   text-align: left;
 }
 
-th {
+.tanstack-table th {
   background-color: #f8fafc;
   font-weight: 600;
 }
 
-tr:nth-child(even) {
+.tanstack-table tr:nth-child(even) {
   background-color: #f8fafc;
 }

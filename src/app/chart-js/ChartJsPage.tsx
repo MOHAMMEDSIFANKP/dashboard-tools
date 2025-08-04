@@ -36,6 +36,8 @@ import { ChartContainerView } from "@/components/charts/ChartContainerView";
 import { useEmailShareDrawer } from "@/hooks/useEmailShareDrawer";
 import { ChartJscaptureChartScreenshot } from "@/utils/utils";
 import { EmailShareDrawer } from "@/components/drawer/EmailShareDrawer";
+import { ComparisonDrawer } from "@/components/drawer/ChartComparisonDrawer";
+import { useChartComparisonDrawer } from "@/hooks/useChartComparisonDrawer";
 
 ChartJS.register(
   CategoryScale,
@@ -65,10 +67,12 @@ interface ChartContainerProps {
   isCrossChartFiltered?: string;
   resetCrossChartFilter?: () => void;
   handleShareChart: (title: string, chartRef: React.RefObject<HTMLDivElement>) => void
+  onComparisonOpen: (chartType: string) => void;
+  chartType?: string;
 }
 
 const ChartContainer = forwardRef<HTMLDivElement, ChartContainerProps>(
-  ({ title, chartRef, data, children, isDrilled, resetDrillDown, isLoading, isCrossChartFiltered, resetCrossChartFilter, handleShareChart }, ref) => {
+  ({ title, chartRef, data, children, isDrilled, resetDrillDown, isLoading, isCrossChartFiltered, resetCrossChartFilter, handleShareChart, onComparisonOpen, chartType }, ref) => {
     const hasData = data && data.length > 0;
 
     const handleDownloadImage = () => {
@@ -122,6 +126,7 @@ const ChartContainer = forwardRef<HTMLDivElement, ChartContainerProps>(
           children={children}
           chartRef={chartRef}
           onShareChart={() => handleShareChart(title, chartRef as React.RefObject<HTMLDivElement>)}
+          onComparisonOpen={() => onComparisonOpen(chartType || '')}
           className="h-64"
         />
       </>
@@ -150,6 +155,8 @@ export default function ChartJsPage() {
   const [crossChartFilter, setCrossChartFilter] = useState<string>('');
 
   const { emailDrawer, handleOpenDrawer, handleCloseDrawer } = useEmailShareDrawer();
+  // Comparison drawer state
+  const { comparisonDrawer, handleComparisonOpenDrawer, handleComparisonCloseDrawer } = useChartComparisonDrawer()
   const testCase = useSelector((state: RootState) => state.dashboard.selectedTestCase);
 
   // Test Case 1 API Mutations
@@ -237,7 +244,7 @@ export default function ChartJsPage() {
               data: lineData.map((item: LineChartData) => item.revenue || 0),
               borderColor: "rgb(75, 192, 192)",
               backgroundColor: "rgba(75, 192, 192, 0.5)",
-              hoverBorderColor: "rgb(54, 162, 235)", // Darker blue on hover
+              hoverBorderColor: "rgb(54, 162, 235)",
               hoverBackgroundColor: "rgba(54, 162, 235, 0.8)",
               hoverBorderWidth: 3,
               pointHoverRadius: 4,
@@ -709,6 +716,8 @@ export default function ChartJsPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {lineChartData && (
           <ChartContainer title={drillDownState?.chartType === 'line' ? drillDownState?.title : "Revenue Trends"}
+            chartType="line"
+            onComparisonOpen={handleComparisonOpenDrawer}
             isLoading={isLoading}
             chartRef={lineChartRef}
             data={drillDownState.chartType === 'line' ? rawChartData.drillDown : rawChartData.line}
@@ -733,6 +742,8 @@ export default function ChartJsPage() {
         {barChartData && (
           <ChartContainer
             title={drillDownState?.chartType === 'bar' ? drillDownState?.title : "Revenue vs Expenses"}
+            chartType="bar"
+            onComparisonOpen={handleComparisonOpenDrawer}
             isLoading={isLoading}
             chartRef={barChartRef}
             data={drillDownState.chartType === 'bar' ? rawChartData.drillDown : rawChartData.bar}
@@ -756,6 +767,8 @@ export default function ChartJsPage() {
           <ChartContainer
             title={drillDownState?.chartType === 'pie' ? drillDownState?.title : "Financial Distribution"}
             isLoading={isLoading}
+            chartType="pie"
+            onComparisonOpen={handleComparisonOpenDrawer}
             chartRef={pieChartRef}
             data={drillDownState.chartType === 'pie' ? rawChartData.drillDown : rawChartData.pie}
             isDrilled={drillDownState.isDrilled && drillDownState.chartType === 'pie'}
@@ -791,6 +804,8 @@ export default function ChartJsPage() {
         {donutChartData && (
           <ChartContainer
             title={drillDownState?.chartType === 'donut' ? drillDownState?.title : "Revenue by Category"}
+            chartType="donut"
+            onComparisonOpen={handleComparisonOpenDrawer}
             isLoading={isLoading}
             chartRef={donutChartRef}
             data={drillDownState.chartType === 'donut' ? rawChartData.drillDown : rawChartData.donut}
@@ -835,6 +850,12 @@ export default function ChartJsPage() {
         onClose={handleCloseDrawer}
         chartTitle={emailDrawer.chartTitle}
         chartImage={emailDrawer.chartImage}
+      />
+      <ComparisonDrawer
+        isOpen={comparisonDrawer.isOpen}
+        onClose={handleComparisonCloseDrawer}
+        chartType={comparisonDrawer.chartType}
+        chartLibrary='chart-js'
       />
     </section>
   );

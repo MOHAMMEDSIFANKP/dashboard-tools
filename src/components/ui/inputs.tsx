@@ -30,7 +30,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
     const customStyles: StylesConfig<OptionType, false, GroupBase<OptionType>> = {
       control: (provided, state) => ({
         ...provided,
-        borderRadius: '6px',
+        borderRadius: '10px',
         height: '20px',
         boxShadow: 'none',
         // borderColor: '#1172a6',

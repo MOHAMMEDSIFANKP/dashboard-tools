@@ -1,7 +1,7 @@
 // src\components\charts\ChartContainerView.tsx
 import React from 'react'
 import { ChartSkelten } from '../ui/ChartSkelten'
-import { BarChart3, Download, FileDown, RotateCcw, Share, X } from 'lucide-react'
+import { BarChart3, Download, FileDown, RotateCcw, Share, TrendingUp, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 interface ChartContainerViewProps {
     children: React.ReactNode;
@@ -17,10 +17,13 @@ interface ChartContainerViewProps {
     title: string;
     className?: string;
     onShareChart?: () => void;
+    onComparisonOpen: () => void;
 }
 
 export const ChartContainerView: React.FC<ChartContainerViewProps> = ({
-    title, children, isDrilled, resetDrillDown, isLoading = false, isCrossChartFiltered, resetCrossChartFilter, exportToCSV, exportToPNG, hasData, chartRef, className = '', onShareChart
+    title, children, isDrilled, resetDrillDown, isLoading = false, isCrossChartFiltered,
+    resetCrossChartFilter, exportToCSV, exportToPNG, hasData, chartRef, className = '',
+    onShareChart, onComparisonOpen
 }) => {
     return (
         <div className="group relative bg-gradient-to-br from-white via-slate-50 to-blue-50/30 p-6 rounded-2xl shadow-lg border border-white/60 hover:shadow-2xl hover:shadow-blue-100/50 transition-all duration-500 ease-in-out transform hover:-translate-y-1 backdrop-blur-sm overflow-hidden">
@@ -33,7 +36,7 @@ export const ChartContainerView: React.FC<ChartContainerViewProps> = ({
                     <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg shadow-md">
                         <BarChart3 className="w-5 h-5 text-white" />
                     </div>
-                    <div className="flex items-center">
+                    <div className="flex items-center flex-wrap">
                         <h3 className="text-xl font-bold text-gray-800 bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text">
                             {title}
                         </h3>
@@ -51,7 +54,7 @@ export const ChartContainerView: React.FC<ChartContainerViewProps> = ({
                     {isCrossChartFiltered && resetCrossChartFilter && (
                         <button
                             onClick={resetCrossChartFilter}
-                            className="cursor-pointer group/btn relative px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl shadow-lg hover:shadow-red-200 transform hover:scale-105 transition-all duration-300 ease-out font-medium text-sm overflow-hidden"
+                            className="text-nowrap cursor-pointer group/btn relative px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl shadow-lg hover:shadow-red-200 transform hover:scale-105 transition-all duration-300 ease-out font-medium text-sm overflow-hidden"
                         >
                             <div className="cursor-pointer absolute inset-0 bg-gradient-to-r from-red-400 to-red-500 opacity-0 group-hover/btn:opacity-100 transition-opacity duration-300"></div>
                             <div className="cursor-pointer relative flex items-center space-x-2">
@@ -84,6 +87,17 @@ export const ChartContainerView: React.FC<ChartContainerViewProps> = ({
                                 <div className="relative flex items-center space-x-2">
                                     <Share className="w-4 h-4 transition-transform duration-300 group-hover/share:rotate-12" />
                                     <span>Share</span>
+                                </div>
+                                <div className="absolute inset-0 rounded-xl ring-0 group-hover/share:ring-2 group-hover/share:ring-purple-300/50 transition-all duration-300"></div>
+                            </button>
+                            <button
+                                onClick={onComparisonOpen}
+                                className="px-4 py-2 cursor-pointer group/comparison relative bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-700 text-white rounded-2xl hover:from-blue-700 hover:via-blue-800 hover:to-indigo-800 flex items-center gap-3 font-semibold text-sm shadow-lg transition-all"
+                            >
+                                <div className="absolute inset-0 bg-gradient-to-r from-purple-400 to-pink-500 opacity-0 group-hover/share:opacity-100 transition-opacity duration-300"></div>
+                                <div className="relative flex items-center space-x-2">
+                                    <TrendingUp className="w-4 h-4 transition-transform duration-300 group-hover/share:rotate-12" />
+                                    <span>Comparison</span>
                                 </div>
                                 <div className="absolute inset-0 rounded-xl ring-0 group-hover/share:ring-2 group-hover/share:ring-purple-300/50 transition-all duration-300"></div>
                             </button>
@@ -135,30 +149,30 @@ export const ChartContainerView: React.FC<ChartContainerViewProps> = ({
                     >
                         <div className="absolute inset-0 bg-gradient-to-br from-blue-50/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                         <div className={`${className} relative`}>
-                                <motion.div
-                                    key={isDrilled ? 'drilled' : 'normal'}
-                                    initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                                    animate={{
-                                        opacity: 1,
-                                        scale: 1,
-                                        y: 0,
-                                        transition: {
-                                            duration: 0.5,
-                                            ease: "easeOut",
-                                            type: "spring",
-                                            stiffness: 100
-                                        }
-                                    }}
-                                    exit={{
-                                        opacity: 0,
-                                        scale: 0.95,
-                                        y: -20,
-                                        transition: { duration: 0.3 }
-                                    }}
-                                    className="w-full h-full"
-                                >
-                                    {children}
-                                </motion.div>
+                            <motion.div
+                                key={isDrilled ? 'drilled' : 'normal'}
+                                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                                animate={{
+                                    opacity: 1,
+                                    scale: 1,
+                                    y: 0,
+                                    transition: {
+                                        duration: 0.5,
+                                        ease: "easeOut",
+                                        type: "spring",
+                                        stiffness: 100
+                                    }
+                                }}
+                                exit={{
+                                    opacity: 0,
+                                    scale: 0.95,
+                                    y: -20,
+                                    transition: { duration: 0.3 }
+                                }}
+                                className="w-full h-full"
+                            >
+                                {children}
+                            </motion.div>
                         </div>
                     </div>
                 </>

@@ -66,15 +66,15 @@ export const api = createApi({
     baseUrl: 'https://testcase.mohammedsifankp.online/api/',
   }),
   endpoints: (builder) => ({
-     // Table API Endpoints
+    // Table API Endpoints
     fetchSearchableData: builder.query<SearchDataResponse, SearchParams>({
       query: ({ tableName = databaseName, search, column_filters, limit = 100, offset = 0 }) => {
         const params = new URLSearchParams();
-        
+
         if (search) params.append('search', search);
         if (column_filters && Object.keys(column_filters).length > 0) {
           params.append('column_filters', JSON.stringify(column_filters));
-        }        
+        }
         params.append('limit', limit.toString());
         params.append('offset', offset.toString());
 
@@ -93,13 +93,13 @@ export const api = createApi({
         return `dashboard/tables/${tableName}/dimensions${params}`;
       },
     }),
-    
+
     fetchAvailableYears: builder.query<any, string>({
       query: (tableName = databaseName) => `dashboard/available-years/${tableName}`,
     }),
 
     // Chart Data Endpoints
-    fetchChartData: builder.mutation<ApiResponse, { tableName?: string; body: ChartRequestBody; crossChartFilter?:string }>({
+    fetchChartData: builder.mutation<ApiResponse, { tableName?: string; body: ChartRequestBody; crossChartFilter?: string }>({
       query: ({ tableName = databaseName, body, crossChartFilter }) => ({
         url: `dashboard/all-charts?table_name=${tableName}${crossChartFilter ? `&year=${crossChartFilter}` : ''}`,
         method: 'POST',
@@ -128,7 +128,7 @@ export const api = createApi({
 
     // Financial Data
     fetchFinancialData: builder.query<any, { tableName?: string; year: string; month: string }>({
-      query: ({ tableName = databaseName, year, month }) => 
+      query: ({ tableName = databaseName, year, month }) =>
         `dashboard/financial-data/${tableName}?year=${year}&month=${month}`,
     }),
 
@@ -146,7 +146,7 @@ export const api = createApi({
         body,
       }),
     }),
-     // Fetch Group Filter Datas
+    // Fetch Group Filter Datas
     fetchGroupFilters: builder.query<any, {}>({
       query: () => 'dashboard/group-filters',
     }),
@@ -166,78 +166,95 @@ export const api = createApi({
         body: formData,
       }),
     }),
-    
+
     triggerAnalytics: builder.mutation<any, string>({
       query: (tableName) => ({
         url: `upload/trigger-analytics?table_name=${tableName}`,
         method: 'POST',
       }),
     }),
-    
+
     fetchPerformanceHistory: builder.query<any, void>({
       query: () => 'performance/history',
     }),
+
+    // Comparing charts
+    fetchComparisonData: builder.mutation<any, {
+      tableName?: string;
+      chartType: string;
+      year1: number;
+      year2: number;
+    }>({
+      query: ({ tableName = 'sample_100k', chartType, year1, year2 }) => ({
+        url: `dashboard/charts/compare?table_name=${tableName}&chart_type=${chartType}&year1=${year1}&year2=${year2}`,
+        method: 'POST',
+      }),
+    }),
+
   }),
 });
 
-export const { 
+export const {
   // Table queries
   useFetchSearchableDataQuery,
   useLazyFetchSearchableDataQuery,
   useFetchSearchInfoQuery,
-  
+
   // Dashboard queries
   useFetchDimensionsDataQuery,
   useFetchAvailableYearsQuery,
   useLazyFetchDimensionsDataQuery,
-  
+
   // Chart mutations
   useFetchChartDataMutation,
-  
+
   // Drill down
   useFetchDrillDownDataMutation,
-  
+
   // Financial data
   useFetchFinancialDataQuery,
   useLazyFetchFinancialDataQuery,
-  
+
   // Group management
   useSaveGroupFilterMutation,
   useFetchGroupFiltersQuery,
   useDeleteGroupFilterMutation,
-  
+
   // File operations
   useUploadFileMutation,
   useTriggerAnalyticsMutation,
-  
+
   useFetchPerformanceHistoryQuery,
+
+  // Comparing
+  useFetchComparisonDataMutation
 } = api;
 
 export const sapi = createApi({
-    reducerPath: "api",
-    baseQuery: fetchBaseQuery({baseUrl: 'https://jsonplaceholder.typicode.com/'}),
-    endpoints: (builder) => ({
-        // Fetch list of posts
-        getPosts: builder.query<Post[], void>({
-            query: () => "posts",
-          }),
-        // Fetch single post by ID
-        getPostById: builder.query<Post, number>({
-            query: (id) => `posts/${id}`,
-        }),
-        createPost: builder.mutation<Post, Partial<Post>>({
-            query: (newPost) => ({
-                url: 'posts',
-                method: 'POST',
-                body: newPost,
-            }),
-        }),
+  reducerPath: "api",
+  baseQuery: fetchBaseQuery({ baseUrl: 'https://jsonplaceholder.typicode.com/' }),
+  endpoints: (builder) => ({
+    // Fetch list of posts
+    getPosts: builder.query<Post[], void>({
+      query: () => "posts",
     }),
-    // overrideExisting: false,
+    // Fetch single post by ID
+    getPostById: builder.query<Post, number>({
+      query: (id) => `posts/${id}`,
+    }),
+    createPost: builder.mutation<Post, Partial<Post>>({
+      query: (newPost) => ({
+        url: 'posts',
+        method: 'POST',
+        body: newPost,
+      }),
+    }),
+  }),
+  // overrideExisting: false,
 })
 
 export const {
-    useGetPostsQuery,
-    useGetPostByIdQuery,
-    useCreatePostMutation,
+  useGetPostsQuery,
+  useGetPostByIdQuery,
+  useCreatePostMutation,
 } = sapi

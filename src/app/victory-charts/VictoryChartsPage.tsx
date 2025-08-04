@@ -1,3 +1,4 @@
+//src\app\victory-charts\VictoryChartsPage.tsx
 "use client";
 import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import {
@@ -32,8 +33,10 @@ import { transformTestCase2DrillDownData, transformTestCase2ToCommonFormat } fro
 import { ChartContextMenu } from "@/components/charts/ChartContextMenu";
 import { ChartContainerView } from "@/components/charts/ChartContainerView";
 import { useEmailShareDrawer } from "@/hooks/useEmailShareDrawer";
-import { VictoryCaptureChartScreenshot } from "@/utils/utils";
+import { formatCurrency, VictoryCaptureChartScreenshot } from "@/utils/utils";
 import { EmailShareDrawer } from "@/components/drawer/EmailShareDrawer";
+import { ComparisonDrawer } from "@/components/drawer/ChartComparisonDrawer";
+import { useChartComparisonDrawer } from "@/hooks/useChartComparisonDrawer";
 
 
 // Core data types
@@ -107,9 +110,11 @@ interface ChartContainerProps {
   isCrossChartFiltered?: string;
   resetCrossChartFilter?: () => void;
   handleShareChart: (title: string, chartRef: React.RefObject<HTMLDivElement>) => void;
+  onComparisonOpen: (chartType: string) => void;
+  chartType?: string;
 }
 
-const ChartContainer: React.FC<ChartContainerProps> = ({ title, children, resetDrillDown, isDrilled, data, isLoading, isCrossChartFiltered, resetCrossChartFilter, handleShareChart }) => {
+const ChartContainer: React.FC<ChartContainerProps> = ({ title, children, resetDrillDown, isDrilled, data, isLoading, isCrossChartFiltered, resetCrossChartFilter, handleShareChart, onComparisonOpen, chartType }) => {
   const chartRef = useRef<HTMLDivElement>(null);
 
   const hasData = data && data.length > 0;
@@ -194,6 +199,7 @@ const ChartContainer: React.FC<ChartContainerProps> = ({ title, children, resetD
       isCrossChartFiltered={isCrossChartFiltered}
       resetCrossChartFilter={resetCrossChartFilter}
       onShareChart={() => handleShareChart(title, chartRef as React.RefObject<HTMLDivElement>)}
+      onComparisonOpen={() => onComparisonOpen(chartType || '')}
       className="w-full"
     >
       {children}
@@ -210,6 +216,8 @@ const VictoryChartsPage: React.FC = () => {
   const [crossChartFilter, setCrossChartFilter] = useState<string>('');
 
   const { emailDrawer, handleOpenDrawer, handleCloseDrawer } = useEmailShareDrawer();
+  // Comparison drawer state
+  const { comparisonDrawer, handleComparisonOpenDrawer, handleComparisonCloseDrawer } = useChartComparisonDrawer()
   const testCase = useSelector((state: RootState) => state.dashboard.selectedTestCase);
 
   // Test Case 1 API Mutations
@@ -462,12 +470,14 @@ const VictoryChartsPage: React.FC = () => {
       />
 
       {error && (<ErrorAlert message={error} onDismiss={handleDismissError} />)}
-      
+
       <>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <ChartContainer
             isLoading={isLoading}
             title={drillDownState?.chartType === 'line' ? drillDownState?.title : "Revenue Trends"}
+            chartType="line"
+            onComparisonOpen={handleComparisonOpenDrawer}
             isDrilled={drillDownState?.isDrilled && drillDownState?.chartType === 'line'}
             resetDrillDown={handleResetDrillDown}
             data={drillDownState.chartType === 'line' ? chartData?.drillDown : chartData.line}
@@ -487,6 +497,8 @@ const VictoryChartsPage: React.FC = () => {
           <ChartContainer
             isLoading={isLoading}
             title={drillDownState?.chartType === 'bar' ? drillDownState?.title : "Revenue vs Expenses"}
+            chartType="bar"
+            onComparisonOpen={handleComparisonOpenDrawer}
             isDrilled={drillDownState?.isDrilled && drillDownState?.chartType === 'bar'}
             resetDrillDown={handleResetDrillDown}
             data={drillDownState.chartType === 'bar' ? chartData?.drillDown : chartData.bar}
@@ -504,6 +516,8 @@ const VictoryChartsPage: React.FC = () => {
           <ChartContainer
             isLoading={isLoading}
             title={drillDownState?.chartType === 'pie' ? drillDownState?.title : "Financial Distribution"}
+            chartType="pie"
+            onComparisonOpen={handleComparisonOpenDrawer}
             isDrilled={drillDownState?.isDrilled && drillDownState?.chartType === 'pie'}
             resetDrillDown={handleResetDrillDown}
             data={drillDownState?.chartType === 'pie' ? chartData?.drillDown : chartData.pie}
@@ -522,6 +536,8 @@ const VictoryChartsPage: React.FC = () => {
           <ChartContainer
             isLoading={isLoading}
             title={drillDownState?.chartType === 'donut' ? drillDownState?.title : "Revenue by Category"}
+            chartType="donut"
+            onComparisonOpen={handleComparisonOpenDrawer}
             isDrilled={drillDownState?.isDrilled && drillDownState?.chartType === 'donut'}
             resetDrillDown={handleResetDrillDown}
             data={drillDownState?.chartType === 'pie' ? chartData?.drillDown : chartData.donut}
@@ -546,6 +562,12 @@ const VictoryChartsPage: React.FC = () => {
         onClose={handleCloseDrawer}
         chartTitle={emailDrawer.chartTitle}
         chartImage={emailDrawer.chartImage}
+      />
+      <ComparisonDrawer
+        isOpen={comparisonDrawer.isOpen}
+        onClose={handleComparisonCloseDrawer}
+        chartType={comparisonDrawer.chartType}
+        chartLibrary='victory'
       />
     </section>
   );
@@ -599,21 +621,29 @@ function normalizeSpecificKeys(data: any[]): any[] {
   });
 }
 
-const LineChart: React.FC<LineChartProps> = ({ data, setContextMenu, onDrillDown, isDrilled, isCrossChartFiltered }) => {
+const LineChart: React.FC<LineChartProps> = ({ 
+  data, 
+  setContextMenu, 
+  onDrillDown, 
+  isDrilled, 
+  isCrossChartFiltered 
+}) => {
   if (!data?.length) return <div className="text-center text-gray-500">No data available</div>;
 
   const [visibleSeries, setVisibleSeries] = useState<VisibleLineSeries>({
-    revenue: false,
-    grossMargin: false,
-    netProfit: false,
+    revenue: true,
+    grossMargin: true,
+    netProfit: true,
   });
+
+  // Initialize visible series based on available data
   useEffect(() => {
     if (data.length > 0) {
+      const firstItem = data[0];
       setVisibleSeries({
-        revenue: data[0]?.revenue != null,
-        grossMargin: data[0]?.grossMargin != null || data[0]?.grossmargin != null,
-        netProfit: data[0]?.netProfit != null || data[0]?.netprofit != null,
-
+        revenue: firstItem?.revenue != null,
+        grossMargin: firstItem?.grossMargin != null || firstItem?.grossmargin != null,
+        netProfit: firstItem?.netProfit != null || firstItem?.netprofit != null,
       });
     }
   }, [data]);
@@ -624,93 +654,102 @@ const LineChart: React.FC<LineChartProps> = ({ data, setContextMenu, onDrillDown
     { key: 'netProfit', name: 'Net Profit', color: '#ff6384' }
   ], []);
 
+  // Create legend data with proper visibility state
   const legendData = useMemo<LegendDataItem[]>(() =>
-    series.map(s => ({
-      name: s.name,
-      symbol: {
-        fill: visibleSeries[s.key] ? s.color : '#cccccc',
-        opacity: visibleSeries[s.key] ? 1 : 0.5
-      }
-    })), [visibleSeries, series]);
-
-  const legendEvents = useMemo(() => [{
-    target: "data",
-    eventHandlers: {
-      onClick: (_e: any, { datum }: { datum: any }) => {
-        const name = datum.name.toLowerCase().replace(' ', '');
-        let mappedKey: keyof VisibleLineSeries;
-
-        switch (name) {
-          case 'grossmargin':
-            mappedKey = 'grossMargin';
-            break;
-          case 'netprofit':
-            mappedKey = 'netProfit';
-            break;
-          case 'revenue':
-            mappedKey = 'revenue';
-            break;
-          default:
-            return null;
+    series
+      .filter(s => data[0]?.[s.key] != null || data[0]?.[s.key === 'grossMargin' ? 'grossmargin' : s.key === 'netProfit' ? 'netprofit' : s.key] != null)
+      .map(s => ({
+        name: s.name,
+        symbol: {
+          fill: visibleSeries[s.key] ? s.color : '#cccccc',
+          opacity: visibleSeries[s.key] ? 1 : 0.3
         }
+      })), [visibleSeries, series, data]);
 
-        setVisibleSeries(prev => ({
-          ...prev,
-          [mappedKey]: !prev[mappedKey]
-        }));
-        return null;
-      }
+  // Handle legend click events
+  const handleLegendClick = useCallback((legendItem: LegendDataItem) => {
+    const seriesKey = series.find(s => s.name === legendItem.name)?.key;
+    if (seriesKey) {
+      setVisibleSeries(prev => ({
+        ...prev,
+        [seriesKey]: !prev[seriesKey]
+      }));
     }
-  }] as EventPropTypeInterface<VictoryLegendTTargetType, StringOrNumberOrCallback>[], []);
+  }, [series]);
 
-  const createScatterEvents = useCallback((type: keyof Pick<ChartDataPoint, 'revenue' | 'grossMargin' | 'netProfit'>) => [{
-    target: "data" as const,
-    eventHandlers: {
-      onMouseOver: () => {
-        return [
-          {
-            target: "data",
-            mutation: () => ({ style: { fill: "#1E40AF", cursor: "pointer" } })
+  // Create scatter events for interaction with different hover colors
+  const createScatterEvents = useCallback((type: keyof Pick<ChartDataPoint, 'revenue' | 'grossMargin' | 'netProfit'>) => {
+    const seriesConfig = series.find(s => s.key === type);
+    const originalColor = seriesConfig?.color || '#4bc0c0';
+    
+    // Different hover colors for each series
+    const hoverColors = {
+      revenue: '#2d8a8a',      // Darker teal
+      grossMargin: '#2563eb',   // Darker blue
+      netProfit: '#dc2626'      // Darker red
+    };
+    
+    const hoverColor = hoverColors[type] || '#1E40AF';
+
+    return [{
+      target: "data" as const,
+      eventHandlers: {
+        onMouseOver: () => {
+          return [
+            {
+              target: "data",
+              mutation: () => ({ 
+                style: { 
+                  fill: hoverColor, 
+                  cursor: "pointer", 
+                  r: 6,
+                  stroke: hoverColor,
+                  strokeWidth: 2,
+                  fillOpacity: 0.9
+                } 
+              })
+            }
+          ];
+        },
+        onMouseOut: () => {
+          return [
+            {
+              target: "data",
+              mutation: () => ({ 
+                style: { 
+                  fill: originalColor,
+                  r: 4,
+                  stroke: "none",
+                  strokeWidth: 0,
+                  fillOpacity: 0.9
+                } 
+              })
+            }
+          ];
+        },
+        onClick: (event: any, { data: chartData, index }: EventHandlerProps) => {
+          const clickedPoint = chartData[index];
+          if (!clickedPoint || isDrilled) return;
+
+          const value = clickedPoint[type];
+          const category = clickedPoint.fiscalYear || clickedPoint.period;
+
+          if (category) {
+            setContextMenu({
+              isOpen: true,
+              position: { x: event.clientX, y: event.clientY },
+              category: category,
+              value: value,
+              chartType: 'line',
+              dataType: type
+            });
           }
-        ];
-      },
-      onMouseOut: () => {
-        return [
-          {
-            target: "data",
-            mutation: () => ({ style: { fill: series.find(s => s.key === type)?.color } })
-          }
-        ];
-      },
 
-      onClick: (event: any, { data: chartData, index }: EventHandlerProps) => {
-        const clickedPoint = chartData[index];
-        if (!clickedPoint?.period && !clickedPoint?.fiscalYear) return;
-
-        const value = clickedPoint[type];
-        const category = clickedPoint.fiscalYear;
-
-        setContextMenu({
-          isOpen: true,
-          position: { x: event.clientX, y: event.clientY },
-          category: category,
-          value: value,
-          chartType: 'line',
-          dataType: type
-        });
-
-        // if (event.ctrlKey || event.metaKey) {
-        //   onDrillDown('line', period, value, type);
-        // } else {
-        //   // @ts-ignore
-        //   setDimensions(handleCrossChartFilteringFunc(String(period)));
-        // }
-
-        return null;
-
+          return null;
+        }
       }
-    }
-  }], [onDrillDown]);
+    }];
+  }, [onDrillDown, series, setContextMenu]);
 
   const tooltipStyle = useMemo(() => ({
     cornerRadius: 5,
@@ -721,60 +760,132 @@ const LineChart: React.FC<LineChartProps> = ({ data, setContextMenu, onDrillDown
     }
   }), []);
 
-  const xAxix = isDrilled || isCrossChartFiltered ? "period" : "fiscalYear";
+  const xAxis = isDrilled || isCrossChartFiltered ? "period" : "fiscalYear";
+
+  // Filter series to show only those with data
+  const availableSeries = series.filter(s => 
+    data[0]?.[s.key] != null || 
+    data[0]?.[s.key === 'grossMargin' ? 'grossmargin' : s.key === 'netProfit' ? 'netprofit' : s.key] != null
+  );
 
   return (
-    <VictoryChart theme={VictoryTheme.clean} domainPadding={20} height={350} width={800}>
-      <VictoryAxis
-        tickFormat={(x: any) => x}
-        style={{ tickLabels: { fontSize: 10, angle: -65 } }}
-      />
-      <VictoryAxis
-        dependentAxis
-        tickFormat={(y: number) => `$${Math.round(y / 1000)}k`}
-      />
-
-      <VictoryLegend
-        x={50} y={10} orientation="horizontal" gutter={20}
-        style={{
-          labels: { fontSize: 12, cursor: "pointer" },
-          data: { cursor: "pointer" }
-        }}
-        data={legendData}
-        events={legendEvents}
-      />
-
-      {/* Lines */}
-      {series.map(s => visibleSeries[s.key] && (
-        <VictoryLine
-          key={`line-${s.key}`}
-          data={data}
-          x={xAxix}
-          y={s.key}
-          style={{ data: { stroke: s.color, strokeWidth: 2 } }}
-        />
-      ))}
-
-      {/* Scatter points for interaction */}
-      {series.map(s => visibleSeries[s.key] && (
-        <VictoryScatter
-          key={`scatter-${s.key}`}
-          data={data}
-          x={xAxix}
-          y={s.key}
-          size={4}
-          style={{ data: { fill: s.color } }}
-          labels={({ datum }: { datum: ChartDataPoint }) => {
-            const value = Number(datum[s.key]);
-            return `${s.name}: $${Math.round((value || 0) / 1000)}k`;
+    <div>
+      <VictoryChart theme={VictoryTheme.clean} domainPadding={20} height={350} width={800}>
+        <VictoryAxis
+          tickFormat={(x: any) => String(x)}
+          style={{ 
+            tickLabels: { fontSize: 10, angle: -45, textAnchor: "end" },
+            grid: { stroke: "#e0e0e0", strokeDasharray: "2,2" }
           }}
-          labelComponent={<VictoryTooltip {...tooltipStyle} />}
-          events={createScatterEvents(s.key)}
         />
-      ))}
-    </VictoryChart>
+        <VictoryAxis
+          dependentAxis
+          tickFormat={(y: number) => `$${Math.round(y / 1000)}k`}
+          style={{ 
+            tickLabels: { fontSize: 10 },
+            grid: { stroke: "#e0e0e0", strokeDasharray: "2,2" }
+          }}
+        />
+
+        {/* Lines */}
+        {availableSeries.map(s => visibleSeries[s.key] && (
+          <VictoryLine
+            key={`line-${s.key}`}
+            data={data}
+            x={xAxis}
+            y={s.key}
+            style={{ 
+              data: { 
+                stroke: s.color, 
+                strokeWidth: 2,
+                opacity: 0.8
+              } 
+            }}
+            animate={{
+              duration: 300,
+              onLoad: { duration: 300 }
+            }}
+          />
+        ))}
+
+        {/* Scatter points for interaction with enhanced tooltips */}
+        {availableSeries.map(s => visibleSeries[s.key] && (
+          <VictoryScatter
+            key={`scatter-${s.key}`}
+            data={data}
+            x={xAxis}
+            y={s.key}
+            size={4}
+            style={{ 
+              data: { 
+                fill: s.color,
+                opacity: 0.9,
+                cursor: "pointer"
+              } 
+            }}
+            labels={({ datum }: { datum: ChartDataPoint }) => {
+              const value = Number(datum[s.key]);
+              const period = datum[xAxis];
+              return `${period}\n${s.name}: ${Math.round((value || 0) / 1000)}k`;
+            }}
+            labelComponent={
+              <VictoryTooltip 
+                {...tooltipStyle}
+                style={{
+                  fill: "#333",
+                  fontSize: 12,
+                  textAnchor: "middle"
+                }}
+                flyoutStyle={{
+                  fill: "rgba(255, 255, 255, 0.95)",
+                  stroke: s.color,
+                  strokeWidth: 2,
+                  filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.1))"
+                }}
+                dx={0}
+                dy={-10}
+                orientation="top"
+                pointerLength={8}
+                pointerWidth={12}
+              />
+            }
+            events={createScatterEvents(s.key)}
+          />
+        ))}
+      </VictoryChart>
+
+      {/* Custom Legend */}
+      <div className="flex flex-wrap justify-center mt-4 gap-4">
+        {legendData.map((item, index) => (
+          <div
+            key={index}
+            className="flex items-center cursor-pointer hover:opacity-80"
+            onClick={() => handleLegendClick(item)}
+          >
+            <div
+              className="w-4 h-4 mr-2 rounded"
+              style={{
+                backgroundColor: item.symbol.fill,
+                opacity: item.symbol.opacity
+              }}
+            />
+            <span 
+              className="text-sm"
+              style={{ 
+                opacity: item.symbol.opacity,
+                color: item.symbol.opacity === 1 ? '#333' : '#999'
+              }}
+            >
+              {item.name}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 };
+
+
 
 interface SeriesConfig {
   key: keyof Pick<ChartDataPoint, 'revenue' | 'expenses'>;
@@ -789,19 +900,27 @@ interface BarChartProps {
   isCrossChartFiltered?: boolean;
 }
 
-const BarChart: React.FC<BarChartProps> = ({ data, onDrillDown, isDrilled, isCrossChartFiltered }) => {
+// BAR CHART COMPONENT
+const BarChart: React.FC<BarChartProps> = ({ 
+  data, 
+  onDrillDown, 
+  isDrilled, 
+  isCrossChartFiltered 
+}) => {
   if (!data?.length) return <div className="text-center text-gray-500">No data available</div>;
 
   const [visibleSeries, setVisibleSeries] = useState<VisibleSeries>({
-    revenue: false,
-    expenses: false,
+    revenue: true,
+    expenses: true,
   });
 
+  // Initialize visible series based on available data
   useEffect(() => {
     if (data.length > 0) {
+      const firstItem = data[0];
       setVisibleSeries({
-        revenue: data[0]?.revenue != null,
-        expenses: data[0]?.expenses != null,
+        revenue: firstItem?.revenue != null,
+        expenses: firstItem?.expenses != null,
       });
     }
   }, [data]);
@@ -811,107 +930,200 @@ const BarChart: React.FC<BarChartProps> = ({ data, onDrillDown, isDrilled, isCro
     { key: 'expenses', name: 'Expenses', color: '#ff6384' }
   ], []);
 
+  // Create legend data with proper visibility state
   const legendData = useMemo<LegendDataItem[]>(() =>
-    series.map(s => ({
-      name: s.name,
-      symbol: {
-        fill: visibleSeries[s.key] ? s.color : '#cccccc',
-        opacity: visibleSeries[s.key] ? 1 : 0.5
-      }
-    })), [visibleSeries, series]);
+    series
+      .filter(s => data[0]?.[s.key] != null)
+      .map(s => ({
+        name: s.name,
+        symbol: {
+          fill: visibleSeries[s.key] ? s.color : '#cccccc',
+          opacity: visibleSeries[s.key] ? 1 : 0.3
+        }
+      })), [visibleSeries, series, data]);
 
-  const legendEvents = useMemo(() => [{
-    target: "data" as const,
-    eventHandlers: {
-      onClick: (_e: any, { datum }: EventHandlerProps) => {
-        const seriesKey = datum.name.toLowerCase() as keyof VisibleSeries;
-        setVisibleSeries(prev => ({
-          ...prev,
-          [seriesKey]: !prev[seriesKey]
-        }));
-        return null;
-      }
+  // Handle legend click events
+  const handleLegendClick = useCallback((legendItem: LegendDataItem) => {
+    const seriesKey = series.find(s => s.name === legendItem.name)?.key;
+    if (seriesKey) {
+      setVisibleSeries(prev => ({
+        ...prev,
+        [seriesKey]: !prev[seriesKey]
+      }));
     }
-  }], []);
+  }, [series]);
 
-  const createBarEvents = useCallback((type: keyof Pick<ChartDataPoint, 'revenue' | 'expenses'>) => [{
-    target: "data" as const,
-    eventHandlers: {
-      onMouseOver: () => {
-        return [
-          {
-            target: "data",
-            mutation: () => ({
-              style: {
-                fill: "#1E40AF",
-                cursor: "pointer",
-                fillOpacity: 0.8
-              }
-            })
+  // Create bar events for interaction with different hover colors
+  const createBarEvents = useCallback((type: keyof Pick<ChartDataPoint, 'revenue' | 'expenses'>) => {
+    const seriesConfig = series.find(s => s.key === type);
+    const originalColor = seriesConfig?.color || '#4bc0c0';
+    
+    // Different hover colors for each series
+    const hoverColors = {
+      revenue: '#2d8a8a',    // Darker teal
+      expenses: '#dc2626'    // Darker red
+    };
+    
+    const hoverColor = hoverColors[type] || '#1E40AF';
+
+    return [{
+      target: "data" as const,
+      eventHandlers: {
+        onMouseOver: () => {
+          return [
+            {
+              target: "data",
+              mutation: () => ({
+                style: {
+                  fill: hoverColor,
+                  cursor: "pointer",
+                  fillOpacity: 0.9,
+                  stroke: hoverColor,
+                  strokeWidth: 2,
+                  filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.2))"
+                }
+              })
+            }
+          ];
+        },
+        onMouseOut: () => {
+          return [
+            {
+              target: "data",
+              mutation: () => ({
+                style: {
+                  fill: originalColor,
+                  cursor: "pointer",
+                  fillOpacity: 0.8,
+                  stroke: originalColor,
+                  strokeWidth: 0.5,
+                  filter: "none"
+                }
+              })
+            }
+          ];
+        },
+        onClick: (_e: any, { datum }: EventHandlerProps) => {
+          if (!isDrilled && datum) {
+            const category = datum.fiscalYear || datum.period;
+            const value = datum[type];
+            if (category && value != null) {
+              onDrillDown('bar', category, value, type);
+            }
           }
-        ];
-      },
-      onMouseOut: () => {
-        return [
-          {
-            target: "data",
-            mutation: () => ({
-              style: {
-                fill: series.find(s => s.key === type)?.color,
-                cursor: "pointer",
-                fillOpacity: 1
-              }
-            })
-          }
-        ];
-      },
-      onClick: (_e: any, { datum }: EventHandlerProps) => {
-        if (!isDrilled) {
-          onDrillDown('bar', datum.fiscalYear, datum[type], type);
+          return null;
         }
       }
-    }
-  }], [onDrillDown]);
+    }];
+  }, [onDrillDown, isDrilled, series]);
 
-  const xAxix = isDrilled || isCrossChartFiltered ? "period" : "fiscalYear";
+  const xAxis = isDrilled || isCrossChartFiltered ? "period" : "fiscalYear";
+
+  // Filter series to show only those with data
+  const availableSeries = series.filter(s => data[0]?.[s.key] != null);
 
   return (
-    <VictoryChart theme={VictoryTheme.clean} domainPadding={10} height={350} width={800}>
-      <VictoryAxis
-        tickFormat={(x: any) => x}
-        style={{ tickLabels: { fontSize: 10, angle: -45 } }}
-      />
-      <VictoryAxis
-        dependentAxis
-        tickFormat={(y: number) => `$${Math.round(y / 1000)}k`}
-      />
+    <div>
+      <VictoryChart theme={VictoryTheme.clean} domainPadding={40} height={350} width={800}>
+        <VictoryAxis
+          tickFormat={(x: any) => String(x)}
+          style={{ 
+            tickLabels: { fontSize: 10, angle: -45, textAnchor: "end" },
+            grid: { stroke: "#e0e0e0", strokeDasharray: "2,2" }
+          }}
+        />
+        <VictoryAxis
+          dependentAxis
+          tickFormat={(y) => formatCurrency(y)}
+          style={{ 
+            tickLabels: { fontSize: 10 },
+            grid: { stroke: "#e0e0e0", strokeDasharray: "2,2" }
+          }}
+        />
 
-      <VictoryLegend
-        x={50} y={10} orientation="horizontal" gutter={20}
-        style={{
-          labels: { fontSize: 12, cursor: "pointer" },
-          data: { cursor: "pointer" }
-        }}
-        data={legendData}
-        events={legendEvents}
-      />
+        <VictoryGroup offset={availableSeries.length > 1 ? 30 : 0} colorScale="qualitative">
+          {availableSeries.map(s => visibleSeries[s.key] && (
+            <VictoryBar
+              key={s.key}
+              data={data}
+              x={xAxis}
+              y={s.key}
+              style={{ 
+                data: { 
+                  fill: s.color,
+                  fillOpacity: 0.8,
+                  stroke: s.color,
+                  strokeWidth: 0.5,
+                  cursor: "pointer"
+                } 
+              }}
+              labels={({ datum }) => {
+                const value = Number(datum[s.key]);
+                const period = datum[xAxis];
+                return `${period}\n${s.name}: ${Math.round((value || 0) / 1000)}k`;
+              }}
+              labelComponent={
+                <VictoryTooltip
+                  cornerRadius={5}
+                  style={{
+                    fill: "#333",
+                    fontSize: 12,
+                    textAnchor: "middle"
+                  }}
+                  flyoutStyle={{
+                    fill: "rgba(255, 255, 255, 0.95)",
+                    stroke: s.color,
+                    strokeWidth: 2,
+                    filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.1))"
+                  }}
+                  dx={0}
+                  dy={-10}
+                  orientation="top"
+                  pointerLength={8}
+                  pointerWidth={12}
+                />
+              }
+              events={createBarEvents(s.key)}
+              animate={{
+                duration: 300,
+                onLoad: { duration: 300 }
+              }}
+            />
+          ))}
+        </VictoryGroup>
+      </VictoryChart>
 
-      <VictoryGroup offset={20}>
-        {series.map(s => visibleSeries[s.key] && (
-          <VictoryBar
-            key={s.key}
-            labelComponent={<VictoryTooltip />}
-            data={data}
-            x={xAxix}
-            y={s.key}
-            style={{ data: { fill: s.color } }}
-            events={createBarEvents(s.key)}
-          />
+      {/* Custom Legend */}
+      <div className="flex flex-wrap justify-center mt-4 gap-4">
+        {legendData.map((item, index) => (
+          <div
+            key={index}
+            className="flex items-center cursor-pointer hover:opacity-80"
+            onClick={() => handleLegendClick(item)}
+          >
+            <div
+              className="w-4 h-4 mr-2 rounded"
+              style={{
+                backgroundColor: item.symbol.fill,
+                opacity: item.symbol.opacity
+              }}
+            />
+            <span 
+              className="text-sm"
+              style={{ 
+                opacity: item.symbol.opacity,
+                color: item.symbol.opacity === 1 ? '#333' : '#999'
+              }}
+            >
+              {item.name}
+            </span>
+          </div>
         ))}
-      </VictoryGroup>
-    </VictoryChart>
+      </div>
+    </div>
   );
 };
+
 
 const PieChart: React.FC<{
   data: ChartDataPoint[];

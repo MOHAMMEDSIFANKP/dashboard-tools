@@ -1,3 +1,4 @@
+//src\app\echarts\EChartsPage.tsx
 "use client";
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import ReactECharts from "echarts-for-react";
@@ -23,6 +24,8 @@ import { ChartContainerView } from "@/components/charts/ChartContainerView";
 import { useEmailShareDrawer } from "@/hooks/useEmailShareDrawer";
 import { EChartsCaptureChartScreenshot } from "@/utils/utils";
 import { EmailShareDrawer } from "@/components/drawer/EmailShareDrawer";
+import { useChartComparisonDrawer } from "@/hooks/useChartComparisonDrawer";
+import { ComparisonDrawer } from "@/components/drawer/ChartComparisonDrawer";
 
 
 // Define TypeScript interfaces for chart data
@@ -38,6 +41,8 @@ interface ChartContainerProps {
   isCrossChartFiltered?: string;
   resetCrossChartFilter?: () => void;
   handleShareChart: (title: string, chartRef: React.RefObject<any>) => void;
+  onComparisonOpen: (chartType: string) => void;
+  chartType?: string;
 }
 
 interface LineChartDataPoint {
@@ -83,6 +88,8 @@ const EChartsPage = () => {
   const [crossChartFilter, setCrossChartFilter] = useState<string>('');
 
   const { emailDrawer, handleOpenDrawer, handleCloseDrawer } = useEmailShareDrawer();
+  // Comparison drawer state
+  const { comparisonDrawer, handleComparisonOpenDrawer, handleComparisonCloseDrawer } = useChartComparisonDrawer()
   const testCase = useSelector((state: RootState) => state.dashboard.selectedTestCase);
 
   // Test Case 1 API Mutations
@@ -350,6 +357,8 @@ const EChartsPage = () => {
           isLoading={isLoading}
           hasData={lineChartData.length > 0}
           title={drillDownState?.chartType === 'line' ? drillDownState?.title : "Revenue Trends with"}
+          chartType="line"
+          onComparisonOpen={handleComparisonOpenDrawer}
           onExportCSV={() => exportToCSV(drillDownState?.chartType === 'line' ? drillDownData : lineChartData)}
           onExportPNG={() => exportToPNG(lineChartRef)}
           isCrossChartFiltered={crossChartFilter}
@@ -372,6 +381,8 @@ const EChartsPage = () => {
           isLoading={isLoading}
           hasData={barChartData.length > 0}
           title={drillDownState?.chartType === 'bar' ? drillDownState?.title : "Revenue vs Expenses"}
+          chartType="bar"
+          onComparisonOpen={handleComparisonOpenDrawer}
           onExportCSV={() => exportToCSV(drillDownState?.chartType === 'bar' ? drillDownData : barChartData)}
           isCrossChartFiltered={crossChartFilter}
           onExportPNG={() => exportToPNG(barChartRef)}
@@ -392,6 +403,8 @@ const EChartsPage = () => {
           isLoading={isLoading}
           hasData={pieChartData.length > 0}
           title="Financial Distribution"
+          chartType="pie"
+          onComparisonOpen={handleComparisonOpenDrawer}
           onExportCSV={() => exportToCSV(drillDownState?.chartType === 'pie' ? drillDownData : pieChartData)}
           onExportPNG={() => exportToPNG(pieChartRef)}
           isCrossChartFiltered={crossChartFilter}
@@ -412,6 +425,8 @@ const EChartsPage = () => {
           isLoading={isLoading}
           hasData={donutChartData.length > 0}
           title="Revenue by Category"
+          chartType="donut"
+          onComparisonOpen={handleComparisonOpenDrawer}
           onExportCSV={() => exportToCSV(drillDownState?.chartType === 'donut' ? drillDownData : donutChartData)}
           onExportPNG={() => exportToPNG(donutChartRef)}
           isCrossChartFiltered={crossChartFilter}
@@ -439,6 +454,12 @@ const EChartsPage = () => {
         chartTitle={emailDrawer.chartTitle}
         chartImage={emailDrawer.chartImage}
       />
+      <ComparisonDrawer
+        isOpen={comparisonDrawer.isOpen}
+        onClose={handleComparisonCloseDrawer}
+        chartType={comparisonDrawer.chartType}
+        chartLibrary='echarts'
+      />
     </section>
   );
 };
@@ -457,7 +478,9 @@ const ChartContainer: React.FC<ChartContainerProps> = ({
   isLoading,
   isCrossChartFiltered,
   resetCrossChartFilter,
-  handleShareChart
+  handleShareChart,
+  onComparisonOpen,
+  chartType
 }) => {
   return (
     <ChartContainerView
@@ -470,6 +493,7 @@ const ChartContainer: React.FC<ChartContainerProps> = ({
       exportToCSV={onExportCSV}
       exportToPNG={onExportPNG}
       hasData={hasData}
+      onComparisonOpen={() => onComparisonOpen(chartType || '')}
       onShareChart={() => {
         // Get the chartRef from the child component
         const childElement = React.Children.only(children) as React.ReactElement;

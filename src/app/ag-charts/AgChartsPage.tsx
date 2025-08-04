@@ -47,6 +47,8 @@ import { ChartContainerView } from "@/components/charts/ChartContainerView";
 import { EmailShareDrawer } from "@/components/drawer/EmailShareDrawer";
 import { AGchartcaptureChartScreenshot } from "@/utils/utils";
 import { useEmailShareDrawer } from "@/hooks/useEmailShareDrawer";
+import { ComparisonDrawer } from "@/components/drawer/ChartComparisonDrawer";
+import { useChartComparisonDrawer } from "@/hooks/useChartComparisonDrawer";
 
 // Common props for components
 interface CommonProps {
@@ -70,6 +72,8 @@ const AgChartsPage: React.FC = () => {
   });
 
   const { emailDrawer, handleOpenDrawer, handleCloseDrawer } = useEmailShareDrawer();
+  // Comparison drawer state
+  const { comparisonDrawer, handleComparisonOpenDrawer, handleComparisonCloseDrawer } = useChartComparisonDrawer()
   const testCase = useSelector((state: RootState) => state.dashboard.selectedTestCase);
 
   // Test Case 1 API Mutations
@@ -567,6 +571,8 @@ const AgChartsPage: React.FC = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <ChartContainer title="Revenue Trends"
+          chartType="line"
+          onComparisonOpen={handleComparisonOpenDrawer}
           isLoading={isLoading || isDrillDownLoading?.line}
           isDrilled={chartOptions?.drillDownType === 'line'}
           resetDrillDown={handleResetDrillDown}
@@ -578,6 +584,8 @@ const AgChartsPage: React.FC = () => {
           <AgCharts options={chartOptions?.drillDownType === 'line' ? chartOptions.drillDown : chartOptions.line || {}} />
         </ChartContainer>
         <ChartContainer title="Revenue vs Expenses"
+          chartType="bar"
+          onComparisonOpen={handleComparisonOpenDrawer}
           isLoading={isLoading || isDrillDownLoading?.bar}
           isDrilled={chartOptions?.drillDownType === 'bar'}
           resetDrillDown={handleResetDrillDown}
@@ -588,6 +596,8 @@ const AgChartsPage: React.FC = () => {
           <AgCharts options={chartOptions?.drillDownType === 'bar' ? chartOptions.drillDown : chartOptions.bar || {}} />
         </ChartContainer>
         <ChartContainer title="Financial Distribution"
+          chartType="pie"
+          onComparisonOpen={handleComparisonOpenDrawer}
           isLoading={isLoading || isDrillDownLoading?.pie}
           isDrilled={chartOptions?.drillDownType === 'pie'}
           resetDrillDown={handleResetDrillDown}
@@ -598,6 +608,8 @@ const AgChartsPage: React.FC = () => {
           <AgCharts options={chartOptions?.drillDownType === 'pie' ? chartOptions?.drillDown : chartOptions.pie || {}} />
         </ChartContainer>
         <ChartContainer title="Revenue by Category"
+          chartType="donut"
+          onComparisonOpen={handleComparisonOpenDrawer}
           isLoading={isLoading || isDrillDownLoading?.donut}
           isDrilled={chartOptions?.drillDownType === 'donut'}
           resetDrillDown={handleResetDrillDown}
@@ -617,6 +629,12 @@ const AgChartsPage: React.FC = () => {
         chartTitle={emailDrawer.chartTitle}
         chartImage={emailDrawer.chartImage}
       />
+      <ComparisonDrawer
+        isOpen={comparisonDrawer.isOpen}
+        onClose={handleComparisonCloseDrawer}
+        chartType={comparisonDrawer.chartType}
+        chartLibrary='ag-charts'
+      />
     </section>
   );
 };
@@ -630,9 +648,11 @@ const ChartContainer: React.FC<CommonProps & {
   isCrossChartFiltered?: string;
   resetCrossChartFilter?: () => void;
   handleShareChart: (title: string, chartRef: React.RefObject<HTMLDivElement>) => void;
-}> = ({ title, children, data, isDrilled, resetDrillDown, isLoading, isCrossChartFiltered, resetCrossChartFilter, handleShareChart }) => {
+  onComparisonOpen: (chartType: string) => void;
+  chartType?: string;
+}> = ({ title, children, data, isDrilled, resetDrillDown, isLoading, isCrossChartFiltered, resetCrossChartFilter, handleShareChart, onComparisonOpen, chartType }) => {
   const chartRef = useRef<HTMLDivElement>(null);
-  
+
   const hasData = data && data.length > 0;
 
   // Export to CSV function
@@ -693,6 +713,7 @@ const ChartContainer: React.FC<CommonProps & {
       //@ts-ignore
       chartRef={chartRef}
       onShareChart={() => handleShareChart(title, chartRef as React.RefObject<HTMLDivElement>)}
+      onComparisonOpen={() => onComparisonOpen(chartType || '')}
     >
       {children}
     </ChartContainerView>
