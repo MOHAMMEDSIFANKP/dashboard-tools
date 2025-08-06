@@ -34,7 +34,7 @@ import { transformTestCase2DrillDownData, transformTestCase2ToCommonFormat } fro
 import { ChartContextMenu } from "@/components/charts/ChartContextMenu";
 import { ChartContainerView } from "@/components/charts/ChartContainerView";
 import { useEmailShareDrawer } from "@/hooks/useEmailShareDrawer";
-import { ChartJscaptureChartScreenshot } from "@/utils/utils";
+import { ChartJscaptureChartScreenshot, formatCurrency } from "@/utils/utils";
 import { EmailShareDrawer } from "@/components/drawer/EmailShareDrawer";
 import { ComparisonDrawer } from "@/components/drawer/ChartComparisonDrawer";
 import { useChartComparisonDrawer } from "@/hooks/useChartComparisonDrawer";
@@ -587,6 +587,13 @@ export default function ChartJsPage() {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
+      tooltip: {
+        callbacks: {
+          label: (context: any) => {
+            return `${context.dataset.label || ""}: ${formatCurrency(context.raw)}`;
+          },
+        },
+      },
       legend: { position: "top" },
       title: {
         display: true
@@ -608,8 +615,14 @@ export default function ChartJsPage() {
       arc: {
         hoverBorderWidth: 3
       }
-    }
-
+    },
+    scales: {
+      y: {
+        ticks: {
+          callback: (value: any) => formatCurrency(value),
+        },
+      },
+    },
   };
 
   const handleResetGroup = useCallback((): void => {
@@ -794,6 +807,7 @@ export default function ChartJsPage() {
                 ref={pieChartRef}
                 options={{
                   ...chartOptions,
+                  scales: undefined, 
                   onClick: handlePieChartClick,
                 }}
                 data={pieChartData}
@@ -832,6 +846,7 @@ export default function ChartJsPage() {
                 ref={donutChartRef}
                 options={{
                   ...chartOptions,
+                  scales: undefined, 
                   cutout: "50%",
                   onClick: handleDonutChartClick
                 }}
@@ -851,7 +866,7 @@ export default function ChartJsPage() {
         chartTitle={emailDrawer.chartTitle}
         chartImage={emailDrawer.chartImage}
       />
-     {comparisonDrawer.isOpen && <ComparisonDrawer
+      {comparisonDrawer.isOpen && <ComparisonDrawer
         isOpen={comparisonDrawer.isOpen}
         onClose={handleComparisonCloseDrawer}
         chartType={comparisonDrawer.chartType}

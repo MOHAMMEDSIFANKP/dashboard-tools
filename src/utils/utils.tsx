@@ -1,7 +1,10 @@
 import { AgGridReact } from "ag-grid-react";
 
 export const formatCurrency = (value: number): string => {
-  if (value >= 1000000) {
+  if (value >= 1000000000) {
+    return `$${(value / 1000000000).toFixed(1)}B`;
+  }
+  else if (value >= 1000000) {
     return `$${(value / 1000000).toFixed(1)}M`;
   } else if (value >= 1000) {
     return `$${(value / 1000).toFixed(1)}K`;
@@ -143,14 +146,14 @@ export const VictoryCaptureChartScreenshot = (chartContainerRef: React.RefObject
 
     try {
       const svgElements = chartContainerRef.current.querySelectorAll('svg');
-      
+
       if (svgElements.length === 0) {
         reject(new Error('No SVG elements found'));
         return;
       }
 
       const containerRect = chartContainerRef.current.getBoundingClientRect();
-      
+
       // Create canvas with container dimensions
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
@@ -173,7 +176,7 @@ export const VictoryCaptureChartScreenshot = (chartContainerRef: React.RefObject
       // Process each SVG element
       svgElements.forEach((svgElement, index) => {
         const svgRect = svgElement.getBoundingClientRect();
-        
+
         // Calculate relative position within the container
         const offsetX = svgRect.left - containerRect.left;
         const offsetY = svgRect.top - containerRect.top;
@@ -181,7 +184,7 @@ export const VictoryCaptureChartScreenshot = (chartContainerRef: React.RefObject
         // Serialize the SVG
         const serializer = new XMLSerializer();
         let svgString = serializer.serializeToString(svgElement);
-        
+
         // Add XML declaration and ensure proper namespace
         if (!svgString.includes('xmlns')) {
           svgString = svgString.replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ');
@@ -189,23 +192,23 @@ export const VictoryCaptureChartScreenshot = (chartContainerRef: React.RefObject
 
         // Create image for this SVG
         const img = new Image();
-        
+
         img.onload = () => {
           try {
             // Draw this SVG at its relative position
             ctx.drawImage(img, offsetX, offsetY, svgRect.width, svgRect.height);
             loadedCount++;
-            
+
             // When all SVGs are loaded, resolve with the combined image
             if (loadedCount === totalSvgs) {
               const imageData = canvas.toDataURL('image/png');
               resolve(imageData);
             }
-          } catch (drawError:any) {
+          } catch (drawError: any) {
             reject(new Error(`Failed to draw SVG ${index}: ${drawError.message}`));
           }
         };
-        
+
         img.onerror = () => {
           reject(new Error(`Failed to load SVG ${index}`));
         };
@@ -215,7 +218,7 @@ export const VictoryCaptureChartScreenshot = (chartContainerRef: React.RefObject
         img.src = `data:image/svg+xml;base64,${encodedSvg}`;
       });
 
-    } catch (err:any) {
+    } catch (err: any) {
       reject(new Error(`Failed to capture Victory chart screenshot: ${err.message}`));
     }
   });
@@ -230,8 +233,8 @@ export const EChartsCaptureChartScreenshot = (chartRef: React.RefObject<any>): P
         return;
       }
 
-      const instance = chartRef.current.getEchartsInstance 
-        ? chartRef.current.getEchartsInstance() 
+      const instance = chartRef.current.getEchartsInstance
+        ? chartRef.current.getEchartsInstance()
         : null;
 
       if (!instance) {
@@ -297,7 +300,7 @@ export const AGGridCaptureScreenshot = (gridRef: React.RefObject<AgGridReact>): 
       // Get actual data from grid
       const columns = gridApi.getColumns() || [];
       const displayedRowCount = gridApi.getDisplayedRowCount();
-      
+
       // Subtitle with real stats
       ctx.font = '14px Arial';
       ctx.fillStyle = '#6b7280';
@@ -323,7 +326,7 @@ export const AGGridCaptureScreenshot = (gridRef: React.RefObject<AgGridReact>): 
       // Draw header background
       ctx.fillStyle = '#f8fafc';
       ctx.fillRect(20, startY, canvas.width - 40, headerHeight);
-      
+
       // Draw header border
       ctx.strokeStyle = '#e2e8f0';
       ctx.lineWidth = 1;
@@ -336,13 +339,13 @@ export const AGGridCaptureScreenshot = (gridRef: React.RefObject<AgGridReact>): 
 
       columns.forEach((col, index) => {
         if (currentX > canvas.width - 100) return; // Stop if we run out of space
-        
+
         const colDef = col.getColDef();
         const headerName = colDef.headerName || colDef.field || '';
         const truncatedHeader = headerName.length > 15 ? headerName.substring(0, 12) + '...' : headerName;
-        
+
         ctx.fillText(truncatedHeader, currentX, startY + 25);
-        
+
         // Draw vertical separator
         if (index < columns.length - 1) {
           ctx.beginPath();
@@ -350,20 +353,20 @@ export const AGGridCaptureScreenshot = (gridRef: React.RefObject<AgGridReact>): 
           ctx.lineTo(currentX + columnWidths[index] - 5, startY + headerHeight);
           ctx.stroke();
         }
-        
+
         currentX += columnWidths[index];
       });
 
       // Draw data rows with real data
       ctx.font = '11px Arial';
       const maxRows = Math.min(displayedRowCount, 15); // Show up to 15 rows
-      
+
       for (let i = 0; i < maxRows; i++) {
         const rowNode = gridApi.getDisplayedRowAtIndex(i);
         if (!rowNode) continue;
 
         const y = startY + headerHeight + (i * rowHeight);
-        
+
         // Alternate row colors
         if (i % 2 === 0) {
           ctx.fillStyle = '#f8fafc';
@@ -380,11 +383,11 @@ export const AGGridCaptureScreenshot = (gridRef: React.RefObject<AgGridReact>): 
 
         columns.forEach((col, colIndex) => {
           if (currentX > canvas.width - 100) return;
-          
+
           const colDef = col.getColDef();
           const field = colDef.field;
           let cellValue = '';
-          
+
           if (field && rowNode.data) {
             const rawValue = rowNode.data[field];
             if (rawValue !== null && rawValue !== undefined) {
@@ -399,7 +402,7 @@ export const AGGridCaptureScreenshot = (gridRef: React.RefObject<AgGridReact>): 
 
           // Truncate long values
           const truncatedValue = cellValue.length > 20 ? cellValue.substring(0, 17) + '...' : cellValue;
-          
+
           ctx.fillText(truncatedValue, currentX, y + 22);
           currentX += columnWidths[colIndex];
         });
@@ -409,13 +412,13 @@ export const AGGridCaptureScreenshot = (gridRef: React.RefObject<AgGridReact>): 
       const footerY = startY + headerHeight + (maxRows * rowHeight) + 20;
       ctx.fillStyle = '#9ca3af';
       ctx.font = '12px Arial';
-      
+
       if (displayedRowCount > maxRows) {
         ctx.fillText(`Showing first ${maxRows} rows of ${displayedRowCount} total rows`, 20, footerY);
       } else {
         ctx.fillText(`Showing all ${displayedRowCount} rows`, 20, footerY);
       }
-      
+
       ctx.fillText('For complete data export, use the CSV export feature', 20, footerY + 20);
 
       // Add a subtle border around the entire table

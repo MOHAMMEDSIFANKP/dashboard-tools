@@ -22,7 +22,7 @@ import { ChartContextMenu } from "@/components/charts/ChartContextMenu";
 import { ChartContainerView } from "@/components/charts/ChartContainerView";
 
 import { useEmailShareDrawer } from "@/hooks/useEmailShareDrawer";
-import { EChartsCaptureChartScreenshot } from "@/utils/utils";
+import { EChartsCaptureChartScreenshot, formatCurrency } from "@/utils/utils";
 import { EmailShareDrawer } from "@/components/drawer/EmailShareDrawer";
 import { useChartComparisonDrawer } from "@/hooks/useChartComparisonDrawer";
 import { ComparisonDrawer } from "@/components/drawer/ChartComparisonDrawer";
@@ -454,7 +454,7 @@ const EChartsPage = () => {
         chartTitle={emailDrawer.chartTitle}
         chartImage={emailDrawer.chartImage}
       />
-     {comparisonDrawer.isOpen && <ComparisonDrawer
+      {comparisonDrawer.isOpen && <ComparisonDrawer
         isOpen={comparisonDrawer.isOpen}
         onClose={handleComparisonCloseDrawer}
         chartType={comparisonDrawer.chartType}
@@ -547,7 +547,9 @@ const LineDrillDownChartComponents: React.FC<{
     },
     tooltip: {
       trigger: 'axis',
-      formatter: '{b}: ${c}'
+      formatter: (params: any) => {
+        return `${params[0].axisValue}<br/>Value: ${formatCurrency(params[0].value)}`;
+      }
     },
     xAxis: {
       type: 'category',
@@ -560,7 +562,7 @@ const LineDrillDownChartComponents: React.FC<{
     yAxis: {
       type: 'value',
       axisLabel: {
-        formatter: '${value}'
+        formatter: (value: number) => formatCurrency(value)
       }
     },
     series: [
@@ -605,8 +607,16 @@ const LineChartComponent = ({
   const option = {
     tooltip: {
       trigger: 'axis',
-      formatter: '{b}<br/>{a0}: ${c0}<br/>{a1}: ${c1}<br/>{a2}: ${c2}'
+      formatter: (params: any) => {
+        return `
+      ${params[0].axisValue}<br/>
+      ${params[0].seriesName}: ${params[0].value ? formatCurrency(params[0].value):""}<br/>
+      ${params[1].seriesName}: ${params[1].value ? formatCurrency(params[1].value):""}<br/>
+      ${params[2].seriesName}: ${params[2].value ? formatCurrency(params[2].value):""}
+    `;
+      }
     },
+
     legend: {
       data: ['Revenue', 'Gross Margin', 'Net Profit'],
       textStyle: { fontSize: 10 }
@@ -628,8 +638,9 @@ const LineChartComponent = ({
     yAxis: {
       type: 'value',
       axisLabel: {
-        formatter: '${value}'
+        formatter: (value: number) => formatCurrency(value)
       }
+
     },
     series: [
       {
@@ -707,8 +718,13 @@ const BarChartComponent = ({
   const option = {
     tooltip: {
       trigger: 'axis',
-      axisPointer: { type: 'shadow' },
-      formatter: '{b}<br/>{a0}: ${c0}<br/>{a1}: ${c1}'
+      formatter: (params: any) => {
+        return `
+      ${params[0].axisValue}<br/>
+      ${params[0].seriesName}: ${params[0].value?formatCurrency(params[0].value):""}<br/>
+      ${params[1].seriesName}: ${params[1].value ? formatCurrency(params[1].value):""}
+    `;
+      }
     },
     legend: {
       data: ['Revenue', 'Expenses'],
@@ -731,7 +747,7 @@ const BarChartComponent = ({
     yAxis: {
       type: 'value',
       axisLabel: {
-        formatter: '${value}'
+        formatter: (value: number) => formatCurrency(value)
       }
     },
     series: [
@@ -786,7 +802,13 @@ const PieChartComponent = ({
   const option = {
     tooltip: {
       trigger: 'item',
-      formatter: '{b}: ${c} ({d}%)'
+      formatter: (params: any) => {
+        return `
+      ${params.name}<br/>
+      Value: ${formatCurrency(params.value)}<br/>
+      Percentage: ${params.percent}%
+    `;
+      }
     },
     legend: {
       orient: 'horizontal',
@@ -851,7 +873,13 @@ const DonutChartComponent = ({
   const option = {
     tooltip: {
       trigger: 'item',
-      formatter: '{b}: ${c} ({d}%)'
+      formatter: (params: any) => {
+        return `
+      ${params.name}<br/>
+      Value: ${formatCurrency(params.value)}<br/>
+      Percentage: ${params.percent}%
+    `;
+      }
     },
     legend: {
       orient: 'horizontal',

@@ -10,7 +10,6 @@ ModuleRegistry.registerModules([AllCommunityModule]);
 import { FinancialSchema } from "@/types/Schemas";
 import { databaseName, useFetchSearchableDataQuery } from '@/lib/services/usersApi';
 import { useRef, useState } from 'react';
-import DashboardInfoCard from '@/components/DashboardInfoCard';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store/store';
 import { testCase2ProductId, useFetchTestCase2TableDataQuery } from '@/lib/services/testCase2Api';

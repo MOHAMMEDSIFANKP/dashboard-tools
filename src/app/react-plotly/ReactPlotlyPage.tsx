@@ -10,9 +10,8 @@ import {
 } from "@/lib/services/usersApi";
 // Types
 import { Dimensions } from "@/types/Schemas";
-import { buildRequestBody, handleCrossChartFilteringFunc } from "@/lib/services/buildWhereClause";
-import { ActionButton, DashboardActionButtonComponent } from "@/components/ui/action-button";
-import ReusableChartDrawer, { useChartDrawer } from "@/components/ChartDrawer";
+import { buildRequestBody } from "@/lib/services/buildWhereClause";
+import { DashboardActionButtonComponent } from "@/components/ui/action-button";
 import { ErrorAlert, LoadingAlert } from "@/components/ui/status-alerts";
 import { testCase2ProductId, useFetchTestCase2ChartDataMutation, useFetchTestCase2DrillDownDataMutation } from "@/lib/services/testCase2Api";
 import { transformTestCase2DrillDownData, transformTestCase2ToCommonFormat } from "@/lib/testCase2Transformer";
@@ -20,7 +19,7 @@ import { RootState } from "@/store/store";
 import { useSelector } from "react-redux";
 import { ChartContextMenu } from "@/components/charts/ChartContextMenu";
 import { ChartContainerView } from "@/components/charts/ChartContainerView";
-import { PlotlyCaptureChartScreenshot } from "@/utils/utils";
+import { formatCurrency, PlotlyCaptureChartScreenshot } from "@/utils/utils";
 import { useEmailShareDrawer } from "@/hooks/useEmailShareDrawer";
 import { EmailShareDrawer } from "@/components/drawer/EmailShareDrawer";
 import { useChartComparisonDrawer } from "@/hooks/useChartComparisonDrawer";
@@ -410,18 +409,28 @@ export default function ReactPlotlyPage() {
       return [{
         x: data.map(d => d[labelKey]),
         y: data.map(d => d[columns[1]] || 0),
+        text: data.map(d => formatCurrency(Number(d[columns[1]]))),
         type: chartType,
         name: columns[1],
-        marker: { color: CHART_COLORS[0] }
+        marker: { color: CHART_COLORS[0] },
+        hovertemplate: '<b>%{fullData.name}</b><br>' +
+          'Period: %{x}<br>' +
+          'Amount: %{text}<br>' +
+          '<extra></extra>',
       }];
     } else if (chartType === 'pie' || chartType === 'donut') {
       return [{
         x: data.map(d => d.period),
         y: data.map(d => d.value),
+        text: data.map(d => formatCurrency(Number(d.value))),
         type: 'scatter',
         mode: 'lines+markers',
         name: 'Value',
-        line: { color: CHART_COLORS[0] }
+        line: { color: CHART_COLORS[0] },
+        hovertemplate: '<b>%{fullData.name}</b><br>' +
+          'Period: %{x}<br>' +
+          'Amount: %{text}<br>' +
+          '<extra></extra>',
       }];
     }
     // Default to pie chart
@@ -592,6 +601,7 @@ export default function ReactPlotlyPage() {
       {
         x: chartData.line.map(d => d[xKey]),
         y: chartData.line.map(d => d.revenue),
+        text: chartData.line.map(d => formatCurrency(Number(d.revenue))),
         type: "scatter" as const,
         mode: "lines+markers" as const,
         name: "Revenue",
@@ -625,7 +635,7 @@ export default function ReactPlotlyPage() {
         },
         hovertemplate: '<b>%{fullData.name}</b><br>' +
           'Year: %{x}<br>' +
-          'Amount: $%{y:,.0f}<br>' +
+          'Amount: %{text}<br>' +
           '<extra></extra>',
         hoverlabel: {
           bgcolor: "#1E40AF",
@@ -636,6 +646,7 @@ export default function ReactPlotlyPage() {
       {
         x: chartData.line.map(d => d[xKey]),
         y: chartData.line.map(d => d.grossMargin),
+        text: chartData.line.map(d => formatCurrency(Number(d.grossMargin))),
         type: "scatter" as const,
         mode: "lines+markers" as const,
         name: "GrossMargin",
@@ -669,7 +680,7 @@ export default function ReactPlotlyPage() {
         },
         hovertemplate: '<b>%{fullData.name}</b><br>' +
           'Year: %{x}<br>' +
-          'Amount: $%{y:,.0f}<br>' +
+          'Amount: %{text}<br>' +
           '<extra></extra>',
         hoverlabel: {
           bgcolor: "#D97706",
@@ -680,6 +691,7 @@ export default function ReactPlotlyPage() {
       {
         x: chartData.line.map(d => d[xKey]),
         y: chartData.line.map(d => d.netProfit),
+        text: chartData.line.map(d => formatCurrency(Number(d.netProfit))),
         type: "scatter" as const,
         mode: "lines+markers" as const,
         name: "NetProfit",
@@ -713,7 +725,7 @@ export default function ReactPlotlyPage() {
         },
         hovertemplate: '<b>%{fullData.name}</b><br>' +
           'Year: %{x}<br>' +
-          'Amount: $%{y:,.0f}<br>' +
+          'Amount: %{text}<br>' +
           '<extra></extra>',
         hoverlabel: {
           bgcolor: "#059669",
@@ -731,6 +743,7 @@ export default function ReactPlotlyPage() {
       {
         x: chartData.bar.map(d => d[xKey]),
         y: chartData.bar.map(d => d.revenue),
+        text: chartData.bar.map(d => formatCurrency(Number(d.revenue))),
         type: "bar" as const,
         name: "Revenue",
         marker: {
@@ -742,7 +755,7 @@ export default function ReactPlotlyPage() {
         },
         hovertemplate: '<b>%{fullData.name}</b><br>' +
           'Year: %{x}<br>' +
-          'Amount: $%{y:,.0f}<br>' +
+          'Amount: %{text}<br>' +
           '<extra></extra>',
         hoverlabel: {
           bgcolor: "teal",
@@ -753,6 +766,7 @@ export default function ReactPlotlyPage() {
       {
         x: chartData.bar.map(d => d[xKey]),
         y: chartData.bar.map(d => d.expenses),
+        text: chartData.bar.map(d => formatCurrency(Number(d.expenses))),
         type: "bar" as const,
         name: "Expenses",
         marker: {
@@ -764,7 +778,7 @@ export default function ReactPlotlyPage() {
         },
         hovertemplate: '<b>%{fullData.name}</b><br>' +
           'Year: %{x}<br>' +
-          'Amount: $%{y:,.0f}<br>' +
+          'Amount: %{text}<br>' +
           '<extra></extra>',
         hoverlabel: {
           bgcolor: "orange",
@@ -934,6 +948,7 @@ export default function ReactPlotlyPage() {
                 ref={piePlotRef}
                 data={[{
                   values: pieChartData.values,
+                  text: pieChartData.values.map(v => formatCurrency(v)),
                   type: "pie",
                   marker: {
                     colors: CHART_COLORS,
@@ -944,7 +959,7 @@ export default function ReactPlotlyPage() {
                   },
                   labels: pieChartData.labels,
                   hovertemplate: '<b>%{label}</b><br>' +
-                    'Value: $%{value:,.0f}<br>' +
+                    'Value: %{text}<br>' +
                     'Percentage: %{percent}<br>' +
                     '<extra></extra>',
                   hoverlabel: {
@@ -1001,6 +1016,7 @@ export default function ReactPlotlyPage() {
                 data={[{
                   values: chartData.donut.map(d => d.revenue || 0),
                   labels: chartData.donut.map((d: any) => d.cataccountingview || ''),
+                  text: chartData.donut.map(d => formatCurrency(d.revenue || 0)),
                   type: "pie",
                   hole: 0.5,
                   marker: {
@@ -1011,7 +1027,7 @@ export default function ReactPlotlyPage() {
                     }
                   },
                   hovertemplate: '<b>%{label}</b><br>' +
-                    'Revenue: $%{value:,.0f}<br>' +
+                    'Revenue: %{text}<br>' +
                     'Percentage: %{percent}<br>' +
                     '<extra></extra>',
                   hoverlabel: {
@@ -1046,7 +1062,7 @@ export default function ReactPlotlyPage() {
         chartTitle={emailDrawer.chartTitle}
         chartImage={emailDrawer.chartImage}
       />
-     {comparisonDrawer.isOpen && <ComparisonDrawer
+      {comparisonDrawer.isOpen && <ComparisonDrawer
         isOpen={comparisonDrawer.isOpen}
         onClose={handleComparisonCloseDrawer}
         chartType={comparisonDrawer.chartType}

@@ -45,7 +45,7 @@ import { GroupModal } from "@/components/GroupManagement";
 import { ChartContextMenu } from "@/components/charts/ChartContextMenu";
 import { ChartContainerView } from "@/components/charts/ChartContainerView";
 import { EmailShareDrawer } from "@/components/drawer/EmailShareDrawer";
-import { AGchartcaptureChartScreenshot } from "@/utils/utils";
+import { AGchartcaptureChartScreenshot, formatCurrency } from "@/utils/utils";
 import { useEmailShareDrawer } from "@/hooks/useEmailShareDrawer";
 import { ComparisonDrawer } from "@/components/drawer/ChartComparisonDrawer";
 import { useChartComparisonDrawer } from "@/hooks/useChartComparisonDrawer";
@@ -218,7 +218,7 @@ const AgChartsPage: React.FC = () => {
         ],
         axes: [
           { type: "category", position: "bottom", title: { text: Xkey } },
-          { type: "number", position: "left", title: { text: "Amount ($)" } },
+          { type: "number", position: "left", title: { text: "Amount ($)" }, label: { formatter: (params:any) => formatCurrency(params.value) }, },
         ],
         listeners: {
           // @ts-ignore
@@ -273,7 +273,7 @@ const AgChartsPage: React.FC = () => {
         ],
         axes: [
           { type: 'category', position: 'bottom', title: { text: Xkey } },
-          { type: 'number', position: 'left', title: { text: 'Amount ($)' } }
+          { type: 'number', position: 'left', title: { text: 'Amount ($)' },label: { formatter: (params:any) => formatCurrency(params.value) }, }
         ],
         listeners: {
           // @ts-ignore
@@ -297,6 +297,7 @@ const AgChartsPage: React.FC = () => {
           tooltip: { enabled: true },
           calloutLabel: { enabled: true },
           sectorLabelKey: 'catfinancialview',
+          legendItemKey: 'amount',
           listeners: {
             // @ts-ignore
             nodeClick: (event) => {
@@ -404,7 +405,7 @@ const AgChartsPage: React.FC = () => {
             }],
             axes: [
               { type: 'category', position: 'bottom' },
-              { type: 'number', position: 'left', title: { text: 'Value ($)' } }
+              { type: 'number', position: 'left', title: { text: 'Value ($)' }, label: { formatter: (params) => formatCurrency(params.value) }, }
             ],
           };
         } else if (chartType === 'pie' || chartType === 'donut') {
@@ -420,7 +421,7 @@ const AgChartsPage: React.FC = () => {
             }],
             axes: [
               { type: 'category', position: 'bottom', title: { text: 'Period' } },
-              { type: 'number', position: 'left', title: { text: 'Value ($)' } }
+              { type: 'number', position: 'left', title: { text: 'Value ($)' }, label: { formatter: (params) => formatCurrency(params.value)} }
             ],
           };
         } else {

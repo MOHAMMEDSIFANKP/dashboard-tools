@@ -401,6 +401,22 @@ export default function NivoChartsPage() {
               legendOffset: -40,
               legendPosition: "middle",
             }}
+            tooltip={({ id, value, color, indexValue }) => (
+              <div
+                style={{
+                  background: 'rgba(0, 0, 0, 0.9)',
+                  color: 'white',
+                  padding: '8px 12px',
+                  borderRadius: '4px',
+                  fontSize: '12px',
+                  boxShadow: '0 4px 8px rgba(0,0,0,0.3)'
+                }}
+              >
+                <strong>{valueKey}</strong>: {formatCurrency(value)}
+                <br />
+                <span style={{ opacity: 0.8 }}>Period: {indexValue}</span>
+              </div>
+            )}
             labelSkipWidth={12}
             labelSkipHeight={12}
             labelTextColor={{ from: 'color', modifiers: [['darker', 1.6]] }}
@@ -436,12 +452,27 @@ export default function NivoChartsPage() {
               stacked: false,
               reverse: false,
             }}
+            tooltip={({ point }) => (
+              <div style={{
+                background: 'rgba(0, 0, 0, 0.9)',
+                color: 'white',
+                padding: '8px 12px',
+                borderRadius: '4px',
+                fontSize: '12px',
+                boxShadow: '0 4px 8px rgba(0,0,0,0.3)',
+              }}>
+                <strong className="capitalize">{yKey}</strong>: {formatCurrency(Number(point.data.y))}<br />
+                Period: {point.data.xFormatted}
+              </div>
+            )}
             axisBottom={{
               legend: xKey,
               legendOffset: 36,
               legendPosition: "middle",
             }}
             axisLeft={{
+              format: value => formatCurrency(value),
+
               legend: yKey,
               legendOffset: -40,
               legendPosition: "middle",
@@ -658,6 +689,19 @@ export default function NivoChartsPage() {
                     });
                   }
                 }}
+                tooltip={({ point }) => (
+                  <div style={{
+                    background: 'rgba(0, 0, 0, 0.9)',
+                    color: 'white',
+                    padding: '8px 12px',
+                    borderRadius: '4px',
+                    fontSize: '12px',
+                    boxShadow: '0 4px 8px rgba(0,0,0,0.3)',
+                  }}>
+                    <strong className="capitalize">{point.serieId}</strong>: {formatCurrency(Number(point.data.y))}<br />
+                    {crossChartFilter ? 'Period' : 'Year'}: {point.data.xFormatted}
+                  </div>
+                )}
                 legends={[
                   {
                     anchor: "bottom-right",
@@ -756,12 +800,12 @@ export default function NivoChartsPage() {
                       boxShadow: '0 4px 8px rgba(0,0,0,0.3)'
                     }}
                   >
-                    <strong>{id}</strong>: ${value?.toLocaleString()}
+                    <div style={{ backgroundColor: color }} className="w-4 h-4 rounded" />
+                    <strong>{id}</strong>: {formatCurrency(value)}
                     <br />
-                    <span style={{ opacity: 0.8 }}>Year: {indexValue}</span>
+                    <span style={{ opacity: 0.8 }}>{crossChartFilter ? 'Period' : 'Year'}: {indexValue}</span>
                   </div>
                 )}
-
               />
             </div>
           )}
@@ -787,6 +831,7 @@ export default function NivoChartsPage() {
                 innerRadius={0}
                 padAngle={0.7}
                 cornerRadius={3}
+                valueFormat={(v) => formatCurrency(Number(v))}
                 colors={{ scheme: "category10" }}
                 activeOuterRadiusOffset={8}
                 borderWidth={1}
@@ -841,6 +886,7 @@ export default function NivoChartsPage() {
                 data={donutChartData}
                 margin={{ top: 40, right: 80, bottom: 80, left: 80 }}
                 innerRadius={0.5}
+                valueFormat={(v) => formatCurrency(Number(v))}
                 padAngle={0.7}
                 cornerRadius={3}
                 colors={{ scheme: "nivo" }}
@@ -889,7 +935,7 @@ export default function NivoChartsPage() {
         chartTitle={emailDrawer.chartTitle}
         chartImage={emailDrawer.chartImage}
       />
-     {comparisonDrawer.isOpen && <ComparisonDrawer
+      {comparisonDrawer.isOpen && <ComparisonDrawer
         isOpen={comparisonDrawer.isOpen}
         onClose={handleComparisonCloseDrawer}
         chartType={comparisonDrawer.chartType}
