@@ -17,7 +17,7 @@ interface ChartContainerViewProps {
     title: string;
     className?: string;
     onShareChart?: () => void;
-    onComparisonOpen: () => void;
+    onComparisonOpen?: () => void;
 }
 
 export const ChartContainerView: React.FC<ChartContainerViewProps> = ({
@@ -79,7 +79,7 @@ export const ChartContainerView: React.FC<ChartContainerViewProps> = ({
                     {/* Controls Section */}
                     <div className="relative flex justify-between items-center mb-6">
                         <div className="flex items-center space-x-3">
-                            <button
+                            {onShareChart && <button
                                 onClick={onShareChart}
                                 className="cursor-pointer group/share relative px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white rounded-xl shadow-lg hover:shadow-purple-200 transform hover:scale-105 transition-all duration-300 ease-out font-medium text-sm overflow-hidden"
                             >
@@ -89,8 +89,8 @@ export const ChartContainerView: React.FC<ChartContainerViewProps> = ({
                                     <span>Share</span>
                                 </div>
                                 <div className="absolute inset-0 rounded-xl ring-0 group-hover/share:ring-2 group-hover/share:ring-purple-300/50 transition-all duration-300"></div>
-                            </button>
-                            <button
+                            </button>}
+                            {onComparisonOpen && <button
                                 onClick={onComparisonOpen}
                                 className="px-4 py-2 cursor-pointer group/comparison relative bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-700 text-white rounded-2xl hover:from-blue-700 hover:via-blue-800 hover:to-indigo-800 flex items-center gap-3 font-semibold text-sm shadow-lg transition-all"
                             >
@@ -100,7 +100,7 @@ export const ChartContainerView: React.FC<ChartContainerViewProps> = ({
                                     <span>Comparison</span>
                                 </div>
                                 <div className="absolute inset-0 rounded-xl ring-0 group-hover/share:ring-2 group-hover/share:ring-purple-300/50 transition-all duration-300"></div>
-                            </button>
+                            </button>}
                             {isDrilled && (
                                 <button
                                     onClick={resetDrillDown}
@@ -128,7 +128,7 @@ export const ChartContainerView: React.FC<ChartContainerViewProps> = ({
                                 <div className="absolute inset-0 rounded-xl ring-0 group-hover/png:ring-2 group-hover/png:ring-emerald-300/50 transition-all duration-300"></div>
                             </button>}
 
-                            <button
+                           {exportToCSV && <button
                                 onClick={exportToCSV}
                                 className="cursor-pointer group/csv relative px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-xl shadow-lg hover:shadow-blue-200 transform hover:scale-105 transition-all duration-300 ease-out font-medium text-sm overflow-hidden"
                             >
@@ -138,7 +138,7 @@ export const ChartContainerView: React.FC<ChartContainerViewProps> = ({
                                     <span>CSV</span>
                                 </div>
                                 <div className="absolute inset-0 rounded-xl ring-0 group-hover/csv:ring-2 group-hover/csv:ring-blue-300/50 transition-all duration-300"></div>
-                            </button>
+                            </button>}
                         </div>
                     </div>
 

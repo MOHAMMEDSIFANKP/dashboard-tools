@@ -482,3 +482,124 @@ export const ReactTableCaptureScreenshot = (tableRef: React.RefObject<HTMLElemen
     }
   });
 };
+
+// Add this function to your utils/utils.ts file or wherever your utility functions are located
+
+export const HighchartsCaptureScreenshot = (chartRef: React.RefObject<HTMLDivElement>): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    if (!chartRef.current) {
+      reject(new Error('Chart element not found'));
+      return;
+    }
+
+    try {
+      // Find the Highcharts container within the ref
+      const highchartsContainer = chartRef.current.querySelector('.highcharts-container');
+      
+      if (!highchartsContainer) {
+        reject(new Error('Highcharts container not found'));
+        return;
+      }
+
+      // Try to get the SVG element first (preferred method)
+      const svgElement = highchartsContainer.querySelector('svg');
+      
+      if (svgElement) {
+        // Method 1: Using SVG to canvas conversion
+        const serializer = new XMLSerializer();
+        let svgString = serializer.serializeToString(svgElement);
+        
+        // Ensure proper namespace
+        if (!svgString.includes('xmlns')) {
+          svgString = svgString.replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ');
+        }
+        
+        // Get SVG dimensions
+        const svgRect = svgElement.getBoundingClientRect();
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        if (!ctx) {
+          reject(new Error('Could not create canvas context'));
+          return;
+        }
+        
+        // Set canvas dimensions to match SVG
+        canvas.width = svgRect.width || 800;
+        canvas.height = svgRect.height || 600;
+        
+        // Fill background with white
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        const img = new Image();
+        img.onload = () => {
+          try {
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            const imageData = canvas.toDataURL('image/png', 1.0);
+            resolve(imageData);
+          } catch (err) {
+            reject(new Error('Failed to draw SVG to canvas'));
+          }
+        };
+        
+        img.onerror = () => {
+          reject(new Error('Failed to load SVG as image'));
+        };
+        
+        // Convert SVG to data URL
+        const encodedSvg = btoa(unescape(encodeURIComponent(svgString)));
+        img.src = `data:image/svg+xml;base64,${encodedSvg}`;
+        
+      } else {
+        // Method 2: Try canvas element (if chart is rendered as canvas)
+        const canvasElement = highchartsContainer.querySelector('canvas');
+        
+        if (canvasElement) {
+          try {
+            const imageData = canvasElement.toDataURL('image/png', 1.0);
+            resolve(imageData);
+          } catch (err) {
+            reject(new Error('Failed to capture canvas data'));
+          }
+        } else {
+          // Method 3: Fallback using html2canvas-like approach for the entire container
+          try {
+            const containerRect = highchartsContainer.getBoundingClientRect();
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            if (!ctx) {
+              reject(new Error('Could not create fallback canvas'));
+              return;
+            }
+            
+            canvas.width = containerRect.width || 800;
+            canvas.height = containerRect.height || 600;
+            
+            // Fill with white background
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Add a simple message indicating manual export is needed
+            ctx.fillStyle = '#333333';
+            ctx.font = '16px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('Chart Export', canvas.width / 2, canvas.height / 2 - 20);
+            ctx.font = '12px Arial';
+            ctx.fillText('Use Highcharts export menu for better quality', canvas.width / 2, canvas.height / 2 + 10);
+            
+            const imageData = canvas.toDataURL('image/png', 1.0);
+            resolve(imageData);
+            
+          } catch (err) {
+            reject(new Error('All capture methods failed'));
+          }
+        }
+      }
+      
+    } catch (err) {
+      reject(new Error(`Failed to capture Highcharts screenshot: ${err}`));
+    }
+  });
+};

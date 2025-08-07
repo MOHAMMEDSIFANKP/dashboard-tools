@@ -34,6 +34,10 @@ import {
 } from 'victory';
 // Echarts
 import ReactECharts from 'echarts-for-react';
+// Hight Charts
+import Highcharts from 'highcharts';
+import HighchartsReact from 'highcharts-react-official'
+
 import { testCase2ProductId, useFetchTestCase2AvailableYearsQuery, useFetchTestCase2ComparisonDataMutation } from "@/lib/services/testCase2Api";
 
 ChartJS.register(...registerables);
@@ -97,7 +101,7 @@ export const ComparisonDrawer: React.FC<ComparisonDrawerProps> = ({
     chartLibrary = "ag-charts",
     testCase = 'test-case-1'
 }) => {
-    
+
     const [selectedYear1, setSelectedYear1] = useState<number | null>(2021);
     const [selectedYear2, setSelectedYear2] = useState<number | null>(null);
     const [comparisonData, setComparisonData] = useState<ComparisonData>({
@@ -234,6 +238,15 @@ export const ComparisonDrawer: React.FC<ComparisonDrawerProps> = ({
             case "echarts":
                 return (
                     <EChartsRenderer
+                        chartType={chartType}
+                        data={data.data}
+                        columns={data.columns}
+                        year={data.year}
+                    />
+                );
+            case "highcharts":
+                return (
+                    <HighchartsRenderer
                         chartType={chartType}
                         data={data.data}
                         columns={data.columns}
@@ -1212,5 +1225,134 @@ export const EChartsRenderer: React.FC<EChartsRendererProps> = ({
 
 function getColorForIndex(index: number): string {
     const colors = ['#4bc0c0', '#ff6384', '#36a2eb', '#ffce56', '#9966ff', '#ff9f40'];
+    return colors[index % colors.length];
+}
+
+interface HighchartsRendererProps {
+    chartType: string;
+    data: any[];
+    columns: string[];
+    year: string;
+}
+
+// Add this component in ChartComparisonDrawer.tsx
+export const HighchartsRenderer: React.FC<HighchartsRendererProps> = ({
+    chartType,
+    data,
+    columns,
+    year,
+}) => {
+    const isTimeSeries = chartType === 'line' || chartType === 'bar';
+    const isPieLike = chartType === 'pie' || chartType === 'donut';
+
+     const getHighchartsOptions = (): Highcharts.Options => {
+        const baseOptions: Highcharts.Options = {
+            credits: { enabled: false },
+            title: { 
+                text: `Financial Year ${year} - ${chartType.charAt(0).toUpperCase() + chartType.slice(1)}`,
+                style: { fontSize: '16px' }
+            },
+            tooltip: { 
+                valueDecimals: 2,
+                formatter: function() {
+                    const point = this as any;
+                    return `<b>${point.series?.name || point.point?.name}</b><br/>
+                           ${point.x ? `Period: ${point.x}<br/>` : ''}
+                           ${point.series?.name ? `${point.series.name}: ` : ''}${formatCurrency(point.y || 0)}`;
+                }
+            },
+            legend: { 
+                enabled: true,
+                align: 'center' as const,
+                verticalAlign: 'bottom' as const
+            },
+            plotOptions: {
+                series: {
+                    animation: { duration: 500 }
+                }
+            }
+        };
+
+        if (isTimeSeries) {
+            const yKeys = columns.filter(col => col !== 'period');
+            
+            return {
+                ...baseOptions,
+                chart: { 
+                    type: chartType === 'line' ? 'line' : 'column',
+                    height: 300
+                },
+                xAxis: {
+                    categories: data.map(item => item.period),
+                    title: { text: 'Period' },
+                    labels: { rotation: -45 }
+                },
+                yAxis: {
+                    title: { text: 'Amount' },
+                    labels: {
+                        formatter: function() {
+                            return formatCurrency(this.value as number);
+                        }
+                    }
+                },
+                series: yKeys.map((key, index) => ({
+                    type: chartType === 'line' ? 'line' as const : 'column' as const,
+                    name: key,
+                    data: data.map(item => item[key]),
+                    // color: getColorForKey(key)
+                }))
+            };
+        }
+
+        if (isPieLike) {
+            const labelKey = columns.find(col => col !== 'revenue');
+            
+            return {
+                ...baseOptions,
+                chart: { 
+                    type: 'pie',
+                    height: 300
+                },
+                plotOptions: {
+                    pie: {
+                        allowPointSelect: true,
+                        cursor: 'pointer',
+                        dataLabels: {
+                            enabled: true,
+                            format: '<b>{point.name}</b>: {point.percentage:.1f}%'
+                        },
+                        showInLegend: true,
+                        innerSize: chartType === 'donut' ? '40%' : '0%'
+                    }
+                },
+                series: [{
+                    type: 'pie' as const,
+                    name: 'Revenue',
+                    data: data.map((item, index) => ({
+                        name: item[labelKey!],
+                        y: item.revenue,
+                        // color: getHighchartsColorForIndex(index)
+                    }))
+                }]
+            };
+        }
+
+        return baseOptions;
+    };
+
+    return (
+        <div className="w-full h-full">
+            <HighchartsReact
+                highcharts={Highcharts}
+                options={getHighchartsOptions()}
+                immutable={false}
+            />
+        </div>
+    );
+};
+
+
+function getHighchartsColorForIndex(index: number): string {
+    const colors = ['#058DC7', '#50B432', '#ED561B', '#DDDF00', '#24CBE5', '#64E572'];
     return colors[index % colors.length];
 }
