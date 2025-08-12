@@ -745,7 +745,7 @@ export default function ChartJsPage() {
               // @ts-ignore
               options={{
                 ...chartOptions,
-                onClick: handleLineChartClick
+                // onClick: handleLineChartClick
               }}
               data={drillDownState.chartType === 'line' && drillDownChartData ? (drillDownChartData as ChartData<'line'>) : lineChartData}
             />
@@ -770,7 +770,7 @@ export default function ChartJsPage() {
               // @ts-ignore
               options={{
                 ...chartOptions,
-                onClick: handleBarChartClick
+                // onClick: handleBarChartClick
               }}
               data={drillDownState.chartType === 'bar' && drillDownChartData ? (drillDownChartData as ChartData<'bar'>) : barChartData}
             />
@@ -808,7 +808,7 @@ export default function ChartJsPage() {
                 options={{
                   ...chartOptions,
                   scales: undefined, 
-                  onClick: handlePieChartClick,
+                  // onClick: handlePieChartClick,
                 }}
                 data={pieChartData}
               />
@@ -848,7 +848,7 @@ export default function ChartJsPage() {
                   ...chartOptions,
                   scales: undefined, 
                   cutout: "50%",
-                  onClick: handleDonutChartClick
+                  // onClick: handleDonutChartClick
                 }}
                 data={donutChartData}
               />

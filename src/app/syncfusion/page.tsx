@@ -7,7 +7,7 @@ import EnhancedDashboard from '../dashboard/draggble-dashboard/page'
 import { ChartLibrary } from '@/types/Schemas'
 import { useDispatch } from 'react-redux'
 import { setSelectedLibrary } from '@/store/slices/dashboardSlice'
-import HighCharts from './HighCharts'
+import SyncfusionCharts from './syncfusionPage'
 
 const dashboardInfoDatas = {
   apiEndpoints: [
@@ -46,13 +46,13 @@ function Page() {
   };
 
   useEffect(() => {
-    handleLibraryChange('highcharts');
+    handleLibraryChange('syncfusion');
   }, []);
 
   return (
     <>
       <TabsContainer selectedTab={selectedTab} setSelectedTab={setSelectedTab} />
-      {selectedTab === 'charts' && <HighCharts />}
+      {selectedTab === 'charts' && <SyncfusionCharts />}
       {selectedTab === 'table' && <FinancialDashboard />}
       {selectedTab === 'tool-test-info' && (
         <DashboardInfoCard

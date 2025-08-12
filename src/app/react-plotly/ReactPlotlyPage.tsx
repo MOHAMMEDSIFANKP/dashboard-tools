@@ -529,18 +529,18 @@ export default function ReactPlotlyPage() {
         linePlotRef.current.el.removeAllListeners('plotly_click');
         linePlotRef.current.el.on('plotly_click', handleLineChartClick);
       }
-      if (barPlotRef.current?.el) {
-        barPlotRef.current.el.removeAllListeners('plotly_click');
-        barPlotRef.current.el.on('plotly_click', handleBarChartClick);
-      }
-      if (piePlotRef.current?.el) {
-        piePlotRef.current.el.removeAllListeners('plotly_click');
-        piePlotRef.current.el.on('plotly_click', handlePieChartClick);
-      }
-      if (donutPlotRef.current?.el) {
-        donutPlotRef.current.el.removeAllListeners('plotly_click');
-        donutPlotRef.current.el.on('plotly_click', handleDonutChartClick);
-      }
+      // if (barPlotRef.current?.el) {
+      //   barPlotRef.current.el.removeAllListeners('plotly_click');
+      //   barPlotRef.current.el.on('plotly_click', handleBarChartClick);
+      // }
+      // if (piePlotRef.current?.el) {
+      //   piePlotRef.current.el.removeAllListeners('plotly_click');
+      //   piePlotRef.current.el.on('plotly_click', handlePieChartClick);
+      // }
+      // if (donutPlotRef.current?.el) {
+      //   donutPlotRef.current.el.removeAllListeners('plotly_click');
+      //   donutPlotRef.current.el.on('plotly_click', handleDonutChartClick);
+      // }
     };
 
     const timeoutId = setTimeout(attachHandlers, 100);

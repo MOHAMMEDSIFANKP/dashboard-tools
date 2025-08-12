@@ -37,6 +37,31 @@ import ReactECharts from 'echarts-for-react';
 // Hight Charts
 import Highcharts from 'highcharts';
 import HighchartsReact from 'highcharts-react-official'
+// Syncfusion
+import {
+    ChartComponent,
+    SeriesCollectionDirective,
+    SeriesDirective,
+    Inject,
+    LineSeries,
+    ColumnSeries,
+    Category,
+    Legend,
+    Tooltip,
+    DataLabel,
+    Export,
+    ChartTheme,
+    AccumulationChartComponent,
+    AccumulationSeriesCollectionDirective,
+    AccumulationSeriesDirective,
+    AccumulationLegend,
+    AccumulationDataLabel,
+    AccumulationTooltip,
+    PieSeries,
+    AccumulationSelection,
+    Highlight,
+    Selection
+} from '@syncfusion/ej2-react-charts';
 
 import { testCase2ProductId, useFetchTestCase2AvailableYearsQuery, useFetchTestCase2ComparisonDataMutation } from "@/lib/services/testCase2Api";
 
@@ -102,7 +127,7 @@ export const ComparisonDrawer: React.FC<ComparisonDrawerProps> = ({
     testCase = 'test-case-1'
 }) => {
 
-    const [selectedYear1, setSelectedYear1] = useState<number | null>(2021);
+    const [selectedYear1, setSelectedYear1] = useState<number | null>(null);
     const [selectedYear2, setSelectedYear2] = useState<number | null>(null);
     const [comparisonData, setComparisonData] = useState<ComparisonData>({
         loading: false,
@@ -118,7 +143,6 @@ export const ComparisonDrawer: React.FC<ComparisonDrawerProps> = ({
             ? useFetchAvailableYearsQuery('sample_100k')
             : useFetchTestCase2AvailableYearsQuery(testCase2ProductId);
 
-    // const [triggerComparison, { isLoading: isComparing }] = useFetchComparisonDataMutation();
     const [triggerComparisonTC1, { isLoading: isComparingTC1 }] = useFetchComparisonDataMutation();
     const [triggerComparisonTC2, { isLoading: isComparingTC2 }] = useFetchTestCase2ComparisonDataMutation();
 
@@ -253,6 +277,17 @@ export const ComparisonDrawer: React.FC<ComparisonDrawerProps> = ({
                         year={data.year}
                     />
                 );
+            case "syncfusion":
+                return (
+                    <SyncfusionRenderer
+                        chartType={chartType}
+                        data={data.data}
+                        columns={data.columns}
+                        year={data.year}
+                    />
+                );
+
+
             default:
                 return <div className="text-center text-gray-500">Chart library not implemented yet</div>;
         }
@@ -1245,23 +1280,23 @@ export const HighchartsRenderer: React.FC<HighchartsRendererProps> = ({
     const isTimeSeries = chartType === 'line' || chartType === 'bar';
     const isPieLike = chartType === 'pie' || chartType === 'donut';
 
-     const getHighchartsOptions = (): Highcharts.Options => {
+    const getHighchartsOptions = (): Highcharts.Options => {
         const baseOptions: Highcharts.Options = {
             credits: { enabled: false },
-            title: { 
+            title: {
                 text: `Financial Year ${year} - ${chartType.charAt(0).toUpperCase() + chartType.slice(1)}`,
                 style: { fontSize: '16px' }
             },
-            tooltip: { 
+            tooltip: {
                 valueDecimals: 2,
-                formatter: function() {
+                formatter: function () {
                     const point = this as any;
                     return `<b>${point.series?.name || point.point?.name}</b><br/>
                            ${point.x ? `Period: ${point.x}<br/>` : ''}
                            ${point.series?.name ? `${point.series.name}: ` : ''}${formatCurrency(point.y || 0)}`;
                 }
             },
-            legend: { 
+            legend: {
                 enabled: true,
                 align: 'center' as const,
                 verticalAlign: 'bottom' as const
@@ -1275,10 +1310,10 @@ export const HighchartsRenderer: React.FC<HighchartsRendererProps> = ({
 
         if (isTimeSeries) {
             const yKeys = columns.filter(col => col !== 'period');
-            
+
             return {
                 ...baseOptions,
-                chart: { 
+                chart: {
                     type: chartType === 'line' ? 'line' : 'column',
                     height: 300
                 },
@@ -1290,7 +1325,7 @@ export const HighchartsRenderer: React.FC<HighchartsRendererProps> = ({
                 yAxis: {
                     title: { text: 'Amount' },
                     labels: {
-                        formatter: function() {
+                        formatter: function () {
                             return formatCurrency(this.value as number);
                         }
                     }
@@ -1306,10 +1341,10 @@ export const HighchartsRenderer: React.FC<HighchartsRendererProps> = ({
 
         if (isPieLike) {
             const labelKey = columns.find(col => col !== 'revenue');
-            
+
             return {
                 ...baseOptions,
-                chart: { 
+                chart: {
                     type: 'pie',
                     height: 300
                 },
@@ -1356,3 +1391,176 @@ function getHighchartsColorForIndex(index: number): string {
     const colors = ['#058DC7', '#50B432', '#ED561B', '#DDDF00', '#24CBE5', '#64E572'];
     return colors[index % colors.length];
 }
+
+interface SyncfusionRendererProps {
+    chartType: string;
+    data: any[];
+    columns: string[];
+    year: string;
+}
+
+export const SyncfusionRenderer: React.FC<SyncfusionRendererProps> = ({
+    chartType,
+    data,
+    columns,
+    year,
+}) => {
+    const isTimeSeries = chartType === 'line' || chartType === 'bar';
+    const isPieLike = chartType === 'pie' || chartType === 'donut';
+    const chartTheme: ChartTheme = 'Material';
+
+    if (isTimeSeries) {
+        const yKeys = columns.filter(col => col !== 'period');
+
+        return (
+            <div className="w-full h-full">
+                <ChartComponent
+                    height="100%"
+                    theme={chartTheme}
+                    title={`Financial Year ${year} - ${chartType.charAt(0).toUpperCase() + chartType.slice(1)}`}
+                    primaryXAxis={{
+                        valueType: 'Category',
+                        title: 'Period',
+                        labelRotation: -45,
+                        labelStyle: { color: '#666' },
+                    }}
+                    primaryYAxis={{
+                        title: 'Amount (USD)',
+                        labelFormat: '${value}',
+                        labelStyle: { color: '#666' },
+                    }}
+                    axisLabelRender={(args) => {
+                        if (args.axis.name === 'primaryYAxis') {
+                            args.text = formatCurrency(args.value);
+                        }
+                    }}
+                    tooltip={{
+                        enable: true,
+                        shared: false,
+                        enableHighlight: true,
+                        // header: '<b>${series.name}</b>',
+                        // format: '${point.x}: <b>${point.y}</b>'
+                    }}
+                    tooltipRender={(args) => {
+                        const xValue = args.point.x;
+                        const yValue = args.point.y;
+                        const formattedY = formatCurrency(yValue);
+                        args.text = `${xValue}: <b>${formattedY}</b>`;
+                    }}
+                    legendSettings={{
+                        visible: true,
+                        position: 'Bottom'
+                    }}
+                    enableAnimation={true}
+                >
+                    <Inject services={[
+                        chartType === 'line' ? LineSeries : ColumnSeries,
+                        Category,
+                        Legend,
+                        Tooltip,
+                        DataLabel,
+                        Export,
+                        Highlight,
+                        Selection
+                    ]} />
+                    <SeriesCollectionDirective>
+                        {yKeys.map((key, index) => (
+                            <SeriesDirective
+                                key={key}
+                                dataSource={data}
+                                xName="period"
+                                yName={key}
+                                type={chartType === 'line' ? 'Line' : 'Column'}
+                                name={key}
+                                width={chartType === 'line' ? 3 : undefined}
+                                marker={chartType === 'line' ? {
+                                    visible: true,
+                                    width: 8,
+                                    height: 8,
+                                    shape: 'Circle',
+                                    border: { width: 2, color: '#fff' },
+                                    fill: getColorForKey(key),
+                                } : undefined}
+                                fill={getColorForKey(key)}
+                                columnSpacing={chartType === 'bar' ? 0.1 : undefined}
+                                columnWidth={chartType === 'bar' ? 0.7 : undefined}
+                                dataLabel={{
+                                    visible: false,
+                                    position: 'Top',
+                                    font: { fontWeight: '600', color: '#ffffff' }
+                                }}
+                            />
+                        ))}
+                    </SeriesCollectionDirective>
+                </ChartComponent>
+            </div>
+        );
+    }
+
+    if (isPieLike) {
+        const labelKey = columns.find(col => col !== 'revenue');
+
+        return (
+            <div className="w-full h-full">
+                <AccumulationChartComponent
+                    height="100%"
+                    theme={chartTheme}
+                    title={`Financial Year ${year} - ${chartType.charAt(0).toUpperCase() + chartType.slice(1)}`}
+                    enableSmartLabels={true}
+                    enableAnimation={true}
+                    center={{ x: '50%', y: '50%' }}
+                    enableBorderOnMouseMove={true}
+                    tooltip={{
+                        enable: true,
+                        // format: '${point.x}: <b>${point.y}</b> (${point.percentage}%)'
+                    }}
+                    tooltipRender={(args) => {
+                        const pointName = args.point.x;
+                        const yValue = args.point.y;
+                        const percentage = args.point.percentage;
+                        const formattedY = formatCurrency(yValue);
+                        args.text = `${pointName}: <b>${formattedY}</b> (${percentage?.toFixed(1)}%)`;
+                    }}
+                    legendSettings={{
+                        visible: true,
+                        position: 'Bottom'
+                    }}
+                >
+                    <Inject services={[
+                        PieSeries,
+                        AccumulationLegend,
+                        Export,
+                        AccumulationDataLabel,
+                        AccumulationTooltip,
+                        AccumulationSelection
+                    ]} />
+                    <AccumulationSeriesCollectionDirective>
+                        <AccumulationSeriesDirective
+                            dataSource={data}
+                            xName={labelKey}
+                            yName="revenue"
+                            type="Pie"
+                            radius="80%"
+                            innerRadius={chartType === 'donut' ? "40%" : "0%"}
+                            startAngle={0}
+                            endAngle={360}
+                            dataLabel={{
+                                visible: true,
+                                name: labelKey,
+                                position: 'Outside',
+                                font: { fontWeight: '600' },
+                                connectorStyle: { length: '20px', type: 'Curve' }
+                            }}
+                            explode={true}
+                            explodeOffset="10%"
+                            explodeIndex={0}
+                            palettes={['#058DC7', '#50B432', '#ED561B', '#DDDF00', '#24CBE5', '#64E572']}
+                        />
+                    </AccumulationSeriesCollectionDirective>
+                </AccumulationChartComponent>
+            </div>
+        );
+    }
+
+    return <div className="text-center text-gray-500">Unsupported chart type</div>;
+};

@@ -764,14 +764,14 @@ export default function NivoChartsPage() {
                   legendOffset: -40,
                   format: value => formatCurrency(value),
                 }}
-                onClick={(data) => {
-                  handleDrillDown(
-                    'bar',
-                    (crossChartFilter ? data.data['period'] : data.data['fiscalYear'])?.slice(0, 4) as string,
-                    data.data[data.id],
-                    data.id as string
-                  );
-                }}
+                // onClick={(data) => {
+                //   handleDrillDown(
+                //     'bar',
+                //     (crossChartFilter ? data.data['period'] : data.data['fiscalYear'])?.slice(0, 4) as string,
+                //     data.data[data.id],
+                //     data.id as string
+                //   );
+                // }}
                 legends={[
                   {
                     dataFrom: "keys",
@@ -842,9 +842,9 @@ export default function NivoChartsPage() {
                 arcLinkLabelsColor={{ from: "color" }}
                 arcLabelsSkipAngle={10}
                 arcLabelsTextColor={{ from: "color", modifiers: [["darker", 2]] }}
-                onClick={(data) => {
-                  handleDrillDown('pie', data.id as string, data.value, 'revenue');
-                }}
+                // onClick={(data) => {
+                //   handleDrillDown('pie', data.id as string, data.value, 'revenue');
+                // }}
                 legends={[
                   {
                     anchor: "bottom",
@@ -899,9 +899,9 @@ export default function NivoChartsPage() {
                 arcLinkLabelsColor={{ from: "color" }}
                 arcLabelsSkipAngle={10}
                 arcLabelsTextColor={{ from: "color", modifiers: [["darker", 2]] }}
-                onClick={(data) => {
-                  handleDrillDown('donut', data.label as string, data.value, 'revenue');
-                }}
+                // onClick={(data) => {
+                //   handleDrillDown('donut', data.label as string, data.value, 'revenue');
+                // }}
                 legends={[
                   {
                     anchor: "bottom",

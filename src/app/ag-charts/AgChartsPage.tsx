@@ -236,13 +236,6 @@ const AgChartsPage: React.FC = () => {
                 chartType: 'line',
                 dataType: yKey
               });
-              // if (nativeEvent?.ctrlKey || nativeEvent?.metaKey) {
-              //   // Ctrl/Cmd + Click = Drill Down
-              //   handleDrillDown("line", datum.period, datum[yKey], yKey);
-              // } else {
-              //   // Regular Click = Cross Chart Filter
-              //   handleCrossChartFiltering(datum.period);
-              // }
             }
           },
 
@@ -275,14 +268,14 @@ const AgChartsPage: React.FC = () => {
           { type: 'category', position: 'bottom', title: { text: Xkey } },
           { type: 'number', position: 'left', title: { text: 'Amount ($)' },label: { formatter: (params:any) => formatCurrency(params.value) }, }
         ],
-        listeners: {
-          // @ts-ignore
-          seriesNodeClick: ({ datum, yKey }) => {
-            if (datum && datum.fiscalYear) {
-              handleDrillDown('bar', datum.fiscalYear, datum[yKey], yKey);
-            }
-          }
-        }
+        // listeners: {
+        //   // @ts-ignore
+        //   seriesNodeClick: ({ datum, yKey }) => {
+        //     if (datum && datum.fiscalYear) {
+        //       handleDrillDown('bar', datum.fiscalYear, datum[yKey], yKey);
+        //     }
+        //   }
+        // }
       } : null;
 
       // Process pie chart data
@@ -298,15 +291,15 @@ const AgChartsPage: React.FC = () => {
           calloutLabel: { enabled: true },
           sectorLabelKey: 'catfinancialview',
           legendItemKey: 'amount',
-          listeners: {
-            // @ts-ignore
-            nodeClick: (event) => {
-              const { datum } = event;
-              if (datum) {
-                handleDrillDown('pie', datum.catfinancialview, datum.revenue, 'revenue');
-              }
-            }
-          }
+          // listeners: {
+          //   // @ts-ignore
+          //   nodeClick: (event) => {
+          //     const { datum } = event;
+          //     if (datum) {
+          //       handleDrillDown('pie', datum.catfinancialview, datum.revenue, 'revenue');
+          //     }
+          //   }
+          // }
         }],
       } : null;
 
@@ -322,15 +315,16 @@ const AgChartsPage: React.FC = () => {
           tooltip: { enabled: true },
           calloutLabel: { enabled: true },
           sectorLabelKey: 'cataccountingview',
-          listeners: {
-            // @ts-ignore
-            nodeClick: (event) => {
-              const { datum } = event;
-              if (datum) {
-                handleDrillDown('donut', datum.cataccountingview, datum.revenue, 'revenue');
-              }
-            }
-          }
+          
+          // listeners: {
+          //   // @ts-ignore
+          //   nodeClick: (event) => {
+          //     const { datum } = event;
+          //     if (datum) {
+          //       handleDrillDown('donut', datum.cataccountingview, datum.revenue, 'revenue');
+          //     }
+          //   }
+          // }
         }],
       } : null;
 

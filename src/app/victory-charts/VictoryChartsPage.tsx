@@ -309,58 +309,50 @@ const VictoryChartsPage: React.FC = () => {
 
   // Handle drill down using API
   const handleDrillDown = async (chartType: string, category: string, value: any, dataType: string) => {
-    setIsLoading(true);
-    setError(null);
+    // setIsLoading(true);
+    // setError(null);
 
-    try {
-      const result: any = testCase === "test-case-1"
-        ? await fetchDrillDownData({
-          table_name: databaseName,
-          chart_type: chartType,
-          category: category,
-          data_type: dataType,
-          value: value
-        }).unwrap()
-        : transformTestCase2DrillDownData(await fetchTestCase2DrillDownData({
-          productId: testCase2ProductId,
-          chartType: chartType,
-          category: category,
-          dataType: dataType,
-          value: value
-        }).unwrap());
+    // try {
+    //   const result: any = testCase === "test-case-1"
+    //     ? await fetchDrillDownData({
+    //       table_name: databaseName,
+    //       chart_type: chartType,
+    //       category: category,
+    //       data_type: dataType,
+    //       value: value
+    //     }).unwrap()
+    //     : transformTestCase2DrillDownData(await fetchTestCase2DrillDownData({
+    //       productId: testCase2ProductId,
+    //       chartType: chartType,
+    //       category: category,
+    //       dataType: dataType,
+    //       value: value
+    //     }).unwrap());
 
-      if (result.success && result.data && result.data.length > 0) {
-        const drillData = result.data;
-        const title = result.title || `${dataType} Breakdown for ${category}`;
+    //   if (result.success && result.data && result.data.length > 0) {
+    //     const drillData = result.data;
+    //     const title = result.title || `${dataType} Breakdown for ${category}`;
 
-        setChartData(prev => ({
-          ...prev,
-          drillDown: drillData,
-        }));
+    //     setChartData(prev => ({
+    //       ...prev,
+    //       drillDown: drillData,
+    //     }));
 
-        setDrillDownState({
-          isDrilled: true,
-          chartType: chartType,
-          title: title
-        });
-
-
-        // openDrawer({
-        //   chartType,
-        //   category,
-        //   title,
-        //   dataType
-        // });
-
-      } else {
-        setError("No data available for this selection");
-      }
-    } catch (err: any) {
-      setError(err?.data?.detail || err.message || "Failed to fetch drill-down data");
-      console.error("Error in drill-down:", err);
-    } finally {
-      setIsLoading(false);
-    }
+    //     setDrillDownState({
+    //       isDrilled: true,
+    //       chartType: chartType,
+    //       title: title
+    //     });
+    //   } else {
+    //     setError("No data available for this selection");
+    //   }
+    // } catch (err: any) {
+    //   setError(err?.data?.detail || err.message || "Failed to fetch drill-down data");
+    //   console.error("Error in drill-down:", err);
+    // } finally {
+    //   setIsLoading(false);
+    // }
+    return;
   };
 
   // Fetch data when dimensions change

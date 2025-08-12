@@ -64,15 +64,40 @@ import {
 // ECharts imports
 import ReactECharts from "echarts-for-react";
 
+// Hight charts
+import Highcharts from 'highcharts';
+import HighchartsReact from 'highcharts-react-official';
+// Syncfusion
+import {
+  ChartComponent,
+  SeriesCollectionDirective,
+  SeriesDirective,
+  Inject,
+  LineSeries,
+  ColumnSeries,
+  Category,
+  Legend as SyncfusionLegend,
+  Tooltip as SyncfusionTooltip,
+  DataLabel,
+  Export,
+  ChartTheme,
+  Highlight,
+  Selection
+} from '@syncfusion/ej2-react-charts';
+import { registerLicense, enableRipple } from '@syncfusion/ej2-base';
+
 import { ChartAttribute, ChartType, ChartConfig, ChartConfigurations, DraggableAttributeProps, ChartLibrary } from '@/types/Schemas';
 // Redux imports
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '@/store/store';
-import { setChartConfigurations, setSelectedLibrary, updateChartConfig } from '@/store/slices/dashboardSlice';
+import {  setSelectedLibrary, updateChartConfig } from '@/store/slices/dashboardSlice';
 import { formatCurrency } from '@/utils/utils';
 
 // Dynamically import Plotly to avoid SSR issues
 const Plotly = dynamic(() => import('react-plotly.js'), { ssr: false });
+
+// @ts-ignore
+registerLicense(process.env.NEXT_PUBLIC_SYNCFUSION_LICENSE_KEY);
 
 // Register Chart.js components
 ChartJS.register(
@@ -121,7 +146,9 @@ const chartLibraryOptions: ChartLibraryOption[] = [
   { key: 'plotly', label: 'Plotly', icon: 'TrendingUp', color: '#8B5CF6', implemented: true },
   { key: 'nivo', label: 'Nivo Charts', icon: 'BarChart3', color: '#F59E0B', implemented: true },
   { key: 'victory', label: 'Victory Charts', icon: 'Target', color: '#EF4444', implemented: true },
-  { key: 'echarts', label: 'ECharts', icon: 'Activity', color: '#06B6D4', implemented: true }
+  { key: 'echarts', label: 'ECharts', icon: 'Activity', color: '#06B6D4', implemented: true },
+  { key: 'highcharts', label: 'Highcharts', icon: 'TrendingUp', color: '#FF6B35', implemented: true },
+    { key: 'syncfusion', label: 'Syncfusion Charts', icon: 'BarChart3', color: '#7C3AED', implemented: true }, // Add this line
 ];
 
 // Mock data for demonstration
@@ -371,6 +398,20 @@ const ChartRenderer: React.FC<{
       />;
     case 'echarts':
       return <EChartsRenderer
+        chartType={chartType}
+        measures={chartMeasures}
+        xKey={xKey}
+        data={processedData}
+      />;
+    case 'highcharts':
+      return <HighchartsRenderer
+        chartType={chartType}
+        measures={chartMeasures}
+        xKey={xKey}
+        data={processedData}
+      />;
+       case 'syncfusion':
+      return <SyncfusionRenderer
         chartType={chartType}
         measures={chartMeasures}
         xKey={xKey}
@@ -1142,6 +1183,434 @@ const EChartsRenderer: React.FC<{
   );
 };
 
+// Highcharts Renderer Component
+const HighchartsRenderer: React.FC<{
+  chartType: ChartType;
+  measures: ChartAttribute[];
+  xKey: string;
+  data: FinancialData[];
+}> = ({ chartType, measures, xKey, data }) => {
+  const chartOptions = useMemo(() => {
+    // Get unique categories for x-axis
+    const categories = [...new Set(data.map(item => (item as any)[xKey]?.toString()))].sort();
+
+    // Prepare series data
+    const series = measures.map(measure => {
+      const seriesData = categories.map(category => {
+        const item = data.find(d => (d as any)[xKey]?.toString() === category);
+        return item ? (item as any)[measure.key] || 0 : 0;
+      });
+
+      return {
+        name: measure.label,
+        type: chartType.key === 'line' ? 'line' : 'column',
+        data: seriesData,
+        color: measure.color,
+        marker: {
+          radius: chartType.key === 'line' ? 4 : 0,
+          symbol: 'circle'
+        },
+        lineWidth: chartType.key === 'line' ? 2 : 0,
+      };
+    });
+
+    const options: Highcharts.Options = {
+      chart: {
+        type: chartType.key === 'line' ? 'line' : 'column',
+        backgroundColor: 'transparent',
+        height: '100%',
+        spacingTop: 20,
+        spacingRight: 20,
+        spacingBottom: 60,
+        spacingLeft: 20
+      },
+      title: {
+        text: `${chartType.label} - Financial Analysis (Highcharts)`,
+        style: {
+          fontSize: '16px',
+          fontWeight: 'bold',
+          color: '#1F2937'
+        }
+      },
+      subtitle: {
+        text: undefined
+      },
+      xAxis: {
+        categories: categories,
+        title: {
+          text: xKey,
+          style: {
+            color: '#374151',
+            fontSize: '12px'
+          }
+        },
+        labels: {
+          rotation: -45,
+          style: {
+            color: '#6B7280',
+            fontSize: '11px'
+          }
+        },
+        lineColor: '#E5E7EB',
+        tickColor: '#E5E7EB'
+      },
+      yAxis: {
+        title: {
+          text: 'Amount ($)',
+          style: {
+            color: '#374151',
+            fontSize: '12px'
+          }
+        },
+        labels: {
+          formatter: function () {
+            return formatCurrency(this.value as number);
+          },
+          style: {
+            color: '#6B7280',
+            fontSize: '11px'
+          }
+        },
+        gridLineColor: '#F3F4F6',
+        lineColor: '#E5E7EB'
+      },
+      tooltip: {
+        shared: true,
+        useHTML: true,
+        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        borderColor: '#E5E7EB',
+        borderRadius: 8,
+        borderWidth: 1,
+        shadow: {
+          color: 'rgba(0, 0, 0, 0.1)',
+          offsetX: 0,
+          offsetY: 2,
+          opacity: 0.1,
+          width: 4
+        },
+        style: {
+          color: '#1F2937',
+          fontSize: '12px'
+        },
+        formatter: function () {
+          let tooltipContent = `<div style="padding: 8px;"><strong>${this.x}</strong><br/>`;
+
+          if (Array.isArray(this.points)) {
+            this.points.forEach(point => {
+              tooltipContent += `
+                <div style="margin-top: 4px; display: flex; align-items: center; gap: 6px;">
+                  <span style="display: inline-block; width: 12px; height: 12px; background-color: ${point.series.color}; border-radius: 50%;"></span>
+                  <span>${point.series.name}: <strong>${formatCurrency(point.y || 0)}</strong></span>
+                </div>
+              `;
+            });
+          } else {
+            tooltipContent += `
+              <div style="margin-top: 4px; display: flex; align-items: center; gap: 6px;">
+                <span style="display: inline-block; width: 12px; height: 12px; background-color: ${this.series.color}; border-radius: 50%;"></span>
+                <span>${this.series.name}: <strong>${formatCurrency(this.y || 0)}</strong></span>
+              </div>
+            `;
+          }
+
+          tooltipContent += `</div>`;
+          return tooltipContent;
+        }
+      },
+      legend: {
+        align: 'center',
+        verticalAlign: 'bottom',
+        layout: 'horizontal',
+        itemStyle: {
+          color: '#374151',
+          fontSize: '12px',
+          fontWeight: '500'
+        },
+        itemHoverStyle: {
+          color: '#1F2937'
+        },
+        itemMarginTop: 8,
+        itemMarginBottom: 4,
+        symbolRadius: 6,
+        symbolHeight: 12,
+        symbolWidth: 12
+      },
+      plotOptions: {
+        line: {
+          animation: {
+            duration: 1000
+          },
+          marker: {
+            enabled: true,
+            radius: 4,
+            states: {
+              hover: {
+                radius: 6,
+                lineWidth: 2,
+                lineColor: '#FFFFFF'
+              }
+            }
+          },
+          lineWidth: 2,
+          states: {
+            hover: {
+              lineWidth: 3
+            }
+          }
+        },
+        column: {
+          animation: {
+            duration: 1000
+          },
+          borderWidth: 0,
+          borderRadius: 2,
+          pointPadding: 0.1,
+          groupPadding: 0.1,
+          states: {
+            hover: {
+              brightness: 0.1
+            }
+          }
+        },
+        series: {
+          animation: {
+            duration: 1000
+          },
+          states: {
+            inactive: {
+              opacity: 0.3
+            }
+          }
+        }
+      },
+      credits: {
+        enabled: false
+      },
+      exporting: {
+        enabled: false
+      },
+      responsive: {
+        rules: [{
+          condition: {
+            maxWidth: 500
+          },
+          chartOptions: {
+            legend: {
+              layout: 'horizontal',
+              align: 'center',
+              verticalAlign: 'bottom'
+            },
+            xAxis: {
+              labels: {
+                rotation: -90
+              }
+            }
+          }
+        }]
+      },
+      series: series as Highcharts.SeriesOptionsType[]
+    };
+
+    return options;
+  }, [chartType, measures, xKey, data]);
+
+  return (
+    <div className="w-full h-full p-4">
+      <HighchartsReact
+        highcharts={Highcharts}
+        options={chartOptions}
+        containerProps={{
+          style: {
+            width: '100%',
+            height: '100%',
+            minHeight: '320px'
+          }
+        }}
+      />
+    </div>
+  );
+};
+
+// Chart theme configuration
+const chartTheme: ChartTheme = 'Material';
+enableRipple(true);
+
+// Syncfusion Renderer Component
+const SyncfusionRenderer: React.FC<{
+  chartType: ChartType;
+  measures: ChartAttribute[];
+  xKey: string;
+  data: FinancialData[];
+}> = ({ chartType, measures, xKey, data }) => {
+
+  // Process data for Syncfusion format
+  const processedData = useMemo(() => {
+    const categories = [...new Set(data.map(item => (item as any)[xKey]?.toString()))].sort();
+    
+    return categories.map(category => {
+      const item = data.find(d => (d as any)[xKey]?.toString() === category);
+      const result: any = { [xKey]: category };
+      
+      measures.forEach(measure => {
+        result[measure.key] = item ? (item as any)[measure.key] || 0 : 0;
+      });
+      
+      return result;
+    });
+  }, [data, xKey, measures]);
+
+  // Color palette for series
+  const getSeriesColor = (index: number): string => {
+    const colors = ['#058DC7', '#50B432', '#ED561B', '#DDDF00', '#24CBE5', '#64E572', '#FF9655', '#FFF263', '#6AF9C4'];
+    return measures[index]?.color || colors[index % colors.length];
+  };
+
+  if (chartType.key === 'line') {
+    return (
+      <div className="w-full h-full p-4">
+        <ChartComponent
+          height="100%"
+          style={{ textAlign: 'center' }}
+          theme={chartTheme}
+          title={`Line Chart - Financial Analysis (Syncfusion)`}
+          subTitle="Interactive financial data visualization"
+          primaryXAxis={{
+            valueType: 'Category',
+            title: xKey,
+            labelRotation: -45,
+            labelStyle: { color: '#666', size: '12px' },
+            majorGridLines: { width: 0 },
+            lineStyle: { color: '#E5E7EB' }
+          }}
+          primaryYAxis={{
+            title: 'Amount (USD)',
+            labelFormat: '${value}',
+            labelStyle: { color: '#666', size: '12px' },
+            majorGridLines: { color: '#F3F4F6', width: 1 },
+            lineStyle: { color: '#E5E7EB' }
+          }}
+          tooltip={{
+            enable: true,
+            shared: false,
+            enableHighlight: true,
+            showNearestTooltip: true,
+            header: '<b>${series.name}</b>',
+            // format: '${point.x}: <b>' + formatCurrency('${point.y}') + '</b>',
+            fill: 'rgba(255, 255, 255, 0.95)',
+            border: { color: '#E5E7EB', width: 1 },
+            textStyle: { color: '#1F2937', size: '12px' }
+          }}
+          legendSettings={{
+            visible: true,
+            position: 'Bottom',
+            padding: 20,
+            shapePadding: 10,
+            textStyle: { color: '#374151', size: '12px' }
+          }}
+          enableAnimation={true}
+          background="transparent"
+          margin={{ left: 20, right: 20, top: 40, bottom: 60 }}
+        >
+          <Inject services={[LineSeries, Category, SyncfusionLegend, SyncfusionTooltip, DataLabel, Export, Highlight, Selection]} />
+          <SeriesCollectionDirective>
+            {measures.map((measure, index) => (
+              <SeriesDirective
+                key={measure.key}
+                dataSource={processedData}
+                xName={xKey}
+                yName={measure.key}
+                type="Line"
+                name={measure.label}
+                width={3}
+                marker={{
+                  visible: true,
+                  width: 8,
+                  height: 8,
+                  shape: index % 3 === 0 ? 'Circle' : index % 3 === 1 ? 'Diamond' : 'Triangle',
+                  fill: getSeriesColor(index),
+                  border: { width: 2, color: '#fff' }
+                }}
+                fill={getSeriesColor(index)}
+                opacity={0.9}
+              />
+            ))}
+          </SeriesCollectionDirective>
+        </ChartComponent>
+      </div>
+    );
+  } else {
+    // Bar/Column Chart
+    return (
+      <div className="w-full h-full p-4">
+        <ChartComponent
+          height="100%"
+          style={{ textAlign: 'center' }}
+          theme={chartTheme}
+          title={`Bar Chart - Financial Analysis (Syncfusion)`}
+          subTitle="Interactive financial data visualization"
+          primaryXAxis={{
+            valueType: 'Category',
+            title: xKey,
+            labelRotation: -45,
+            labelStyle: { color: '#666', size: '12px' },
+            majorGridLines: { width: 0 },
+            lineStyle: { color: '#E5E7EB' }
+          }}
+          primaryYAxis={{
+            title: 'Amount (USD)',
+            labelFormat: '${value}',
+            labelStyle: { color: '#666', size: '12px' },
+            majorGridLines: { color: '#F3F4F6', width: 1 },
+            lineStyle: { color: '#E5E7EB' }
+          }}
+          tooltip={{
+            enable: true,
+            shared: false,
+            header: '<b>${series.name}</b>',
+            // format: '${point.x}: <b>' + formatCurrency('${point.y}') + '</b>',
+            fill: 'rgba(255, 255, 255, 0.95)',
+            border: { color: '#E5E7EB', width: 1 },
+            textStyle: { color: '#1F2937', size: '12px' }
+          }}
+          legendSettings={{
+            visible: true,
+            position: 'Bottom',
+            padding: 20,
+            shapePadding: 10,
+            textStyle: { color: '#374151', size: '12px' }
+          }}
+          enableAnimation={true}
+          background="transparent"
+          margin={{ left: 20, right: 20, top: 40, bottom: 60 }}
+        >
+          <Inject services={[ColumnSeries, Category, Legend, Tooltip, DataLabel, Export, Highlight, Selection]} />
+          <SeriesCollectionDirective>
+            {measures.map((measure, index) => (
+              <SeriesDirective
+                key={measure.key}
+                dataSource={processedData}
+                xName={xKey}
+                yName={measure.key}
+                type="Column"
+                name={measure.label}
+                fill={getSeriesColor(index)}
+                columnSpacing={0.1}
+                columnWidth={0.8}
+                opacity={0.9}
+                border={{ width: 1, color: 'transparent' }}
+                dataLabel={{
+                  visible: false,
+                  position: 'Top',
+                  font: { fontWeight: '600', color: '#ffffff', size: '10px' }
+                }}
+              />
+            ))}
+          </SeriesCollectionDirective>
+        </ChartComponent>
+      </div>
+    );
+  }
+};
 
 // Draggable Attribute Component
 const DraggableAttribute: React.FC<DraggableAttributeProps> = ({ attribute, isUsed }) => {

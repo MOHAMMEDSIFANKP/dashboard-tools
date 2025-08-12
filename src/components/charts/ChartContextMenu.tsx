@@ -44,12 +44,12 @@ export const ChartContextMenu: React.FC<{
             >
                 <span>🔍</span> Cross Chart FIlter
             </button>
-            <button
+            {/* <button
                 onClick={onDrillDown}
                 className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 rounded flex items-center gap-2"
             >
                 <span>📊</span> Drill down
-            </button>
+            </button> */}
             <button
                 onClick={onClose}
                 className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 rounded text-gray-500"

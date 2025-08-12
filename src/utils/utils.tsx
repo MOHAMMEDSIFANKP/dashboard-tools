@@ -1,3 +1,4 @@
+import { AccumulationChartComponent, ChartComponent } from "@syncfusion/ej2-react-charts";
 import { AgGridReact } from "ag-grid-react";
 
 export const formatCurrency = (value: number): string => {
@@ -600,6 +601,75 @@ export const HighchartsCaptureScreenshot = (chartRef: React.RefObject<HTMLDivEle
       
     } catch (err) {
       reject(new Error(`Failed to capture Highcharts screenshot: ${err}`));
+    }
+  });
+};
+
+
+export const SyncfusionCaptureChartScreenshot = (
+  chartRef: React.RefObject<ChartComponent | AccumulationChartComponent>
+): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    if (!chartRef.current) {
+      reject(new Error('Syncfusion chart reference not found'));
+      return;
+    }
+
+    try {
+      const chartInstance = chartRef.current;
+
+      // Method 1: Try to get SVG element directly (most reliable)
+      const svgElement = chartInstance.svgObject as SVGElement;
+      
+      if (svgElement) {
+        // Get SVG dimensions
+        const svgRect = svgElement.getBoundingClientRect();
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        if (!ctx) {
+          reject(new Error('Could not create canvas context'));
+          return;
+        }
+
+        // Set canvas dimensions
+        canvas.width = svgRect.width || 800;
+        canvas.height = svgRect.height || 600;
+
+        // Fill background with white
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Serialize SVG
+        const serializer = new XMLSerializer();
+        let svgString = serializer.serializeToString(svgElement);
+        
+        // Ensure proper namespace
+        if (!svgString.includes('xmlns')) {
+          svgString = svgString.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"');
+        }
+
+        // Create image from SVG
+        const img = new Image();
+        img.onload = () => {
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          const imageData = canvas.toDataURL('image/png');
+          resolve(imageData);
+        };
+        img.onerror = () => {
+          reject(new Error('Failed to load SVG image'));
+        };
+
+        // Convert SVG to data URL
+        const encodedSvg = btoa(unescape(encodeURIComponent(svgString)));
+        img.src = `data:image/svg+xml;base64,${encodedSvg}`;
+        
+      } else {
+        reject(new Error('SVG element not found'));
+      }
+      
+    } catch (error) {
+      reject(new Error(`Failed to capture Syncfusion chart: ${error}`));
     }
   });
 };
