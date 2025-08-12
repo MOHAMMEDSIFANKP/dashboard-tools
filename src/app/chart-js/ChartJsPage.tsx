@@ -745,7 +745,7 @@ export default function ChartJsPage() {
               // @ts-ignore
               options={{
                 ...chartOptions,
-                // onClick: handleLineChartClick
+                onClick: handleLineChartClick
               }}
               data={drillDownState.chartType === 'line' && drillDownChartData ? (drillDownChartData as ChartData<'line'>) : lineChartData}
             />

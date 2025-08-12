@@ -118,7 +118,7 @@ const CHART_CONFIG = {
     },
     BAR: {
         chart: { type: 'column' as const, zooming: { type: 'x' as const } },
-        title: { text: 'Revenue vs Expenses by Country' },
+        title: { text: 'Revenue vs Expenses' },
         subtitle: { text: 'Showing financial metrics by period' },
         xAxis: { title: { text: 'Period' } },
         yAxis: {
@@ -162,7 +162,7 @@ const CHART_CONFIG = {
     },
     DONUT: {
         chart: { type: 'pie' as const },
-        title: { text: 'Revenue by Category and Country' },
+        title: { text: 'Revenue by Category' },
         subtitle: { text: 'Showing financial metrics' },
         plotOptions: {
             pie: {
