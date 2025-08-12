@@ -17,6 +17,7 @@ import {
 import { MetaDataSection } from './(home)/MetaDataSection';
 import { ApiDocumentation } from './(home)/ApiDocumentation';
 import { DashboardTools } from './(home)/DashboardTools';
+import Link from 'next/link';
 
 // Types
 type NavigationItemSchema = {
@@ -71,7 +72,7 @@ const DashboardHomepage = () => {
             apiEndpoint: '/api/v1/financial-data',
             dashboardUrl: '/dashboard/financial',
             lastUpdated: '2024-01-15',
-            tools: ['AG Charts', 'Chart.js', 'React Plotly', "Nivo Charts", "VIctory CHarts", 'Echarts', 'AG Grid', "Tanstack Table", 'React Table'],
+            tools: ['AG Charts', 'Chart.js', 'React Plotly', "Nivo Charts", "VIctory CHarts", 'Echarts', 'Highcharts', 'Syncfusion Charts', 'AG Grid (Table)', "Tanstack Table", 'React Table'],
             features: ['KPI Cards', 'Revenue Trends', 'Performance Metrics', 'Data Grid'],
             apiMethods: [
                 { method: 'GET', endpoint: '/api/v1/financial-data', description: 'Fetch financial records' },
@@ -88,7 +89,7 @@ const DashboardHomepage = () => {
             apiEndpoint: '/api/v1/pl-analysis',
             dashboardUrl: '/dashboard/pl-analysis',
             lastUpdated: '2024-01-20',
-            tools: ['AG Charts Enterprise', 'Highcharts', 'Syncfusion Charts'],
+            tools: ['AG Charts', 'Chart.js', 'React Plotly', "Nivo Charts", "VIctory CHarts", 'Echarts', 'Highcharts', 'Syncfusion Charts', 'AG Grid (Table)', "Tanstack Table", 'React Table'],
             features: ['P&L Statements', 'Account Categories', 'Multi-table Joins', 'Drill-down Analysis'],
             apiMethods: [
                 { method: 'GET', endpoint: '/api/v1/pl-analysis', description: 'P&L analysis data' },
@@ -194,14 +195,14 @@ const DashboardHomepage = () => {
                                         <BarChart3 className="text-green-600" size={24} />
                                     </div>
                                     <div>
-                                        <h3 className="font-semibold text-lg">Test Case 1 Dashboard</h3>
+                                        <h3 className="font-semibold text-lg">Test Case 1 Api Documentation</h3>
                                         <p className="text-sm text-gray-600">Financial metrics dashboard</p>
                                     </div>
                                 </div>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-green-600 font-medium">View Dashboard</span>
+                                <Link href={'https://testcase.mohammedsifankp.online/docs'} target='_blank' className="flex items-center justify-between">
+                                    <span className="text-green-600 font-medium">View Documentation</span>
                                     <ArrowUpRight size={16} className="text-green-600" />
-                                </div>
+                                </Link>
                             </Card>
 
                             <Card className="p-6 hover:shadow-xl transition-all duration-300 cursor-pointer group">
@@ -210,14 +211,14 @@ const DashboardHomepage = () => {
                                         <TrendingUp className="text-purple-600" size={24} />
                                     </div>
                                     <div>
-                                        <h3 className="font-semibold text-lg">Test Case 2 </h3>
-                                        <p className="text-sm text-gray-600"></p>
+                                        <h3 className="font-semibold text-lg">Test Case 2 Api Documentation</h3>
+                                        <p className="text-sm text-gray-600">Financial metrics dashboard</p>
                                     </div>
                                 </div>
-                                <div className="flex items-center justify-between">
+                                <Link href={`https://testcase2.mohammedsifankp.online/docs`} target='_blank' className="flex items-center justify-between">
                                     <span className="text-purple-600 font-medium">View Dashboard</span>
                                     <ArrowUpRight size={16} className="text-purple-600" />
-                                </div>
+                                </Link>
                             </Card>
                         </div>
                     </div>

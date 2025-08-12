@@ -140,6 +140,9 @@
 
 
 @media (min-width: 1024px) and (max-width: 1200px) {
+  .home-dashbaord-tools{
+    grid-template-columns: repeat(2, 1fr);
+  }
   .drag-and-drop .available-fields {
     grid-template-columns: repeat(3, 1fr);
     gap: 10px;

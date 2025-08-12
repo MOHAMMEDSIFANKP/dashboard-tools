@@ -220,7 +220,7 @@ export const DashboardTools: React.FC = () => {
                 <p className="text-lg text-gray-600">Comprehensive evaluation of charting libraries and visualization tools</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="home-dashbaord-tools grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {dashboardTools.map((tool, index) => (
                     <Card key={index} className="p-6 hover:shadow-xl transition-all duration-300">
                         <div className="flex items-start justify-between mb-4">
