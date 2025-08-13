@@ -90,8 +90,9 @@ import { ChartAttribute, ChartType, ChartConfig, ChartConfigurations, DraggableA
 // Redux imports
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '@/store/store';
-import {  setSelectedLibrary, updateChartConfig } from '@/store/slices/dashboardSlice';
+import { setSelectedLibrary, updateChartConfig } from '@/store/slices/dashboardSlice';
 import { formatCurrency } from '@/utils/utils';
+import { CustomSelect } from '@/components/ui/inputs';
 
 // Dynamically import Plotly to avoid SSR issues
 const Plotly = dynamic(() => import('react-plotly.js'), { ssr: false });
@@ -148,7 +149,7 @@ const chartLibraryOptions: ChartLibraryOption[] = [
   { key: 'victory', label: 'Victory Charts', icon: 'Target', color: '#EF4444', implemented: true },
   { key: 'echarts', label: 'ECharts', icon: 'Activity', color: '#06B6D4', implemented: true },
   { key: 'highcharts', label: 'Highcharts', icon: 'TrendingUp', color: '#FF6B35', implemented: true },
-    { key: 'syncfusion', label: 'Syncfusion Charts', icon: 'BarChart3', color: '#7C3AED', implemented: true }, // Add this line
+  { key: 'syncfusion', label: 'Syncfusion Charts', icon: 'BarChart3', color: '#7C3AED', implemented: true }, // Add this line
 ];
 
 // Mock data for demonstration
@@ -410,7 +411,7 @@ const ChartRenderer: React.FC<{
         xKey={xKey}
         data={processedData}
       />;
-       case 'syncfusion':
+    case 'syncfusion':
       return <SyncfusionRenderer
         chartType={chartType}
         measures={chartMeasures}
@@ -1190,228 +1191,224 @@ const HighchartsRenderer: React.FC<{
   xKey: string;
   data: FinancialData[];
 }> = ({ chartType, measures, xKey, data }) => {
+
   const chartOptions = useMemo(() => {
-    // Get unique categories for x-axis
     const categories = [...new Set(data.map(item => (item as any)[xKey]?.toString()))].sort();
 
-    // Prepare series data
-    const series = measures.map(measure => {
-      const seriesData = categories.map(category => {
-        const item = data.find(d => (d as any)[xKey]?.toString() === category);
-        return item ? (item as any)[measure.key] || 0 : 0;
-      });
-
-      return {
-        name: measure.label,
-        type: chartType.key === 'line' ? 'line' : 'column',
-        data: seriesData,
-        color: measure.color,
-        marker: {
-          radius: chartType.key === 'line' ? 4 : 0,
-          symbol: 'circle'
-        },
-        lineWidth: chartType.key === 'line' ? 2 : 0,
-      };
-    });
-
-    const options: Highcharts.Options = {
-      chart: {
-        type: chartType.key === 'line' ? 'line' : 'column',
-        backgroundColor: 'transparent',
-        height: '100%',
-        spacingTop: 20,
-        spacingRight: 20,
-        spacingBottom: 60,
-        spacingLeft: 20
-      },
-      title: {
-        text: `${chartType.label} - Financial Analysis (Highcharts)`,
-        style: {
-          fontSize: '16px',
-          fontWeight: 'bold',
-          color: '#1F2937'
+    const baseConfig = {
+      credits: { enabled: false },
+      exporting: {
+        enabled: true,
+        fallbackToExportServer: false,
+        buttons: {
+          contextButton: {
+            menuItems: [
+              'viewFullscreen',
+              'printChart',
+              'separator',
+              'downloadPNG',
+              'downloadJPEG',
+              'downloadPDF',
+              'downloadSVG',
+              'separator',
+              'downloadCSV',
+              'downloadXLS'
+            ] as string[]
+          }
         }
-      },
-      subtitle: {
-        text: undefined
-      },
-      xAxis: {
-        categories: categories,
-        title: {
-          text: xKey,
-          style: {
-            color: '#374151',
-            fontSize: '12px'
-          }
-        },
-        labels: {
-          rotation: -45,
-          style: {
-            color: '#6B7280',
-            fontSize: '11px'
-          }
-        },
-        lineColor: '#E5E7EB',
-        tickColor: '#E5E7EB'
-      },
-      yAxis: {
-        title: {
-          text: 'Amount ($)',
-          style: {
-            color: '#374151',
-            fontSize: '12px'
-          }
-        },
-        labels: {
-          formatter: function () {
-            return formatCurrency(this.value as number);
-          },
-          style: {
-            color: '#6B7280',
-            fontSize: '11px'
-          }
-        },
-        gridLineColor: '#F3F4F6',
-        lineColor: '#E5E7EB'
       },
       tooltip: {
-        shared: true,
-        useHTML: true,
-        backgroundColor: 'rgba(255, 255, 255, 0.95)',
-        borderColor: '#E5E7EB',
-        borderRadius: 8,
-        borderWidth: 1,
-        shadow: {
-          color: 'rgba(0, 0, 0, 0.1)',
-          offsetX: 0,
-          offsetY: 2,
-          opacity: 0.1,
-          width: 4
-        },
-        style: {
-          color: '#1F2937',
-          fontSize: '12px'
-        },
-        formatter: function () {
-          let tooltipContent = `<div style="padding: 8px;"><strong>${this.x}</strong><br/>`;
-
-          if (Array.isArray(this.points)) {
-            this.points.forEach(point => {
-              tooltipContent += `
-                <div style="margin-top: 4px; display: flex; align-items: center; gap: 6px;">
-                  <span style="display: inline-block; width: 12px; height: 12px; background-color: ${point.series.color}; border-radius: 50%;"></span>
-                  <span>${point.series.name}: <strong>${formatCurrency(point.y || 0)}</strong></span>
-                </div>
-              `;
-            });
-          } else {
-            tooltipContent += `
-              <div style="margin-top: 4px; display: flex; align-items: center; gap: 6px;">
-                <span style="display: inline-block; width: 12px; height: 12px; background-color: ${this.series.color}; border-radius: 50%;"></span>
-                <span>${this.series.name}: <strong>${formatCurrency(this.y || 0)}</strong></span>
-              </div>
-            `;
-          }
-
-          tooltipContent += `</div>`;
-          return tooltipContent;
+        valueDecimals: 2,
+        pointFormatter: function (this: any) {
+          return `<span style="color:${this.color}">\u25CF</span> ${this.series.name}: <b>${formatCurrency(this.y)}</b><br/>`;
         }
       },
+      plotOptions: {
+        series: {
+          animation: {
+            duration: 1000,
+          },
+        },
+      },
       legend: {
+        enabled: true,
         align: 'center',
         verticalAlign: 'bottom',
         layout: 'horizontal',
         itemStyle: {
-          color: '#374151',
           fontSize: '12px',
-          fontWeight: '500'
-        },
-        itemHoverStyle: {
-          color: '#1F2937'
-        },
-        itemMarginTop: 8,
-        itemMarginBottom: 4,
-        symbolRadius: 6,
-        symbolHeight: 12,
-        symbolWidth: 12
-      },
-      plotOptions: {
-        line: {
-          animation: {
-            duration: 1000
-          },
-          marker: {
-            enabled: true,
-            radius: 4,
-            states: {
-              hover: {
-                radius: 6,
-                lineWidth: 2,
-                lineColor: '#FFFFFF'
-              }
-            }
-          },
-          lineWidth: 2,
-          states: {
-            hover: {
-              lineWidth: 3
-            }
-          }
-        },
-        column: {
-          animation: {
-            duration: 1000
-          },
-          borderWidth: 0,
-          borderRadius: 2,
-          pointPadding: 0.1,
-          groupPadding: 0.1,
-          states: {
-            hover: {
-              brightness: 0.1
-            }
-          }
-        },
-        series: {
-          animation: {
-            duration: 1000
-          },
-          states: {
-            inactive: {
-              opacity: 0.3
-            }
-          }
+          color: '#374151'
         }
-      },
-      credits: {
-        enabled: false
-      },
-      exporting: {
-        enabled: false
-      },
-      responsive: {
-        rules: [{
-          condition: {
-            maxWidth: 500
-          },
-          chartOptions: {
-            legend: {
-              layout: 'horizontal',
-              align: 'center',
-              verticalAlign: 'bottom'
-            },
-            xAxis: {
-              labels: {
-                rotation: -90
-              }
-            }
-          }
-        }]
-      },
-      series: series as Highcharts.SeriesOptionsType[]
+      }
     };
 
-    return options;
+    if (chartType.key === 'line') {
+      return {
+        ...baseConfig,
+        chart: {
+          type: 'line' as const,
+          zooming: { type: 'x' as const },
+          backgroundColor: 'transparent'
+        },
+        title: {
+          text: 'Line Chart - Financial Analysis (Highcharts)',
+          style: {
+            fontSize: '18px',
+            fontWeight: 'bold',
+            color: '#1F2937'
+          }
+        },
+        subtitle: {
+          text: 'Interactive financial data visualization',
+          style: {
+            fontSize: '14px',
+            color: '#6B7280'
+          }
+        },
+        xAxis: {
+          categories: categories,
+          title: {
+            text: xKey,
+            style: {
+              fontSize: '12px',
+              color: '#374151'
+            }
+          },
+          labels: {
+            rotation: -45,
+            style: {
+              fontSize: '11px',
+              color: '#6B7280'
+            }
+          },
+          gridLineWidth: 0,
+          lineColor: '#E5E7EB'
+        },
+        yAxis: {
+          title: {
+            text: 'Amount (USD)',
+            style: {
+              fontSize: '12px',
+              color: '#374151'
+            }
+          },
+          labels: {
+            formatter: function (this: any) {
+              return formatCurrency(this.value);
+            },
+            style: {
+              fontSize: '11px',
+              color: '#6B7280'
+            }
+          },
+          gridLineColor: '#F3F4F6',
+          gridLineWidth: 1,
+          lineColor: '#E5E7EB'
+        },
+        series: measures.map(measure => ({
+          type: 'line',
+          name: measure.label,
+          data: categories.map(category => {
+            const item = data.find(d => (d as any)[xKey]?.toString() === category);
+            return item ? (item as any)[measure.key] || 0 : 0;
+          }),
+          color: measure.color,
+          lineWidth: 3,
+          marker: {
+            enabled: true,
+            radius: 5,
+            symbol: 'circle',
+            fillColor: measure.color,
+            lineColor: '#fff',
+            lineWidth: 2
+          }
+        }))
+      };
+    } else {
+      // Bar chart
+      return {
+        ...baseConfig,
+        chart: {
+          type: 'column' as const,
+          zooming: { type: 'x' as const },
+          backgroundColor: 'transparent'
+        },
+        title: {
+          text: 'Bar Chart - Financial Analysis (Highcharts)',
+          style: {
+            fontSize: '18px',
+            fontWeight: 'bold',
+            color: '#1F2937'
+          }
+        },
+        subtitle: {
+          text: 'Interactive financial data visualization',
+          style: {
+            fontSize: '14px',
+            color: '#6B7280'
+          }
+        },
+        xAxis: {
+          categories: categories,
+          title: {
+            text: xKey,
+            style: {
+              fontSize: '12px',
+              color: '#374151'
+            }
+          },
+          labels: {
+            rotation: -45,
+            style: {
+              fontSize: '11px',
+              color: '#6B7280'
+            }
+          },
+          gridLineWidth: 0,
+          lineColor: '#E5E7EB'
+        },
+        yAxis: {
+          title: {
+            text: 'Amount (USD)',
+            style: {
+              fontSize: '12px',
+              color: '#374151'
+            }
+          },
+          labels: {
+            formatter: function (this: any) {
+              return formatCurrency(this.value);
+            },
+            style: {
+              fontSize: '11px',
+              color: '#6B7280'
+            }
+          },
+          gridLineColor: '#F3F4F6',
+          gridLineWidth: 1,
+          lineColor: '#E5E7EB'
+        },
+        plotOptions: {
+          column: {
+            dataLabels: {
+              enabled: false
+            },
+            borderWidth: 0,
+            pointPadding: 0.1,
+            groupPadding: 0.1
+          },
+        },
+        series: measures.map(measure => ({
+          type: 'column',
+          name: measure.label,
+          data: categories.map(category => {
+            const item = data.find(d => (d as any)[xKey]?.toString() === category);
+            return item ? (item as any)[measure.key] || 0 : 0;
+          }),
+          color: measure.color
+        }))
+      };
+    }
   }, [chartType, measures, xKey, data]);
 
   return (
@@ -1419,18 +1416,14 @@ const HighchartsRenderer: React.FC<{
       <HighchartsReact
         highcharts={Highcharts}
         options={chartOptions}
+        immutable={false}
         containerProps={{
-          style: {
-            width: '100%',
-            height: '100%',
-            minHeight: '320px'
-          }
+          style: { height: '100%', width: '100%' }
         }}
       />
     </div>
   );
 };
-
 // Chart theme configuration
 const chartTheme: ChartTheme = 'Material';
 enableRipple(true);
@@ -1446,15 +1439,15 @@ const SyncfusionRenderer: React.FC<{
   // Process data for Syncfusion format
   const processedData = useMemo(() => {
     const categories = [...new Set(data.map(item => (item as any)[xKey]?.toString()))].sort();
-    
+
     return categories.map(category => {
       const item = data.find(d => (d as any)[xKey]?.toString() === category);
       const result: any = { [xKey]: category };
-      
+
       measures.forEach(measure => {
         result[measure.key] = item ? (item as any)[measure.key] || 0 : 0;
       });
-      
+
       return result;
     });
   }, [data, xKey, measures]);
@@ -1814,45 +1807,394 @@ const ChartDropZone: React.FC<{
           {(config.filters.length > 0 || config.chart.some(attr => attr.type === 'dimension')) && (
             <div className="mt-4 space-y-3">
               {/* Group By Selection */}
-              {config.chart.filter(attr => attr.type === 'dimension').length > 0 && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Group By:</label>
-                  <select
-                    value={config.groupBy || ''}
-                    onChange={(e) => onGroupByChange(chartType.key, e.target.value || undefined)}
-                    className="px-3 py-2 border border-gray-300 rounded-md text-sm w-full"
-                  >
-                    <option value="">Select dimension...</option>
-                    {config.chart.filter(attr => attr.type === 'dimension').map((dim) => (
-                      <option key={dim.key} value={dim.key}>{dim.label}</option>
-                    ))}
-                  </select>
-                </div>
+        {config.chart.filter(attr => attr.type === 'dimension').length > 0 && (
+  <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow duration-200">
+    {/* Group By Header */}
+    <div className="flex items-center gap-2 mb-3">
+      <div className="p-1.5 rounded-lg bg-green-100">
+        <Layers size={16} className="text-green-600" />
+      </div>
+      <div>
+        <label className="text-sm font-semibold text-gray-800 block">
+          Group By
+        </label>
+        <span className="text-xs text-gray-500">Choose dimension for grouping</span>
+      </div>
+      {config.groupBy && (
+        <div className="ml-auto">
+          <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full font-medium">
+            Active
+          </span>
+        </div>
+      )}
+    </div>
+
+    {/* Custom Select for Group By */}
+    <div className="mb-3">
+      <CustomSelect
+        options={[
+          { label: 'No Grouping', value: '' },
+          ...config.chart
+            .filter(attr => attr.type === 'dimension')
+            .map((dim) => ({
+              label: dim.label,
+              value: dim.key
+            }))
+        ]}
+        value={config.groupBy ? { 
+          label: config.chart.find(attr => attr.key === config.groupBy)?.label || '', 
+          value: config.groupBy 
+        } : { label: 'No Grouping', value: '' }}
+        onChange={(selectedOption) => {
+          const value = selectedOption?.value?.toString();
+          onGroupByChange(chartType.key, value === '' ? undefined : value);
+        }}
+        placeholder="Select dimension for grouping..."
+        className="text-sm"
+        borderColor="#10b981"
+        isClearable={true}
+        isSearchable={false}
+        styles={{
+          control: (provided, state) => ({
+            ...provided,
+            borderRadius: '8px',
+            minHeight: '38px',
+            borderColor: state.isFocused ? '#10b981' : '#d1d5db',
+            borderWidth: '2px',
+            boxShadow: state.isFocused ? '0 0 0 1px #10b98120' : 'none',
+            '&:hover': {
+              borderColor: '#10b981',
+            },
+            backgroundColor: 'white',
+          }),
+          option: (provided, state) => ({
+            ...provided,
+            backgroundColor: state.isSelected 
+              ? '#10b981' 
+              : state.isFocused 
+                ? '#10b98115' 
+                : 'white',
+            color: state.isSelected ? 'white' : '#374151',
+            fontSize: '13px',
+            padding: '8px 12px',
+            '&:hover': {
+              backgroundColor: state.isSelected ? '#10b981' : '#10b98120',
+            },
+          }),
+          menu: (provided) => ({
+            ...provided,
+            borderRadius: '8px',
+            border: '1px solid #10b98130',
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+            zIndex: 1000,
+          }),
+          menuList: (provided) => ({
+            ...provided,
+            padding: '4px',
+          }),
+          placeholder: (provided) => ({
+            ...provided,
+            color: '#9ca3af',
+            fontSize: '13px',
+          }),
+          singleValue: (provided) => ({
+            ...provided,
+            color: '#374151',
+            fontSize: '13px',
+            fontWeight: '500',
+          }),
+          clearIndicator: (provided) => ({
+            ...provided,
+            color: '#6b7280',
+            '&:hover': {
+              color: '#10b981',
+            },
+          }),
+          dropdownIndicator: (provided) => ({
+            ...provided,
+            color: '#6b7280',
+            '&:hover': {
+              color: '#10b981',
+            },
+          }),
+        }}
+      />
+    </div>
+
+    {/* Available Dimensions Info */}
+    <div className="space-y-2">
+      <div className="text-xs text-gray-600 font-medium">Available dimensions:</div>
+      <div className="flex flex-wrap gap-1">
+        {config.chart.filter(attr => attr.type === 'dimension').map((dim) => {
+          const isSelected = config.groupBy === dim.key;
+          
+          return (
+            <button
+              key={dim.key}
+              onClick={() => {
+                onGroupByChange(chartType.key, isSelected ? undefined : dim.key);
+              }}
+              className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-all duration-200 ${
+                isSelected
+                  ? 'bg-green-100 text-green-800 border border-green-200'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-transparent'
+              }`}
+            >
+              <div style={{ color: isSelected ? '#10b981' : dim.color }}>
+                {getIcon(dim.iconName, 12)}
+              </div>
+              <span>{dim.label}</span>
+              {isSelected && (
+                <div className="w-1.5 h-1.5 rounded-full bg-green-600"></div>
               )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+
+    {/* Current Selection Display */}
+    {config.groupBy && (
+      <div className="mt-3 pt-3 border-t border-gray-200">
+        <div className="flex items-center gap-2 text-xs">
+          <div className="w-2 h-2 rounded-full bg-green-500"></div>
+          <span className="text-gray-600">
+            <span className="font-medium">Grouping by:</span>{' '}
+            <span className="text-green-700 font-semibold">
+              {config.chart.find(attr => attr.key === config.groupBy)?.label}
+            </span>
+          </span>
+        </div>
+      </div>
+    )}
+  </div>
+)}
 
               {/* Filter Values */}
               {config.filters.length > 0 && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  {config.filters.map((attribute) => (
-                    <div key={attribute.key}>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Filter by {attribute.label}:
-                      </label>
-                      <select
-                        multiple
-                        value={config.filterValues[attribute.key] || []}
-                        onChange={(e) => {
-                          const selectedValues = Array.from(e.target.selectedOptions, option => option.value);
-                          onFilterChange(chartType.key, attribute.key, selectedValues);
-                        }}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm h-20"
-                      >
-                        {getDimensionValues(attribute.key).map((value) => (
-                          <option key={value} value={value}>{value}</option>
-                        ))}
-                      </select>
-                    </div>
-                  ))}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {config.filters.map((attribute) => {
+                    const availableValues = getDimensionValues(attribute.key);
+                    const selectedValues = config.filterValues[attribute.key] || [];
+                    const isAllSelected = selectedValues.length === availableValues.length;
+                    const isNoneSelected = selectedValues.length === 0;
+
+                    // Prepare options for react-select
+                    const selectOptions = availableValues.map(value => ({
+                      label: value,
+                      value: value
+                    }));
+
+                    const selectedOptions = selectedValues.map(value => ({
+                      label: value,
+                      value: value
+                    }));
+
+                    return (
+                      <div key={attribute.key} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow duration-200">
+                        {/* Filter Header */}
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-2">
+                            <div
+                              className="p-1.5 rounded-lg"
+                              style={{
+                                backgroundColor: attribute.color + '15',
+                                color: attribute.color
+                              }}
+                            >
+                              {getIcon(attribute.iconName, 16)}
+                            </div>
+                            <div>
+                              <label className="text-sm font-semibold text-gray-800 block">
+                                {attribute.label}
+                              </label>
+                              <span className="text-xs text-gray-500">Filter values</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span
+                              className="text-xs px-2 py-1 rounded-full font-medium"
+                              style={{
+                                backgroundColor: selectedValues.length > 0 ? attribute.color + '20' : '#f3f4f6',
+                                color: selectedValues.length > 0 ? attribute.color : '#6b7280'
+                              }}
+                            >
+                              {selectedValues.length}/{availableValues.length}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Custom Select Component */}
+                        <div className="mb-3">
+                          <CustomSelect
+                            // @ts-ignore
+                            isMulti
+                            options={selectOptions}
+                            value={selectedOptions}
+                            onChange={(selectedOptions) => {
+                              // @ts-ignore
+                              const values = selectedOptions ? selectedOptions.map(option => option.value.toString()) : [];
+                              onFilterChange(chartType.key, attribute.key, values);
+                            }}
+                            placeholder={`Select ${attribute.label.toLowerCase()}...`}
+                            className="text-sm"
+                            classNamePrefix="filter-select"
+                            borderColor={attribute.color}
+                            closeMenuOnSelect={false}
+                            hideSelectedOptions={false}
+                            isClearable={true}
+                            isSearchable={true}
+                            menuPortalTarget={typeof document !== 'undefined' ? document.body : null}
+                            styles={{
+                              control: (provided, state) => ({
+                                ...provided,
+                                borderRadius: '8px',
+                                minHeight: '38px',
+                                borderColor: state.isFocused ? attribute.color : '#d1d5db',
+                                borderWidth: '2px',
+                                boxShadow: state.isFocused ? `0 0 0 1px ${attribute.color}20` : 'none',
+                                '&:hover': {
+                                  borderColor: attribute.color,
+                                },
+                                backgroundColor: 'white',
+                              }),
+                              multiValue: (provided) => ({
+                                ...provided,
+                                backgroundColor: attribute.color + '15',
+                                borderRadius: '6px',
+                              }),
+                              multiValueLabel: (provided) => ({
+                                ...provided,
+                                color: attribute.color,
+                                fontWeight: '500',
+                                fontSize: '12px',
+                              }),
+                              multiValueRemove: (provided) => ({
+                                ...provided,
+                                color: attribute.color,
+                                '&:hover': {
+                                  backgroundColor: attribute.color + '30',
+                                  color: attribute.color,
+                                },
+                              }),
+                              option: (provided, state) => ({
+                                ...provided,
+                                backgroundColor: state.isSelected
+                                  ? attribute.color
+                                  : state.isFocused
+                                    ? attribute.color + '15'
+                                    : 'white',
+                                color: state.isSelected ? 'white' : '#374151',
+                                fontSize: '13px',
+                                padding: '8px 12px',
+                                '&:hover': {
+                                  backgroundColor: state.isSelected ? attribute.color : attribute.color + '20',
+                                },
+                              }),
+                              menu: (provided) => ({
+                                ...provided,
+                                borderRadius: '8px',
+                                border: `1px solid ${attribute.color}30`,
+                                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                                zIndex: 1000,
+                              }),
+                              menuList: (provided) => ({
+                                ...provided,
+                                maxHeight: '200px',
+                                padding: '4px',
+                              }),
+                              placeholder: (provided) => ({
+                                ...provided,
+                                color: '#9ca3af',
+                                fontSize: '13px',
+                              }),
+                              input: (provided) => ({
+                                ...provided,
+                                fontSize: '13px',
+                              }),
+                              clearIndicator: (provided) => ({
+                                ...provided,
+                                color: '#6b7280',
+                                '&:hover': {
+                                  color: attribute.color,
+                                },
+                              }),
+                              dropdownIndicator: (provided) => ({
+                                ...provided,
+                                color: '#6b7280',
+                                '&:hover': {
+                                  color: attribute.color,
+                                },
+                              }),
+                            }}
+                          />
+                        </div>
+
+                        {/* Quick Action Buttons */}
+                        <div className="flex justify-between items-center">
+                          <div className="flex gap-1">
+                            <button
+                              onClick={() => {
+                                onFilterChange(chartType.key, attribute.key, availableValues);
+                              }}
+                              disabled={isAllSelected}
+                              className={`px-2 py-1 text-xs font-medium rounded-md transition-colors ${isAllSelected
+                                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                  : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                                }`}
+                            >
+                              All
+                            </button>
+                            <button
+                              onClick={() => {
+                                onFilterChange(chartType.key, attribute.key, []);
+                              }}
+                              disabled={isNoneSelected}
+                              className={`px-2 py-1 text-xs font-medium rounded-md transition-colors ${isNoneSelected
+                                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                }`}
+                            >
+                              None
+                            </button>
+                          </div>
+
+                          {/* Status Indicator */}
+                          {selectedValues.length > 0 && (
+                            <div className="flex items-center gap-1">
+                              <div
+                                className="w-2 h-2 rounded-full"
+                                style={{ backgroundColor: attribute.color }}
+                              ></div>
+                              <span className="text-xs text-gray-600 font-medium">
+                                Active
+                              </span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Selected Values Preview (for when many are selected) */}
+                        {selectedValues.length > 0 && (
+                          <div className="mt-3 pt-3 border-t border-gray-100">
+                            <div className="text-xs text-gray-600">
+                              <span className="font-medium">Applied to:</span>
+                              <div className="mt-1">
+                                {selectedValues.length <= 3 ? (
+                                  <span className="text-gray-700">
+                                    {selectedValues.join(', ')}
+                                  </span>
+                                ) : (
+                                  <span className="text-gray-700">
+                                    {selectedValues.slice(0, 2).join(', ')} and {selectedValues.length - 2} others
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -1918,6 +2260,10 @@ const EnhancedDashboard: React.FC = () => {
       ...chartConfigurations[chartType],
       [attributeType]: chartConfigurations[chartType][attributeType].filter(attr => attr.key !== attributeKey)
     };
+    if (attributeType === 'filters') {
+      const { [attributeKey]: removedFilter, ...remainingFilterValues } = updatedConfig.filterValues || {};
+      updatedConfig.filterValues = remainingFilterValues;
+    }
     dispatch(updateChartConfig({ chartType, config: updatedConfig }));
   };
 
