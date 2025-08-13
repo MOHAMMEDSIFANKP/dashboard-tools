@@ -647,7 +647,7 @@ export default function NivoChartsPage() {
             <div style={{ height: "400px" }}>
               <ResponsiveLine
                 data={lineChartData}
-                margin={{ top: 50, right: 110, bottom: 50, left: 60 }}
+                margin={{ top: 50, right: 110, bottom: 50, left: 75 }}
                 xScale={{ type: "point" }}
                 yScale={{
                   type: "linear",
@@ -663,7 +663,7 @@ export default function NivoChartsPage() {
                 }}
                 axisLeft={{
                   legend: "Amount",
-                  legendOffset: -40,
+                  legendOffset: -63,
                   legendPosition: "middle",
                   format: value => formatCurrency(value),
                 }}
@@ -742,14 +742,14 @@ export default function NivoChartsPage() {
                 data={barChartData}
                 keys={["revenue", "expenses"]}
                 indexBy={crossChartFilter ? "period" : "fiscalYear"}
-                margin={{ top: 50, right: 130, bottom: 50, left: 60 }}
+                margin={{ top: 50, right: 130, bottom: 50, left: 70 }}
                 padding={0.3}
                 groupMode="grouped"
                 colors={{ scheme: "paired" }}
                 borderRadius={2}
                 borderWidth={1}
                 borderColor={{ from: 'color', modifiers: [['darker', 0.3]] }}
-                enableLabel={true}
+                enableLabel={false}
                 labelSkipWidth={12}
                 labelSkipHeight={12}
                 labelTextColor={{ from: 'color', modifiers: [['darker', 1.6]] }}
@@ -761,7 +761,8 @@ export default function NivoChartsPage() {
                 }}
                 axisLeft={{
                   legend: "Amount",
-                  legendOffset: -40,
+                  legendOffset: -55,
+                  legendPosition: "middle",
                   format: value => formatCurrency(value),
                 }}
                 // onClick={(data) => {
