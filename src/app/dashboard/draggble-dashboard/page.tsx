@@ -596,20 +596,46 @@ const PlotlyRenderer: React.FC<{
 }> = ({ chartType, measures, xKey, data }) => {
 
   const chartData = useMemo(() => {
-    const labels = [...new Set(data.map(item => (item as any)[xKey]?.toString()))].sort();
+    // Extract and sort labels, ensuring they're treated as strings
+    const labels = [...new Set(data.map(item => {
+      const value = (item as any)[xKey];
+      return value?.toString() || '';
+    }))].filter(Boolean).sort((a, b) => {
+      // Custom sort for period-like strings (YYYYMM format)
+      if (/^\d{6}$/.test(a) && /^\d{6}$/.test(b)) {
+        return a.localeCompare(b);
+      }
+      // For other formats, use natural sort
+      return a.localeCompare(b, undefined, { numeric: true });
+    });
 
-    return measures.map(measure => ({
+    return measures.map((measure, index) => ({
       x: labels,
       y: labels.map(label => {
         const item = data.find(d => (d as any)[xKey]?.toString() === label);
-        return item ? (item as any)[measure.key] : 0;
+        return item ? (item as any)[measure.key] || 0 : 0;
       }),
       type: chartType.key === 'line' ? 'scatter' : 'bar',
+      text: labels.map(label => {
+        const item = data.find(d => (d as any)[xKey]?.toString() === label);
+        const value = item ? (item as any)[measure.key] || 0 : 0;
+        return formatCurrency(Number(value));
+      }),
       mode: chartType.key === 'line' ? 'lines+markers' : undefined,
       name: measure.label,
-      line: { color: measure.color, width: 2 },
-      marker: { color: measure.color, size: 8 },
-      hovertemplate: `%{x}<br>${measure.label}: %{y:$,.2f}<extra></extra>`
+      line: chartType.key === 'line' ? {
+        color: measure.color,
+        width: 2
+      } : undefined,
+      marker: {
+        color: measure.color,
+        size: chartType.key === 'line' ? 8 : undefined,
+        line: {
+          color: 'white',
+          width: 1
+        }
+      },
+      hovertemplate: `%{text}<br>${measure.label}: %{y:$,.2f}<extra></extra>`
     }));
   }, [measures, xKey, data, chartType]);
 
@@ -617,14 +643,20 @@ const PlotlyRenderer: React.FC<{
     title: `${chartType.label} - Financial Analysis (Plotly)`,
     xaxis: {
       title: xKey,
+      type: 'category', // Force categorical x-axis to prevent interpolation
+      tickmode: 'array',
+      tickvals: chartData[0]?.x || [], // Explicitly set tick values
+      ticktext: chartData[0]?.x || [], // Explicitly set tick text
       tickangle: -45,
-      automargin: true
+      automargin: true,
+      categoryorder: 'array', // Use the order from our sorted array
+      categoryarray: chartData[0]?.x || []
     },
     yaxis: {
       title: 'Amount ($)',
       tickprefix: '$',
-      tickformat: ',.2f',
-      hoverformat: '$,.2f'
+      // tickformat: ',.2f',
+      // hoverformat: '$,.2f'
     },
     legend: {
       orientation: 'h',
@@ -633,9 +665,9 @@ const PlotlyRenderer: React.FC<{
       xanchor: 'center'
     },
     margin: {
-      t: 50,
-      b: 100,
-      l: 60,
+      t: 60,
+      b: 120, // Increased bottom margin for angled labels
+      l: 80,
       r: 40,
       pad: 10
     },
@@ -646,13 +678,18 @@ const PlotlyRenderer: React.FC<{
       family: 'Inter, sans-serif',
       size: 12,
       color: '#374151'
-    }
-  }), [chartType, xKey]);
+    },
+    // Disable zoom and pan to prevent x-axis issues
+    dragmode: false
+  }), [chartType, xKey, chartData]);
 
   const config = {
     responsive: true,
     displayModeBar: false,
-    staticPlot: false
+    staticPlot: false,
+    scrollZoom: false,
+    doubleClick: false,
+    showTips: false
   };
 
   return (
@@ -1807,168 +1844,167 @@ const ChartDropZone: React.FC<{
           {(config.filters.length > 0 || config.chart.some(attr => attr.type === 'dimension')) && (
             <div className="mt-4 space-y-3">
               {/* Group By Selection */}
-        {config.chart.filter(attr => attr.type === 'dimension').length > 0 && (
-  <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow duration-200">
-    {/* Group By Header */}
-    <div className="flex items-center gap-2 mb-3">
-      <div className="p-1.5 rounded-lg bg-green-100">
-        <Layers size={16} className="text-green-600" />
-      </div>
-      <div>
-        <label className="text-sm font-semibold text-gray-800 block">
-          Group By
-        </label>
-        <span className="text-xs text-gray-500">Choose dimension for grouping</span>
-      </div>
-      {config.groupBy && (
-        <div className="ml-auto">
-          <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full font-medium">
-            Active
-          </span>
-        </div>
-      )}
-    </div>
+              {config.chart.filter(attr => attr.type === 'dimension').length > 0 && (
+                <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow duration-200">
+                  {/* Group By Header */}
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="p-1.5 rounded-lg bg-green-100">
+                      <Layers size={16} className="text-green-600" />
+                    </div>
+                    <div>
+                      <label className="text-sm font-semibold text-gray-800 block">
+                        Group By
+                      </label>
+                      <span className="text-xs text-gray-500">Choose dimension for grouping</span>
+                    </div>
+                    {config.groupBy && (
+                      <div className="ml-auto">
+                        <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full font-medium">
+                          Active
+                        </span>
+                      </div>
+                    )}
+                  </div>
 
-    {/* Custom Select for Group By */}
-    <div className="mb-3">
-      <CustomSelect
-        options={[
-          { label: 'No Grouping', value: '' },
-          ...config.chart
-            .filter(attr => attr.type === 'dimension')
-            .map((dim) => ({
-              label: dim.label,
-              value: dim.key
-            }))
-        ]}
-        value={config.groupBy ? { 
-          label: config.chart.find(attr => attr.key === config.groupBy)?.label || '', 
-          value: config.groupBy 
-        } : { label: 'No Grouping', value: '' }}
-        onChange={(selectedOption) => {
-          const value = selectedOption?.value?.toString();
-          onGroupByChange(chartType.key, value === '' ? undefined : value);
-        }}
-        placeholder="Select dimension for grouping..."
-        className="text-sm"
-        borderColor="#10b981"
-        isClearable={true}
-        isSearchable={false}
-        styles={{
-          control: (provided, state) => ({
-            ...provided,
-            borderRadius: '8px',
-            minHeight: '38px',
-            borderColor: state.isFocused ? '#10b981' : '#d1d5db',
-            borderWidth: '2px',
-            boxShadow: state.isFocused ? '0 0 0 1px #10b98120' : 'none',
-            '&:hover': {
-              borderColor: '#10b981',
-            },
-            backgroundColor: 'white',
-          }),
-          option: (provided, state) => ({
-            ...provided,
-            backgroundColor: state.isSelected 
-              ? '#10b981' 
-              : state.isFocused 
-                ? '#10b98115' 
-                : 'white',
-            color: state.isSelected ? 'white' : '#374151',
-            fontSize: '13px',
-            padding: '8px 12px',
-            '&:hover': {
-              backgroundColor: state.isSelected ? '#10b981' : '#10b98120',
-            },
-          }),
-          menu: (provided) => ({
-            ...provided,
-            borderRadius: '8px',
-            border: '1px solid #10b98130',
-            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-            zIndex: 1000,
-          }),
-          menuList: (provided) => ({
-            ...provided,
-            padding: '4px',
-          }),
-          placeholder: (provided) => ({
-            ...provided,
-            color: '#9ca3af',
-            fontSize: '13px',
-          }),
-          singleValue: (provided) => ({
-            ...provided,
-            color: '#374151',
-            fontSize: '13px',
-            fontWeight: '500',
-          }),
-          clearIndicator: (provided) => ({
-            ...provided,
-            color: '#6b7280',
-            '&:hover': {
-              color: '#10b981',
-            },
-          }),
-          dropdownIndicator: (provided) => ({
-            ...provided,
-            color: '#6b7280',
-            '&:hover': {
-              color: '#10b981',
-            },
-          }),
-        }}
-      />
-    </div>
+                  {/* Custom Select for Group By */}
+                  <div className="mb-3">
+                    <CustomSelect
+                      options={[
+                        { label: 'No Grouping', value: '' },
+                        ...config.chart
+                          .filter(attr => attr.type === 'dimension')
+                          .map((dim) => ({
+                            label: dim.label,
+                            value: dim.key
+                          }))
+                      ]}
+                      value={config.groupBy ? {
+                        label: config.chart.find(attr => attr.key === config.groupBy)?.label || '',
+                        value: config.groupBy
+                      } : { label: 'No Grouping', value: '' }}
+                      onChange={(selectedOption) => {
+                        const value = selectedOption?.value?.toString();
+                        onGroupByChange(chartType.key, value === '' ? undefined : value);
+                      }}
+                      placeholder="Select dimension for grouping..."
+                      className="text-sm"
+                      borderColor="#10b981"
+                      isClearable={true}
+                      isSearchable={false}
+                      styles={{
+                        control: (provided, state) => ({
+                          ...provided,
+                          borderRadius: '8px',
+                          minHeight: '38px',
+                          borderColor: state.isFocused ? '#10b981' : '#d1d5db',
+                          borderWidth: '2px',
+                          boxShadow: state.isFocused ? '0 0 0 1px #10b98120' : 'none',
+                          '&:hover': {
+                            borderColor: '#10b981',
+                          },
+                          backgroundColor: 'white',
+                        }),
+                        option: (provided, state) => ({
+                          ...provided,
+                          backgroundColor: state.isSelected
+                            ? '#10b981'
+                            : state.isFocused
+                              ? '#10b98115'
+                              : 'white',
+                          color: state.isSelected ? 'white' : '#374151',
+                          fontSize: '13px',
+                          padding: '8px 12px',
+                          '&:hover': {
+                            backgroundColor: state.isSelected ? '#10b981' : '#10b98120',
+                          },
+                        }),
+                        menu: (provided) => ({
+                          ...provided,
+                          borderRadius: '8px',
+                          border: '1px solid #10b98130',
+                          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                          zIndex: 1000,
+                        }),
+                        menuList: (provided) => ({
+                          ...provided,
+                          padding: '4px',
+                        }),
+                        placeholder: (provided) => ({
+                          ...provided,
+                          color: '#9ca3af',
+                          fontSize: '13px',
+                        }),
+                        singleValue: (provided) => ({
+                          ...provided,
+                          color: '#374151',
+                          fontSize: '13px',
+                          fontWeight: '500',
+                        }),
+                        clearIndicator: (provided) => ({
+                          ...provided,
+                          color: '#6b7280',
+                          '&:hover': {
+                            color: '#10b981',
+                          },
+                        }),
+                        dropdownIndicator: (provided) => ({
+                          ...provided,
+                          color: '#6b7280',
+                          '&:hover': {
+                            color: '#10b981',
+                          },
+                        }),
+                      }}
+                    />
+                  </div>
 
-    {/* Available Dimensions Info */}
-    <div className="space-y-2">
-      <div className="text-xs text-gray-600 font-medium">Available dimensions:</div>
-      <div className="flex flex-wrap gap-1">
-        {config.chart.filter(attr => attr.type === 'dimension').map((dim) => {
-          const isSelected = config.groupBy === dim.key;
-          
-          return (
-            <button
-              key={dim.key}
-              onClick={() => {
-                onGroupByChange(chartType.key, isSelected ? undefined : dim.key);
-              }}
-              className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-all duration-200 ${
-                isSelected
-                  ? 'bg-green-100 text-green-800 border border-green-200'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-transparent'
-              }`}
-            >
-              <div style={{ color: isSelected ? '#10b981' : dim.color }}>
-                {getIcon(dim.iconName, 12)}
-              </div>
-              <span>{dim.label}</span>
-              {isSelected && (
-                <div className="w-1.5 h-1.5 rounded-full bg-green-600"></div>
+                  {/* Available Dimensions Info */}
+                  <div className="space-y-2">
+                    <div className="text-xs text-gray-600 font-medium">Available dimensions:</div>
+                    <div className="flex flex-wrap gap-1">
+                      {config.chart.filter(attr => attr.type === 'dimension').map((dim) => {
+                        const isSelected = config.groupBy === dim.key;
+
+                        return (
+                          <button
+                            key={dim.key}
+                            onClick={() => {
+                              onGroupByChange(chartType.key, isSelected ? undefined : dim.key);
+                            }}
+                            className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-all duration-200 ${isSelected
+                                ? 'bg-green-100 text-green-800 border border-green-200'
+                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-transparent'
+                              }`}
+                          >
+                            <div style={{ color: isSelected ? '#10b981' : dim.color }}>
+                              {getIcon(dim.iconName, 12)}
+                            </div>
+                            <span>{dim.label}</span>
+                            {isSelected && (
+                              <div className="w-1.5 h-1.5 rounded-full bg-green-600"></div>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Current Selection Display */}
+                  {config.groupBy && (
+                    <div className="mt-3 pt-3 border-t border-gray-200">
+                      <div className="flex items-center gap-2 text-xs">
+                        <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                        <span className="text-gray-600">
+                          <span className="font-medium">Grouping by:</span>{' '}
+                          <span className="text-green-700 font-semibold">
+                            {config.chart.find(attr => attr.key === config.groupBy)?.label}
+                          </span>
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
               )}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-
-    {/* Current Selection Display */}
-    {config.groupBy && (
-      <div className="mt-3 pt-3 border-t border-gray-200">
-        <div className="flex items-center gap-2 text-xs">
-          <div className="w-2 h-2 rounded-full bg-green-500"></div>
-          <span className="text-gray-600">
-            <span className="font-medium">Grouping by:</span>{' '}
-            <span className="text-green-700 font-semibold">
-              {config.chart.find(attr => attr.key === config.groupBy)?.label}
-            </span>
-          </span>
-        </div>
-      </div>
-    )}
-  </div>
-)}
 
               {/* Filter Values */}
               {config.filters.length > 0 && (
@@ -2139,8 +2175,8 @@ const ChartDropZone: React.FC<{
                               }}
                               disabled={isAllSelected}
                               className={`px-2 py-1 text-xs font-medium rounded-md transition-colors ${isAllSelected
-                                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                                  : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
                                 }`}
                             >
                               All
@@ -2151,8 +2187,8 @@ const ChartDropZone: React.FC<{
                               }}
                               disabled={isNoneSelected}
                               className={`px-2 py-1 text-xs font-medium rounded-md transition-colors ${isNoneSelected
-                                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                 }`}
                             >
                               None
