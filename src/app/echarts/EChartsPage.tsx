@@ -625,12 +625,15 @@ const LineChartComponent = ({
     grid: {
       left: '3%',
       right: '4%',
-      bottom: '3%',
+      bottom: '4%',
       containLabel: true
     },
     xAxis: {
       type: 'category',
       data: data.map(item => item[xAxis]),
+      name: xAxis,
+      nameLocation: 'middle',
+      nameGap: 30,           
       axisLabel: {
         rotate: 45,
         fontSize: 10
@@ -638,6 +641,9 @@ const LineChartComponent = ({
     },
     yAxis: {
       type: 'value',
+      name: 'Amount ($)',
+      nameLocation: 'middle',
+      nameGap: 55,   
       axisLabel: {
         formatter: (value: number) => formatCurrency(value)
       }
@@ -734,11 +740,14 @@ const BarChartComponent = ({
     grid: {
       left: '3%',
       right: '4%',
-      bottom: '3%',
+      bottom: '4%',
       containLabel: true
     },
     xAxis: {
       type: 'category',
+      name: xAxis,
+      nameLocation: 'middle',
+      nameGap: 30,           
       data: data.map(item => item[xAxis]),
       axisLabel: {
         rotate: 45,
@@ -747,6 +756,9 @@ const BarChartComponent = ({
     },
     yAxis: {
       type: 'value',
+      name: 'Amount ($)',
+      nameLocation: 'middle',
+      nameGap: 55,   
       axisLabel: {
         formatter: (value: number) => formatCurrency(value)
       }

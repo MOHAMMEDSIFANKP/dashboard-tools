@@ -63,6 +63,7 @@ import {
   VictoryPie,
   VictoryTooltip,
   VictoryScatter,
+  VictoryLabel,
 } from "victory";
 // ECharts imports
 import ReactECharts from "echarts-for-react";
@@ -654,7 +655,7 @@ const PlotlyRenderer: React.FC<{
   const layout = useMemo(() => ({
     title: `${chartType.label} - Financial Analysis (Plotly)`,
     xaxis: {
-      title: xKey,
+      title: { text: xKey },
       type: 'category', // Force categorical x-axis to prevent interpolation
       tickmode: 'array',
       tickvals: chartData[0]?.x || [], // Explicitly set tick values
@@ -665,7 +666,7 @@ const PlotlyRenderer: React.FC<{
       categoryarray: chartData[0]?.x || []
     },
     yaxis: {
-      title: 'Amount ($)',
+      title: { text: 'Amount ($)' },
       tickprefix: '$',
       // tickformat: ',.2f',
       // hoverformat: '$,.2f'
@@ -981,13 +982,17 @@ const VictoryRenderer: React.FC<{
             padding={{ left: 80, top: 20, right: 80, bottom: 60 }}
           >
             <VictoryAxis
+              label='Amount ($)'
+              axisLabelComponent={<VictoryLabel dy={-50} className='capitalize font-bold' />}
               dependentAxis
-              tickFormat={(value) => formatCurrency(Number(value))}
+              tickFormat={(value: number) => formatCurrency(Number(value))}
               style={{
                 tickLabels: { fontSize: 12, padding: 5 }
               }}
             />
             <VictoryAxis
+              label={xKey}
+              axisLabelComponent={<VictoryLabel dy={30} className='capitalize font-bold' />}
               style={{
                 tickLabels: { fontSize: 12, padding: 5, angle: -45 }
               }}
@@ -1125,15 +1130,21 @@ const EChartsRenderer: React.FC<{
         },
         xAxis: {
           type: 'category',
+          name: xKey.toUpperCase(),
+          nameLocation: 'middle',
+          nameGap: 44,
           boundaryGap: false,
           data: categories,
           axisLabel: {
-            rotate: -45,
-            fontSize: 12
+            rotate: 45,
+            fontSize: 12,
           }
         },
         yAxis: {
           type: 'value',
+          name: 'Amount ($)',
+          nameLocation: 'middle',
+          nameGap: 55,
           axisLabel: {
             formatter: (value: number) => formatCurrency(value),
             fontSize: 12
@@ -1530,6 +1541,11 @@ const SyncfusionRenderer: React.FC<{
             labelStyle: { color: '#666', size: '12px' },
             majorGridLines: { color: '#F3F4F6', width: 1 },
             lineStyle: { color: '#E5E7EB' }
+          }}
+          axisLabelRender={(args) => {
+            if (args.axis.name === 'primaryYAxis') {
+              args.text = formatCurrency(args.value);
+            }
           }}
           tooltip={{
             enable: true,

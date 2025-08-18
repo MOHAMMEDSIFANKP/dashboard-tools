@@ -850,8 +850,8 @@ export default function ReactPlotlyPage() {
               layout={{
                 title: "Revenue Trends Over Time",
                 autosize: true,
-                xaxis: { tickformat: 'digits' },
-                yaxis: { title: "Amount ($)" },
+                xaxis: { tickformat: 'digits', title: { text: `${crossChartFilter ? 'periods' : 'Years'}` } },
+                yaxis: { title: { text: "Amount ($)" } },
                 hovermode: 'closest',
                 hoverdistance: 50,
                 // Enable selection mode for hover effects
@@ -894,8 +894,8 @@ export default function ReactPlotlyPage() {
                 title: "Revenue vs Operating Expenses",
                 barmode: "group",
                 autosize: true,
-                xaxis: { tickformat: 'digits' },
-                yaxis: { title: "Amount ($)" },
+                xaxis: { tickformat: 'digits', title: { text: `${crossChartFilter ? 'periods' : 'Years'}` } },
+                yaxis: { title: { text: "Amount ($)" } },
                 hovermode: 'closest',
                 hoverdistance: 50,
                 // Bar hover effects

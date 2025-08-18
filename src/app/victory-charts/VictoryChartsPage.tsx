@@ -14,7 +14,8 @@ import {
   VictoryScatter,
   EventPropTypeInterface,
   VictoryLegendTTargetType,
-  StringOrNumberOrCallback
+  StringOrNumberOrCallback,
+  VictoryLabel
 } from "victory";
 import { GroupModal } from "../../components/GroupManagement";
 import {
@@ -555,7 +556,7 @@ const VictoryChartsPage: React.FC = () => {
         chartTitle={emailDrawer.chartTitle}
         chartImage={emailDrawer.chartImage}
       />
-     {comparisonDrawer.isOpen && <ComparisonDrawer
+      {comparisonDrawer.isOpen && <ComparisonDrawer
         isOpen={comparisonDrawer.isOpen}
         onClose={handleComparisonCloseDrawer}
         chartType={comparisonDrawer.chartType}
@@ -614,12 +615,12 @@ function normalizeSpecificKeys(data: any[]): any[] {
   });
 }
 
-const LineChart: React.FC<LineChartProps> = ({ 
-  data, 
-  setContextMenu, 
-  onDrillDown, 
-  isDrilled, 
-  isCrossChartFiltered 
+const LineChart: React.FC<LineChartProps> = ({
+  data,
+  setContextMenu,
+  onDrillDown,
+  isDrilled,
+  isCrossChartFiltered
 }) => {
   if (!data?.length) return <div className="text-center text-gray-500">No data available</div>;
 
@@ -674,14 +675,14 @@ const LineChart: React.FC<LineChartProps> = ({
   const createScatterEvents = useCallback((type: keyof Pick<ChartDataPoint, 'revenue' | 'grossMargin' | 'netProfit'>) => {
     const seriesConfig = series.find(s => s.key === type);
     const originalColor = seriesConfig?.color || '#4bc0c0';
-    
+
     // Different hover colors for each series
     const hoverColors = {
       revenue: '#2d8a8a',      // Darker teal
       grossMargin: '#2563eb',   // Darker blue
       netProfit: '#dc2626'      // Darker red
     };
-    
+
     const hoverColor = hoverColors[type] || '#1E40AF';
 
     return [{
@@ -691,15 +692,15 @@ const LineChart: React.FC<LineChartProps> = ({
           return [
             {
               target: "data",
-              mutation: () => ({ 
-                style: { 
-                  fill: hoverColor, 
-                  cursor: "pointer", 
+              mutation: () => ({
+                style: {
+                  fill: hoverColor,
+                  cursor: "pointer",
                   r: 6,
                   stroke: hoverColor,
                   strokeWidth: 2,
                   fillOpacity: 0.9
-                } 
+                }
               })
             }
           ];
@@ -708,14 +709,14 @@ const LineChart: React.FC<LineChartProps> = ({
           return [
             {
               target: "data",
-              mutation: () => ({ 
-                style: { 
+              mutation: () => ({
+                style: {
                   fill: originalColor,
                   r: 4,
                   stroke: "none",
                   strokeWidth: 0,
                   fillOpacity: 0.9
-                } 
+                }
               })
             }
           ];
@@ -756,25 +757,29 @@ const LineChart: React.FC<LineChartProps> = ({
   const xAxis = isDrilled || isCrossChartFiltered ? "period" : "fiscalYear";
 
   // Filter series to show only those with data
-  const availableSeries = series.filter(s => 
-    data[0]?.[s.key] != null || 
+  const availableSeries = series.filter(s =>
+    data[0]?.[s.key] != null ||
     data[0]?.[s.key === 'grossMargin' ? 'grossmargin' : s.key === 'netProfit' ? 'netprofit' : s.key] != null
   );
 
   return (
     <div>
-      <VictoryChart theme={VictoryTheme.clean} domainPadding={20} height={350} width={800}>
+      <VictoryChart theme={VictoryTheme.clean} domainPadding={20} padding={{ top: 20, bottom: 60, left: 80, right: 20 }} height={350} width={800}>
         <VictoryAxis
+          label={isCrossChartFiltered ? 'Periods' : "Years"}
+          axisLabelComponent={<VictoryLabel dy={10} />}
           tickFormat={(x: any) => String(x)}
-          style={{ 
+          style={{
             tickLabels: { fontSize: 10, angle: -45, textAnchor: "end" },
             grid: { stroke: "#e0e0e0", strokeDasharray: "2,2" }
           }}
         />
         <VictoryAxis
+          label='Amount ($)'
+          axisLabelComponent={<VictoryLabel dy={-20} />}
           dependentAxis
-          tickFormat={(y: number) => `$${Math.round(y / 1000)}k`}
-          style={{ 
+          tickFormat={(y: number) => formatCurrency(y)}
+          style={{
             tickLabels: { fontSize: 10 },
             grid: { stroke: "#e0e0e0", strokeDasharray: "2,2" }
           }}
@@ -787,12 +792,12 @@ const LineChart: React.FC<LineChartProps> = ({
             data={data}
             x={xAxis}
             y={s.key}
-            style={{ 
-              data: { 
-                stroke: s.color, 
+            style={{
+              data: {
+                stroke: s.color,
                 strokeWidth: 2,
                 opacity: 0.8
-              } 
+              }
             }}
             animate={{
               duration: 300,
@@ -809,12 +814,12 @@ const LineChart: React.FC<LineChartProps> = ({
             x={xAxis}
             y={s.key}
             size={4}
-            style={{ 
-              data: { 
+            style={{
+              data: {
                 fill: s.color,
                 opacity: 0.9,
                 cursor: "pointer"
-              } 
+              }
             }}
             labels={({ datum }: { datum: ChartDataPoint }) => {
               const value = Number(datum[s.key]);
@@ -822,7 +827,7 @@ const LineChart: React.FC<LineChartProps> = ({
               return `${period}\n${s.name}: ${Math.round((value || 0) / 1000)}k`;
             }}
             labelComponent={
-              <VictoryTooltip 
+              <VictoryTooltip
                 {...tooltipStyle}
                 style={{
                   fill: "#333",
@@ -862,9 +867,9 @@ const LineChart: React.FC<LineChartProps> = ({
                 opacity: item.symbol.opacity
               }}
             />
-            <span 
+            <span
               className="text-sm"
-              style={{ 
+              style={{
                 opacity: item.symbol.opacity,
                 color: item.symbol.opacity === 1 ? '#333' : '#999'
               }}
@@ -894,11 +899,11 @@ interface BarChartProps {
 }
 
 // BAR CHART COMPONENT
-const BarChart: React.FC<BarChartProps> = ({ 
-  data, 
-  onDrillDown, 
-  isDrilled, 
-  isCrossChartFiltered 
+const BarChart: React.FC<BarChartProps> = ({
+  data,
+  onDrillDown,
+  isDrilled,
+  isCrossChartFiltered
 }) => {
   if (!data?.length) return <div className="text-center text-gray-500">No data available</div>;
 
@@ -950,13 +955,13 @@ const BarChart: React.FC<BarChartProps> = ({
   const createBarEvents = useCallback((type: keyof Pick<ChartDataPoint, 'revenue' | 'expenses'>) => {
     const seriesConfig = series.find(s => s.key === type);
     const originalColor = seriesConfig?.color || '#4bc0c0';
-    
+
     // Different hover colors for each series
     const hoverColors = {
       revenue: '#2d8a8a',    // Darker teal
       expenses: '#dc2626'    // Darker red
     };
-    
+
     const hoverColor = hoverColors[type] || '#1E40AF';
 
     return [{
@@ -1017,18 +1022,22 @@ const BarChart: React.FC<BarChartProps> = ({
 
   return (
     <div>
-      <VictoryChart theme={VictoryTheme.clean} domainPadding={40} height={350} width={800}>
+      <VictoryChart theme={VictoryTheme.clean} domainPadding={40} padding={{ top: 20, bottom: 60, left: 80, right: 20 }} height={350} width={800}>
         <VictoryAxis
+          label={isCrossChartFiltered ? 'Periods' : "Years"}
+          axisLabelComponent={<VictoryLabel dy={10} />}
           tickFormat={(x: any) => String(x)}
-          style={{ 
+          style={{
             tickLabels: { fontSize: 10, angle: -45, textAnchor: "end" },
             grid: { stroke: "#e0e0e0", strokeDasharray: "2,2" }
           }}
         />
         <VictoryAxis
+          label='Amount ($)'
+          axisLabelComponent={<VictoryLabel dy={-20} />}
           dependentAxis
-          tickFormat={(y) => formatCurrency(y)}
-          style={{ 
+          tickFormat={(y:number) => formatCurrency(y)}
+          style={{
             tickLabels: { fontSize: 10 },
             grid: { stroke: "#e0e0e0", strokeDasharray: "2,2" }
           }}
@@ -1041,14 +1050,14 @@ const BarChart: React.FC<BarChartProps> = ({
               data={data}
               x={xAxis}
               y={s.key}
-              style={{ 
-                data: { 
+              style={{
+                data: {
                   fill: s.color,
                   fillOpacity: 0.8,
                   stroke: s.color,
                   strokeWidth: 0.5,
                   cursor: "pointer"
-                } 
+                }
               }}
               labels={({ datum }) => {
                 const value = Number(datum[s.key]);
@@ -1101,9 +1110,9 @@ const BarChart: React.FC<BarChartProps> = ({
                 opacity: item.symbol.opacity
               }}
             />
-            <span 
+            <span
               className="text-sm"
-              style={{ 
+              style={{
                 opacity: item.symbol.opacity,
                 color: item.symbol.opacity === 1 ? '#333' : '#999'
               }}
