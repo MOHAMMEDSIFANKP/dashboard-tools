@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import {
   Banknote,
@@ -25,6 +25,9 @@ import {
 // AG Charts imports
 import { AgCharts } from 'ag-charts-react';
 import { AgChartOptions } from "ag-charts-community";
+// AG Chart Enterprice
+import { AgCharts as AgChartsEnterprise } from 'ag-charts-enterprise';
+import { AgChartOptions as AgChartOptionsEnterprise } from 'ag-charts-enterprise';
 
 // Chart.js imports
 import {
@@ -150,6 +153,7 @@ const chartLibraryOptions: ChartLibraryOption[] = [
   { key: 'echarts', label: 'ECharts', icon: 'Activity', color: '#06B6D4', implemented: true },
   { key: 'highcharts', label: 'Highcharts', icon: 'TrendingUp', color: '#FF6B35', implemented: true },
   { key: 'syncfusion', label: 'Syncfusion Charts', icon: 'BarChart3', color: '#7C3AED', implemented: true }, // Add this line
+  { key: 'ag-charts-enterprise', label: 'AG Charts Enterprise Charts', icon: 'Activity', color: '#7C3AED', implemented: true }, // Add this line
 ];
 
 // Mock data for demonstration
@@ -418,6 +422,14 @@ const ChartRenderer: React.FC<{
         xKey={xKey}
         data={processedData}
       />;
+    case 'ag-charts-enterprise':
+      return <AGChartsEnterpriseRenderer
+        chartType={chartType}
+        measures={chartMeasures}
+        xKey={xKey}
+        data={processedData}
+      />;
+
     default:
       return <div className="text-center text-gray-500">Chart library not implemented yet</div>;
   }
@@ -1972,8 +1984,8 @@ const ChartDropZone: React.FC<{
                               onGroupByChange(chartType.key, isSelected ? undefined : dim.key);
                             }}
                             className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-all duration-200 ${isSelected
-                                ? 'bg-green-100 text-green-800 border border-green-200'
-                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-transparent'
+                              ? 'bg-green-100 text-green-800 border border-green-200'
+                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-transparent'
                               }`}
                           >
                             <div style={{ color: isSelected ? '#10b981' : dim.color }}>
@@ -2829,6 +2841,89 @@ const MobileDashboard: React.FC<MobileDashboardProps> = ({
           </div>
         </div>
       )}
+    </div>
+  );
+};
+
+const AGChartsEnterpriseRenderer: React.FC<{
+  chartType: ChartType;
+  measures: ChartAttribute[];
+  xKey: string;
+  data: FinancialData[];
+}> = ({ chartType, measures, xKey, data }) => {
+  const chartRef = useRef<HTMLDivElement>(null);
+
+  const chartOptions: AgChartOptionsEnterprise = useMemo(() => {
+    const series = measures.map(measure => ({
+      type: chartType.key,
+      xKey: xKey,
+      yKey: measure.key,
+      yName: measure.label,
+      stroke: measure.color,
+      fill: measure.color,
+      tooltip: {
+        renderer: (params: any) => {
+          return `<div class="p-2 bg-white border border-gray-200 rounded shadow">
+            <div class="font-semibold">${params.xValue}</div>
+            <div>${params.yName}: ${formatCurrency(params.yValue)}</div>
+          </div>`;
+        }
+      },
+    }));
+
+    return {
+      title: { text: `${chartType.label} - Financial Analysis (AG Charts)` },
+      data: data,
+      series: series,
+      axes: [
+        {
+          type: 'category',
+          position: 'bottom',
+          title: { text: xKey },
+          label: { rotation: -45 }
+        },
+        {
+          type: 'number',
+          position: 'left',
+          title: { text: 'Amount ($)' },
+          label: {
+            formatter: (params: any) => formatCurrency(params.value)
+          }
+        },
+      ],
+      legend: {
+        enabled: true,
+        position: 'bottom',
+        item: {
+          marker: {
+            strokeWidth: 2,
+            size: 15,
+            padding: 8,
+          },
+        },
+      },
+    };
+  }, [chartType, measures, xKey, data]);
+
+  useEffect(() => {
+    if (!chartRef.current || !data.length) return;
+
+
+    const chart = AgChartsEnterprise.create({
+      ...chartOptions,
+      container: chartRef.current,
+    });
+
+    return () => {
+      if (chart && chart.destroy) {
+        chart.destroy();
+      }
+    };
+  }, [chartType, measures, xKey, data]);
+
+  return (
+    <div className="w-full h-full">
+      <div ref={chartRef} className="w-full h-full min-h-[300px]" />
     </div>
   );
 };

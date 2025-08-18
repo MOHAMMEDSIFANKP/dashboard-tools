@@ -150,7 +150,7 @@ export interface DraggableAttributeProps {
 }
 
 // Chart Library types
-export type ChartLibrary = 'ag-charts' | 'chart-js' | 'plotly' | 'nivo' | 'victory' | 'echarts' | 'highcharts' | 'syncfusion';
+export type ChartLibrary = 'ag-charts' | 'chart-js' | 'plotly' | 'nivo' | 'victory' | 'echarts' | 'highcharts' | 'syncfusion' | 'ag-charts-enterprise';
 
 export interface ChartLibraryOption {
   key: ChartLibrary;

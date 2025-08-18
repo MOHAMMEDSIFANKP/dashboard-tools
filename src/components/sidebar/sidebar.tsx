@@ -83,6 +83,7 @@ const SideBarLayout: React.FC<SideBarLayoutProps> = ({ children }) => {
         // === Market Tools (Paid) ===
         { icon: DollarSign, label: 'Highcharts', href: '/highcharts', active: pathname === '/highcharts', section: 'Market Tools (Paid)' },
         { icon: PieChart, label: 'syncfusion', href: '/syncfusion', active: pathname === '/syncfusion', section: 'Market Tools (Paid)' },
+        { icon: BarChart3, label: 'Ag Charts Enterprise', href: '/ag-charts-enterprise', active: pathname === '/ag-charts-enterprise', section: 'Market Tools (Paid)' },
         
     ];
 

@@ -1,5 +1,5 @@
 //src\components\drawer\ChartComparisonDrawer.tsx
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, BarChart3, TrendingUp, PieChart, Activity, Calendar, ArrowRight, Loader2, Sparkles, Target } from "lucide-react";
 import { formatCurrency } from "@/utils/utils";
@@ -9,6 +9,9 @@ import { useFetchAvailableYearsQuery, useFetchComparisonDataMutation } from "@/l
 // Ag charts
 import { AgCharts } from "ag-charts-react";
 import { AgChartOptions } from "ag-charts-community";
+// Ag chart enterprice
+import { AgCharts as AgChartsEnterprise } from 'ag-charts-enterprise';
+import { AgChartOptions as AgChartOptionsEnterprise } from 'ag-charts-enterprise';
 // Chart js
 import { Chart as ChartJS, registerables } from "chart.js";
 import { Line, Bar, Pie, Doughnut } from "react-chartjs-2";
@@ -286,7 +289,15 @@ export const ComparisonDrawer: React.FC<ComparisonDrawerProps> = ({
                         year={data.year}
                     />
                 );
-
+            case "ag-charts-enterprise":
+                return (
+                    <AGChartsEnterpriseRenderer
+                        chartType={chartType}
+                        data={data.data}
+                        columns={data.columns}
+                        year={data.year}
+                    />
+                );
 
             default:
                 return <div className="text-center text-gray-500">Chart library not implemented yet</div>;
@@ -1563,4 +1574,212 @@ export const SyncfusionRenderer: React.FC<SyncfusionRendererProps> = ({
     }
 
     return <div className="text-center text-gray-500">Unsupported chart type</div>;
+};
+
+
+interface AGChartsEnterpriseRendererProps {
+    chartType: string;
+    data: any[];
+    columns: string[];
+    year: string;
+}
+
+export const AGChartsEnterpriseRenderer: React.FC<AGChartsEnterpriseRendererProps> = ({
+    chartType,
+    data,
+    columns,
+    year,
+}) => {
+    const chartRef = useRef<HTMLDivElement>(null);
+
+    const getChartOptions = (): AgChartOptionsEnterprise => {
+        const isTimeSeries = chartType === "line" || chartType === "bar";
+        const isPieLike = chartType === "pie" || chartType === "donut";
+
+        // Base configuration for all charts
+        const baseConfig: Partial<AgChartOptionsEnterprise> = {
+            background: {
+                fill: 'white',
+            },
+            padding: {
+                top: 20,
+                right: 20,
+                bottom: 20,
+                left: 20,
+            },
+            legend: {
+                position: 'bottom' as const,
+                spacing: 40,
+            },
+            animation: {
+                enabled: true,
+                duration: 1000,
+            },
+            title: {
+                text: `Financial Year ${year} - ${chartType.charAt(0).toUpperCase() + chartType.slice(1)}`,
+                fontSize: 18,
+                fontWeight: 'bold',
+            },
+            subtitle: {
+                text: 'Comparison data',
+                fontSize: 14,
+            },
+        };
+
+        if (isTimeSeries) {
+            const yKeys = columns.filter((col) => col !== "period");
+
+            return {
+                ...baseConfig,
+                data,
+                series: yKeys.map((yKey, index) => ({
+                    type: chartType as 'line' | 'bar',
+                    xKey: "period",
+                    yKey,
+                    yName: yKey,
+                    ...(chartType === 'line' ? {
+                        stroke: getColorForIndex(index),
+                        strokeWidth: 3,
+                        marker: {
+                            enabled: true,
+                            fill: getColorForIndex(index),
+                            stroke: getColorForIndex(index),
+                            strokeWidth: 2,
+                            size: 6,
+                        },
+                    } : {
+                        direction: 'vertical' as const,
+                        fill: getColorForIndex(index),
+                        stroke: getColorForIndex(index),
+                        strokeWidth: 1,
+                        label: {
+                            enabled: true,
+                            formatter: ({ value }: any) => formatCurrency(value),
+                        },
+                    }),
+                    // tooltip: {
+                    //     renderer: ({ datum, xKey, yKey }: any) =>
+                    //         `<div class="ag-chart-tooltip">
+                    //             <div class="ag-chart-tooltip-title">${xKey}: ${datum[xKey]}</div>
+                    //             <div class="ag-chart-tooltip-content">${yKey}: ${formatCurrency(datum[yKey])}</div>
+                    //         </div>`
+                    // },
+                })),
+                axes: [
+                    {
+                        //@ts-ignore
+                        type: 'category' as const,
+                        position: 'bottom' as const,
+                        title: {
+                            text: 'Period',
+                            fontSize: 14,
+                        },
+                        label: {
+                            rotation: -45,
+                            fontSize: 12,
+                        },
+                        line: {
+                            //@ts-ignore
+                            color: '#e0e0e0',
+                        },
+                        tick: {
+                            //@ts-ignore
+                            color: '#e0e0e0',
+                        },
+                    },
+                    {
+                        //@ts-ignore
+                        type: 'number' as const,
+                        position: 'left' as const,
+                        title: {
+                            text: 'Amount (USD)',
+                            fontSize: 14,
+                        },
+                        label: {
+                            formatter: ({ value }: any) => formatCurrency(value),
+                            fontSize: 12,
+                        },
+                        line: {
+                            //@ts-ignore
+                            color: '#e0e0e0',
+                        },
+                        tick: {
+                            //@ts-ignore
+                            color: '#e0e0e0',
+                        },
+                    },
+                ],
+            };
+        }
+
+        if (isPieLike) {
+            const angleKey = "revenue";
+            const labelKey = columns.find((col) => col !== "revenue");
+
+            return {
+                ...baseConfig,
+                data,
+                series: [
+                    {
+                        //@ts-ignore
+                        type: chartType as 'pie' | 'donut',
+                        angleKey,
+                        categoryKey: labelKey,
+                        ...(chartType === 'donut' ? {
+                            innerRadiusRatio: 0.5,
+                        } : {}),
+                        fills: ['#058DC7', '#50B432', '#ED561B', '#DDDF00', '#24CBE5', '#64E572'],
+                        strokes: ['#058DC7', '#50B432', '#ED561B', '#DDDF00', '#24CBE5', '#64E572'],
+                        strokeWidth: 2,
+                        tooltip: { enabled: true },
+                        calloutLabel: { enabled: false },
+                        sectorLabelKey: labelKey,
+                        legendItemKey: labelKey,
+                        callout: {
+                            strokeWidth: 2,
+                        },
+                        // tooltip: {
+                        //     renderer: ({ datum, angleKey, categoryKey }: any) => {
+                        //         return `<div class="ag-chart-tooltip">
+                        //             <div class="ag-chart-tooltip-title">${datum[categoryKey!]}</div>
+                        //             <div class="ag-chart-tooltip-content">Revenue: ${formatCurrency(datum[angleKey])}</div>
+                        //         </div>`;
+                        //     },
+                        // },
+                        // label: {
+                        //     enabled: true,
+                        //     fontSize: 12,
+                        //     formatter: ({ datum, angleKey, categoryKey }: any) =>
+                        //         `${datum[categoryKey!]}: ${formatCurrency(datum[angleKey])}`,
+                        // },
+                    },
+                ],
+            };
+        }
+
+        return { data: [] };
+    };
+
+    useEffect(() => {
+        if (!chartRef.current || !data.length) return;
+
+        const options = getChartOptions();
+
+        const chart = AgChartsEnterprise.create({
+            ...options,
+            container: chartRef.current,
+        });
+
+        return () => {
+            if (chart && chart.destroy) {
+                chart.destroy();
+            }
+        };
+    }, [chartType, data, columns, year]);
+
+    return (
+        <div className="w-full h-full">
+            <div ref={chartRef} className="w-full h-full min-h-[300px]" />
+        </div>
+    );
 };
