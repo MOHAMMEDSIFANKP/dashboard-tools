@@ -424,6 +424,7 @@ const AGChartsEnterprise: React.FC = () => {
                 ...CHART_CONFIG.COMMON,
                 ...CHART_CONFIG.LINE,
                 data: chartData.line,
+                tooltip: { mode: 'single' },
                 series: [
                     {
                         // @ts-ignore
@@ -451,7 +452,7 @@ const AGChartsEnterprise: React.FC = () => {
                                 const category = crossChartFilter ? datum[xKey]?.slice(0, 4) : datum[xKey];
                                 setContextMenu({
                                     isOpen: true,
-                                    position: { x: event.event.pageX, y: event.event.pageY },
+                                    position: { x: event.event.clientX, y: event.event.clientY },
                                     category: category,
                                     value: datum.revenue,
                                     chartType: 'line',
@@ -486,7 +487,7 @@ const AGChartsEnterprise: React.FC = () => {
                                 const category = crossChartFilter ? datum[xKey]?.slice(0, 4) : datum[xKey];
                                 setContextMenu({
                                     isOpen: true,
-                                    position: { x: event.event.pageX, y: event.event.pageY },
+                                    position: { x: event.event.clientX, y: event.event.clientY },
                                     category: category,
                                     value: datum.grossMargin,
                                     chartType: 'line',
@@ -521,7 +522,7 @@ const AGChartsEnterprise: React.FC = () => {
                                 const category = crossChartFilter ? datum[xKey]?.slice(0, 4) : datum[xKey];
                                 setContextMenu({
                                     isOpen: true,
-                                    position: { x: event.event.pageX, y: event.event.pageY },
+                                    position: { x: event.event.clientX, y: event.event.clientY },
                                     category: category,
                                     value: datum.netProfit,
                                     chartType: 'line',
@@ -540,6 +541,7 @@ const AGChartsEnterprise: React.FC = () => {
                 ...CHART_CONFIG.COMMON,
                 ...CHART_CONFIG.BAR,
                 data: chartData.bar,
+                tooltip: { mode: 'single' },
                 series: [
                     {
                         // @ts-ignore
@@ -557,7 +559,7 @@ const AGChartsEnterprise: React.FC = () => {
                         //     }),
                         // },
                         label: {
-                            enabled: true,
+                            enabled: false,
                             formatter: ({ value }: any) => formatCurrency(value),
                         },
                         // listeners: {
@@ -584,7 +586,7 @@ const AGChartsEnterprise: React.FC = () => {
                         //     }),
                         // },
                         label: {
-                            enabled: true,
+                            enabled: false,
                             formatter: ({ value }: any) => formatCurrency(value),
                         },
                         // listeners: {
@@ -617,7 +619,7 @@ const AGChartsEnterprise: React.FC = () => {
                     calloutLabel: { enabled: false },
                     sectorLabelKey: 'catfinancialview',
                     legendItemKey: 'catfinancialview',
-                    
+
                     // label: {
                     //     enabled: true,
                     //     formatter: ({ value }: any) => formatCurrency(value),
@@ -900,7 +902,7 @@ const AGChartsEnterprise: React.FC = () => {
                 isOpen={comparisonDrawer.isOpen}
                 onClose={handleComparisonCloseDrawer}
                 chartType={comparisonDrawer.chartType}
-                chartLibrary="ag-charts-enterprise" 
+                chartLibrary="ag-charts-enterprise"
                 testCase={testCase}
             />}
         </section>
