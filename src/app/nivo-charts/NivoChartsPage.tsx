@@ -926,9 +926,9 @@ export default function NivoChartsPage() {
           )}
         </ChartContainer>
 
-        <p className="col-span-1 md:col-span-2 text-sm text-gray-500">
+         {/* <p className="col-span-1 md:col-span-2 text-sm text-gray-500">
           <i>Click on any chart element to drill down into more detailed data</i>
-        </p>
+        </p> */}
       </div>
       <EmailShareDrawer
         isOpen={emailDrawer.isOpen}

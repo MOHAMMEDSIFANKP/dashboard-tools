@@ -446,9 +446,9 @@ const EChartsPage = () => {
         </ChartContainer>
       </div>
 
-      <p className="col-span-1 md:col-span-2 text-sm text-gray-500 text-center mt-4">
+      {/* <p className="col-span-1 md:col-span-2 text-sm text-gray-500 text-center mt-4">
         <i>Click on any chart element to drill down into more detailed data</i>
-      </p>
+      </p> */}
       <EmailShareDrawer
         isOpen={emailDrawer.isOpen}
         onClose={handleCloseDrawer}

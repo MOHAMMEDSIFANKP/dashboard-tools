@@ -546,9 +546,9 @@ const VictoryChartsPage: React.FC = () => {
             )}
           </ChartContainer>
         </div>
-        <p className="mt-4 text-sm text-gray-500 text-center">
+        {/* <p className="mt-4 text-sm text-gray-500 text-center">
           <i>Click on any chart element to drill down into more detailed data</i>
-        </p>
+        </p> */}
       </>
       <EmailShareDrawer
         isOpen={emailDrawer.isOpen}
