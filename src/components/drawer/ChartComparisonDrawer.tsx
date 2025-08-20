@@ -574,12 +574,16 @@ export const AGChartsRenderer: React.FC<AGChartsRendererProps> = ({
                         labelKey,
                         callout: { strokeWidth: 2 },
                         innerRadius: chartType === "donut" ? "40%" : undefined,
+                        calloutLabelKey: labelKey,
                         tooltip: {
                             renderer: (params: any) => {
                                 return `<div class="p-2 bg-white border border-gray-200 rounded shadow">
-                  <div class="font-semibold">${params.datum[labelKey!]}</div>
-                  <div>Revenue: ${formatCurrency(params.datum[angleKey])}</div>
-                </div>`;
+                                 <div class="flex items-center gap-1">
+                                <div class="w-3 h-3" style="background-color:${params.fill}"></div>
+                                <div class="font-semibold">${params.datum[labelKey!]}</div>
+                                </div>
+                                <div>Revenue: ${formatCurrency(params.datum[angleKey])}</div>
+                                </div>`;
                             },
                         },
                     },
@@ -760,6 +764,8 @@ export const PlotlyRenderer: React.FC<PlotlyRendererProps> = ({
         legend: {
             orientation: 'h',
             y: -0.2,
+            xanchor: "center",
+            x: 0.5
         },
         selected: {
             marker: {
@@ -1731,12 +1737,26 @@ export const AGChartsEnterpriseRenderer: React.FC<AGChartsEnterpriseRendererProp
                         fills: ['#058DC7', '#50B432', '#ED561B', '#DDDF00', '#24CBE5', '#64E572'],
                         strokes: ['#058DC7', '#50B432', '#ED561B', '#DDDF00', '#24CBE5', '#64E572'],
                         strokeWidth: 2,
-                        tooltip: { enabled: true },
-                        calloutLabel: { enabled: false },
+                        // tooltip: { enabled: true },
                         sectorLabelKey: labelKey,
                         legendItemKey: labelKey,
                         callout: {
                             strokeWidth: 2,
+                        },
+                        calloutLabelKey: labelKey,
+                        // disable inside labels
+                        sectorLabel: { enabled: false },
+                        tooltip: {
+                            renderer: (params: any) => {
+                                return `
+                                    <div class="p-2 bg-white border border-gray-200 rounded shadow">
+                                        <div class="flex items-center gap-1">
+                                        <div class="w-3 h-3" style="background-color:${params.fill}"></div>
+                                        <div class="font-semibold">${params.datum[labelKey!]}</div>
+                                        </div>
+                                        <div>Revenue: ${formatCurrency(params.datum[angleKey])}</div>
+                                    </div>`;
+                            },
                         },
                         // tooltip: {
                         //     renderer: ({ datum, angleKey, categoryKey }: any) => {

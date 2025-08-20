@@ -743,7 +743,7 @@ export default function ReactPlotlyPage() {
       {
         x: chartData.bar.map(d => d[xKey]),
         y: chartData.bar.map(d => d.revenue),
-        text: chartData.bar.map(d => formatCurrency(Number(d.revenue))),
+        // text: chartData.bar.map(d => formatCurrency(Number(d.revenue))),
         type: "bar" as const,
         name: "Revenue",
         marker: {
@@ -753,10 +753,10 @@ export default function ReactPlotlyPage() {
             width: 2
           }
         },
-        hovertemplate: '<b>%{fullData.name}</b><br>' +
-          'Year: %{x}<br>' +
-          'Amount: %{text}<br>' +
-          '<extra></extra>',
+        // hovertemplate: '<b>%{fullData.name}</b><br>' +
+        //   'Year: %{x}<br>' +
+        //   'Amount: %{text}<br>' +
+        //   '<extra></extra>',
         hoverlabel: {
           bgcolor: "teal",
           bordercolor: "darkcyan",
@@ -766,7 +766,7 @@ export default function ReactPlotlyPage() {
       {
         x: chartData.bar.map(d => d[xKey]),
         y: chartData.bar.map(d => d.expenses),
-        text: chartData.bar.map(d => formatCurrency(Number(d.expenses))),
+        // text: chartData.bar.map(d => formatCurrency(Number(d.expenses))),
         type: "bar" as const,
         name: "Expenses",
         marker: {
@@ -776,10 +776,10 @@ export default function ReactPlotlyPage() {
             width: 2
           }
         },
-        hovertemplate: '<b>%{fullData.name}</b><br>' +
-          'Year: %{x}<br>' +
-          'Amount: %{text}<br>' +
-          '<extra></extra>',
+        // hovertemplate: '<b>%{fullData.name}</b><br>' +
+        //   'Year: %{x}<br>' +
+        //   'Amount: %{text}<br>' +
+        //   '<extra></extra>',
         hoverlabel: {
           bgcolor: "orange",
           bordercolor: "darkorange",
@@ -856,7 +856,14 @@ export default function ReactPlotlyPage() {
                 hoverdistance: 50,
                 // Enable selection mode for hover effects
                 selectdirection: 'diagonal',
-                dragmode: false
+                dragmode: false,
+                legend: {
+                  orientation: "h",
+                  yanchor: "top",
+                  y: -0.4,
+                  xanchor: "center",
+                  x: 0.5
+                }
               }}
               style={{ width: "100%", height: "100%", cursor: "pointer" }}
               config={{
@@ -900,7 +907,14 @@ export default function ReactPlotlyPage() {
                 hoverdistance: 50,
                 // Bar hover effects
                 bargap: 0.15,
-                bargroupgap: 0.1
+                bargroupgap: 0.1,
+                legend: {
+                  orientation: "h",
+                  yanchor: "top",
+                  y: -0.3,
+                  xanchor: "center",
+                  x: 0.5
+                }
               }}
               style={{ width: "100%", height: "100%", cursor: "pointer" }}
               config={{
@@ -974,7 +988,14 @@ export default function ReactPlotlyPage() {
                 layout={{
                   title: "Financial Distribution",
                   autosize: true,
-                  hovermode: 'closest'
+                  hovermode: 'closest',
+                  legend: {
+                    orientation: "h",
+                    yanchor: "top",
+                    // y: -0.2,    
+                    xanchor: "center",
+                    x: 0.5
+                  }
                 }}
                 style={{ width: "100%", height: "100%", cursor: "pointer" }}
                 config={DEFAULT_CONFIGURATION}
@@ -1004,7 +1025,7 @@ export default function ReactPlotlyPage() {
                   title: "Revenue Trends Over Time",
                   autosize: true,
                   xaxis: { tickformat: 'digits' },
-                  yaxis: { title: "Amount ($)" }
+                  yaxis: { title: "Amount ($)" },
                 }}
                 style={{ width: "100%", height: "100%" }}
                 config={DEFAULT_CONFIGURATION}
@@ -1042,7 +1063,14 @@ export default function ReactPlotlyPage() {
                 layout={{
                   title: "Revenue by Category",
                   autosize: true,
-                  hovermode: 'closest'
+                  hovermode: 'closest',
+                  legend: {
+                    orientation: "h",
+                    yanchor: "top",
+                    // y: -0.2,    
+                    xanchor: "center",
+                    x: 0.5
+                  }
                 }}
                 style={{ width: "100%", height: "100%", cursor: "pointer" }}
                 config={DEFAULT_CONFIGURATION}

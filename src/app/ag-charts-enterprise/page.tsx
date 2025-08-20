@@ -30,7 +30,7 @@ const dashboardInfoDatas = {
     { feature: "Real-time Data Support", supported: true },
     { feature: "Custom Options", supported: true },
     { feature: "TypeScript Support", supported: true },
-    { feature: "Open Source", supported: true },
+    { feature: "Paid Dashbaord Tools", supported: true },
     { feature: "Drag and Drop. ", supported: true, link: "dashboard/draggble-dashboard" },
   ],
   dataRecords: {

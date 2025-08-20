@@ -629,11 +629,11 @@ const PlotlyRenderer: React.FC<{
         return item ? (item as any)[measure.key] || 0 : 0;
       }),
       type: chartType.key === 'line' ? 'scatter' : 'bar',
-      text: labels.map(label => {
-        const item = data.find(d => (d as any)[xKey]?.toString() === label);
-        const value = item ? (item as any)[measure.key] || 0 : 0;
-        return formatCurrency(Number(value));
-      }),
+      // text: labels.map(label => {
+      //   const item = data.find(d => (d as any)[xKey]?.toString() === label);
+      //   const value = item ? (item as any)[measure.key] || 0 : 0;
+      //   return formatCurrency(Number(value));
+      // }),
       mode: chartType.key === 'line' ? 'lines+markers' : undefined,
       name: measure.label,
       line: chartType.key === 'line' ? {
@@ -648,7 +648,7 @@ const PlotlyRenderer: React.FC<{
           width: 1
         }
       },
-      hovertemplate: `%{text}<br>${measure.label}: %{y:$,.2f}<extra></extra>`
+      // hovertemplate: `%{text}<br>${measure.label}: %{y:$,.2f}<extra></extra>`
     }));
   }, [measures, xKey, data, chartType]);
 
@@ -673,7 +673,7 @@ const PlotlyRenderer: React.FC<{
     },
     legend: {
       orientation: 'h',
-      y: -0.3,
+      y: -0.5,
       x: 0.5,
       xanchor: 'center'
     },
@@ -707,6 +707,9 @@ const PlotlyRenderer: React.FC<{
 
   return (
     <div className="w-full h-full p-4">
+      <div className='font-bold text-center'>
+        {chartType.label} - Financial Analysis (Plotly)
+      </div>
       {typeof window !== 'undefined' && (
         <Plot
           divId="plotly-chart"
@@ -974,12 +977,12 @@ const VictoryRenderer: React.FC<{
         <h3 className="text-lg font-semibold text-gray-800 mb-4 text-center">
           Line Chart - Financial Analysis (Victory)
         </h3>
-        <div className="h-80">
+        <div className="h-[350px]">
           <VictoryChart
             theme={VictoryTheme.material}
             width={800}
-            height={400}
-            padding={{ left: 80, top: 20, right: 80, bottom: 60 }}
+            height={450}
+            padding={{ left: 80, top: 20, right: 40, bottom: 130 }}
           >
             <VictoryAxis
               label='Amount ($)'
@@ -1003,7 +1006,7 @@ const VictoryRenderer: React.FC<{
                   key={series.name}
                   data={series.data}
                   style={{
-                    data: { stroke: series.color, strokeWidth: 2 }
+                    data: { stroke: series.color, strokeWidth: 3 }
                   }}
                   animate={{
                     duration: 1000,
@@ -1013,14 +1016,23 @@ const VictoryRenderer: React.FC<{
               ))}
             </VictoryGroup>
             <VictoryLegend
-              x={600}
-              y={50}
-              orientation="vertical"
-              gutter={20}
-              style={{ border: { stroke: "black", strokeWidth: 2 }, title: { fontSize: 20 } }}
+              x={300}
+              y={380}
+              orientation="horizontal"
+              gutter={30}
+              itemsPerRow={3}
+              style={{ 
+                border: { stroke: "#e0e0e0", strokeWidth: 1, fill: "#f9f9f9" },
+                title: { fontSize: 14, fontWeight: "bold" },
+                labels: { fontSize: 12, fontWeight: "500" }
+              }}
               data={chartData.map(series => ({
                 name: series.name,
-                symbol: { fill: series.color }
+                symbol: { 
+                  fill: series.color, 
+                  type: "circle", 
+                  size: 6 
+                }
               }))}
             />
           </VictoryChart>
@@ -1033,12 +1045,12 @@ const VictoryRenderer: React.FC<{
         <h3 className="text-lg font-semibold text-gray-800 mb-4 text-center">
           Bar Chart - Financial Analysis (Victory)
         </h3>
-        <div className="h-80">
+        <div className="h-96">
           <VictoryChart
             theme={VictoryTheme.material}
             width={800}
-            height={400}
-            padding={{ left: 80, top: 20, right: 80, bottom: 60 }}
+            height={450}
+            padding={{ left: 80, top: 20, right: 40, bottom: 120 }}
           >
             <VictoryAxis
               dependentAxis
@@ -1070,14 +1082,23 @@ const VictoryRenderer: React.FC<{
               ))}
             </VictoryGroup>
             <VictoryLegend
-              x={600}
-              y={50}
-              orientation="vertical"
-              gutter={20}
-              style={{ border: { stroke: "black", strokeWidth: 2 }, title: { fontSize: 20 } }}
+              x={50}
+              y={380}
+              orientation="horizontal"
+              gutter={30}
+              itemsPerRow={3}
+              style={{ 
+                border: { stroke: "#e0e0e0", strokeWidth: 1, fill: "#f9f9f9" },
+                title: { fontSize: 14, fontWeight: "bold" },
+                labels: { fontSize: 12, fontWeight: "500" }
+              }}
               data={measures.map(measure => ({
                 name: measure.label,
-                symbol: { fill: measure.color }
+                symbol: { 
+                  fill: measure.color, 
+                  type: "square", 
+                  size: 6 
+                }
               }))}
             />
           </VictoryChart>
@@ -1086,7 +1107,6 @@ const VictoryRenderer: React.FC<{
     );
   }
 };
-
 
 const EChartsRenderer: React.FC<{
   chartType: ChartType;

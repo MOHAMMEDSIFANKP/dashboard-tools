@@ -218,7 +218,7 @@ const AgChartsPage: React.FC = () => {
         ],
         axes: [
           { type: "category", position: "bottom", title: { text: Xkey } },
-          { type: "number", position: "left", title: { text: "Amount ($)" }, label: { formatter: (params:any) => formatCurrency(params.value) }, },
+          { type: "number", position: "left", title: { text: "Amount ($)" }, label: { formatter: (params: any) => formatCurrency(params.value) }, },
         ],
         listeners: {
           // @ts-ignore
@@ -266,7 +266,7 @@ const AgChartsPage: React.FC = () => {
         ],
         axes: [
           { type: 'category', position: 'bottom', title: { text: Xkey } },
-          { type: 'number', position: 'left', title: { text: 'Amount ($)' },label: { formatter: (params:any) => formatCurrency(params.value) }, }
+          { type: 'number', position: 'left', title: { text: 'Amount ($)' }, label: { formatter: (params: any) => formatCurrency(params.value) }, }
         ],
         // listeners: {
         //   // @ts-ignore
@@ -287,10 +287,24 @@ const AgChartsPage: React.FC = () => {
           type: "pie",
           angleKey: "revenue",
           labelKey: "catfinancialview",
-          tooltip: { enabled: true },
+          // tooltip: { enabled: true },
           calloutLabel: { enabled: true },
           sectorLabelKey: 'catfinancialview',
           legendItemKey: 'amount',
+          sectorLabel: { enabled: false },
+          calloutLabelKey: "catfinancialview",
+          tooltip: {
+            renderer: (params: any) => {
+              return `
+              <div class="p-2 bg-white border border-gray-200 rounded shadow">
+                <div class="flex items-center gap-1">
+                  <div class="w-3 h-3" style="background-color:${params.fill}"></div>
+                  <div class="font-semibold">${params.datum['catfinancialview']}</div>
+                </div>
+                <div>Revenue: ${formatCurrency(params.datum['revenue'])}</div>
+              </div>`;
+            },
+          },
           // listeners: {
           //   // @ts-ignore
           //   nodeClick: (event) => {
@@ -312,10 +326,21 @@ const AgChartsPage: React.FC = () => {
           type: "donut",
           angleKey: "revenue",
           labelKey: "cataccountingview",
-          tooltip: { enabled: true },
+          // tooltip: { enabled: true },
           calloutLabel: { enabled: true },
           sectorLabelKey: 'cataccountingview',
-          
+          tooltip: {
+            renderer: (params: any) => {
+              return `
+              <div class="p-2 bg-white border border-gray-200 rounded shadow">
+                <div class="flex items-center gap-1">
+                  <div class="w-3 h-3" style="background-color:${params.fill}"></div>
+                  <div class="font-semibold">${params.datum['cataccountingview']}</div>
+                </div>
+                <div>Revenue: ${formatCurrency(params.datum['revenue'])}</div>
+              </div>`;
+            },
+          },
           // listeners: {
           //   // @ts-ignore
           //   nodeClick: (event) => {
@@ -415,7 +440,7 @@ const AgChartsPage: React.FC = () => {
             }],
             axes: [
               { type: 'category', position: 'bottom', title: { text: 'Period' } },
-              { type: 'number', position: 'left', title: { text: 'Value ($)' }, label: { formatter: (params) => formatCurrency(params.value)} }
+              { type: 'number', position: 'left', title: { text: 'Value ($)' }, label: { formatter: (params) => formatCurrency(params.value) } }
             ],
           };
         } else {

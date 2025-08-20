@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import Papa from 'papaparse';
+
 import { AgCharts } from 'ag-charts-enterprise';
 import { AgChartOptions } from 'ag-charts-enterprise';
 
@@ -44,6 +46,9 @@ interface ChartContainerProps {
     onComparisonOpen: (chartType: string) => void;
     chartType: string;
     chartRef: React.RefObject<HTMLDivElement>;
+    exportToPNG?: () => void;
+    exportToCSV?: () => void;
+
 }
 
 // Chart configuration constants
@@ -615,11 +620,24 @@ const AGChartsEnterprise: React.FC = () => {
                     fills: ['#058DC7', '#50B432', '#ED561B', '#DDDF00', '#24CBE5', '#64E572'],
                     strokes: ['#058DC7', '#50B432', '#ED561B', '#DDDF00', '#24CBE5', '#64E572'],
                     strokeWidth: 2,
-                    tooltip: { enabled: true },
-                    calloutLabel: { enabled: false },
+                    // tooltip: { enabled: true },
                     sectorLabelKey: 'catfinancialview',
                     legendItemKey: 'catfinancialview',
-
+                    // disable inside labels
+                    sectorLabel: { enabled: false },
+                    calloutLabelKey: "catfinancialview",
+                    tooltip: {
+                        renderer: (params: any) => {
+                            return `
+                                  <div class="p-2 bg-white border border-gray-200 rounded shadow">
+                                    <div class="flex items-center gap-1">
+                                      <div class="w-3 h-3" style="background-color:${params.fill}"></div>
+                                      <div class="font-semibold">${params.datum['catfinancialview']}</div>
+                                    </div>
+                                    <div>Revenue: ${formatCurrency(params.datum['revenue'])}</div>
+                                  </div>`;
+                        },
+                    },
                     // label: {
                     //     enabled: true,
                     //     formatter: ({ value }: any) => formatCurrency(value),
@@ -643,17 +661,31 @@ const AGChartsEnterprise: React.FC = () => {
                 data: chartData.donut,
                 series: [{
                     // @ts-ignore
-                    type: 'pie',
+                    type: 'donut',
                     angleKey: 'revenue',
                     categoryKey: 'cataccountingview',
                     innerRadiusRatio: 0.5,
                     fills: ['#DDDF00', '#24CBE5', '#64E572', '#FF9655', '#FFF263', '#6AF9C4'],
                     strokes: ['#DDDF00', '#24CBE5', '#64E572', '#FF9655', '#FFF263', '#6AF9C4'],
                     strokeWidth: 2,
-                    tooltip: { enabled: true },
-                    calloutLabel: { enabled: true },
+                    // tooltip: { enabled: true },
                     sectorLabelKey: 'cataccountingview',
                     legendItemKey: 'amount',
+                    calloutLabelKey: "cataccountingview",
+                    // disable inside labels
+                    sectorLabel: { enabled: false },
+                    tooltip: {
+                        renderer: (params: any) => {
+                            return `
+                                <div class="p-2 bg-white border border-gray-200 rounded shadow">
+                                    <div class="flex items-center gap-1">
+                                    <div class="w-3 h-3" style="background-color:${params.fill}"></div>
+                                    <div class="font-semibold">${params.datum['cataccountingview']}</div>
+                                    </div>
+                                    <div>Revenue: ${formatCurrency(params.datum['revenue'])}</div>
+                                </div>`;
+                        },
+                    },
                     // },
                     // label: {
                     //     enabled: true,
@@ -718,6 +750,84 @@ const AGChartsEnterprise: React.FC = () => {
             setIsLoading(false);
         }
     }, [dimensions, crossChartFilter, testCase, fetchAllChartData, FetchTestCase2AllChartData]);
+
+    // Export to PNG function
+    const exportChartToPNG = useCallback((chartRef: React.RefObject<HTMLDivElement>, title: string) => {
+        if (!chartRef.current) return;
+
+        try {
+            const canvas = chartRef.current.querySelector('canvas');
+            if (canvas) {
+                // Create a link element and trigger download
+                const link = document.createElement('a');
+                link.download = `${title.replace(/\s+/g, '_')}_chart.png`;
+                link.href = canvas.toDataURL('image/png');
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        } catch (error) {
+            console.error('Failed to export chart as PNG:', error);
+            setError('Failed to export chart as PNG');
+        }
+    }, []);
+
+    // Export to CSV function
+    const exportChartToCSV = useCallback((chartType: ChartType, title: string) => {
+        try {
+            let data: any[] = [];
+            let filename = '';
+
+            // Check if we're in drill-down mode
+            if (drillDownState.type === chartType && drillDownState.data.length > 0) {
+                data = drillDownState.data;
+                filename = `${title.replace(/\s+/g, '_')}_drilldown_data.csv`;
+            } else {
+                // Use regular chart data
+                switch (chartType) {
+                    case 'line':
+                        data = chartData.line;
+                        break;
+                    case 'bar':
+                        data = chartData.bar;
+                        break;
+                    case 'pie':
+                        data = chartData.pie;
+                        break;
+                    case 'donut':
+                        data = chartData.donut;
+                        break;
+                    default:
+                        data = [];
+                }
+                filename = `${title.replace(/\s+/g, '_')}_data.csv`;
+            }
+
+            if (data.length === 0) {
+                setError('No data available to export');
+                return;
+            }
+
+            // Convert data to CSV
+            const csv = Papa.unparse(data);
+
+            // Create and trigger download
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', filename);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('Failed to export chart data as CSV:', error);
+            setError('Failed to export chart data as CSV');
+        }
+    }, [chartData, drillDownState]);
+
 
     // Fetch data when dimensions change
     useEffect(() => {
@@ -851,6 +961,9 @@ const AGChartsEnterprise: React.FC = () => {
                     handleShareChart={handleShareChart}
                     onComparisonOpen={handleComparisonOpenDrawer}
                     chartRef={lineChartRef as React.RefObject<HTMLDivElement>}
+                    exportToPNG={() => exportChartToPNG(lineChartRef as React.RefObject<HTMLDivElement>, 'Revenue Trends')}
+                    exportToCSV={() => exportChartToCSV('line', 'Revenue Trends')}
+
                 />
                 <AGChartContainer
                     chartType="bar"
@@ -864,6 +977,8 @@ const AGChartsEnterprise: React.FC = () => {
                     handleShareChart={handleShareChart}
                     onComparisonOpen={handleComparisonOpenDrawer}
                     chartRef={barChartRef as React.RefObject<HTMLDivElement>}
+                    exportToPNG={() => exportChartToPNG(barChartRef as React.RefObject<HTMLDivElement>, 'Revenue vs Expenses')}
+                    exportToCSV={() => exportChartToCSV('bar', 'Revenue vs Expenses')}
                 />
                 <AGChartContainer
                     chartType="pie"
@@ -877,6 +992,8 @@ const AGChartsEnterprise: React.FC = () => {
                     handleShareChart={handleShareChart}
                     onComparisonOpen={handleComparisonOpenDrawer}
                     chartRef={pieChartRef as React.RefObject<HTMLDivElement>}
+                    exportToPNG={() => exportChartToPNG(pieChartRef as React.RefObject<HTMLDivElement>, 'Financial Distribution')}
+                    exportToCSV={() => exportChartToCSV('pie', 'Financial Distribution')}
                 />
                 <AGChartContainer
                     chartType="donut"
@@ -890,6 +1007,8 @@ const AGChartsEnterprise: React.FC = () => {
                     handleShareChart={handleShareChart}
                     onComparisonOpen={handleComparisonOpenDrawer}
                     chartRef={donutChartRef as React.RefObject<HTMLDivElement>}
+                    exportToPNG={() => exportChartToPNG(donutChartRef as React.RefObject<HTMLDivElement>, 'Revenue by Category')}
+                    exportToCSV={() => exportChartToCSV('donut', 'Revenue by Category')}
                 />
             </div>
             <EmailShareDrawer
@@ -920,7 +1039,9 @@ const AGChartContainer: React.FC<ChartContainerProps> = ({
     handleShareChart,
     onComparisonOpen,
     chartType,
-    chartRef
+    chartRef,
+    exportToPNG,
+    exportToCSV
 }) => {
     const containerRef = useRef<HTMLDivElement>(null);
 
@@ -951,6 +1072,8 @@ const AGChartContainer: React.FC<ChartContainerProps> = ({
             chartRef={chartRef}
             onShareChart={() => handleShareChart(title, chartRef)}
             onComparisonOpen={() => onComparisonOpen(chartType || '')}
+              exportToPNG={exportToPNG}
+            exportToCSV={exportToCSV}
         >
             <div ref={containerRef} className="min-h-[400px] w-full" />
         </ChartContainerView>
