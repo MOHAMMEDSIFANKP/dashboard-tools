@@ -329,6 +329,7 @@ const AgChartsPage: React.FC = () => {
           // tooltip: { enabled: true },
           calloutLabel: { enabled: true },
           sectorLabelKey: 'cataccountingview',
+          calloutLabelKey: "cataccountingview",
           tooltip: {
             renderer: (params: any) => {
               return `
