@@ -683,9 +683,19 @@ export const ChartJSRenderer: React.FC<ChartJSRendererProps> = ({
         },
         scales: isTimeSeries
             ? {
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Period',
+                    },
+                },
                 y: {
                     ticks: {
                         callback: (value: any) => formatCurrency(value),
+                    },
+                    title: {
+                        display: true,
+                        text: 'Amount (USD)',
                     },
                 },
             }

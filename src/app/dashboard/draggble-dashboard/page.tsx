@@ -577,12 +577,20 @@ const ChartJSRenderer: React.FC<{
           //@ts-ignore
           drawBorder: false,
           color: '#E5E7EB'
-        }
+        },
+        title: {
+          display: true,
+          text: 'Amount (USD)',
+        },
       },
       x: {
         grid: {
           display: false
-        }
+        },
+        title: {
+          display: true,
+          text: xKey,
+        },
       }
     },
   };
@@ -1021,17 +1029,17 @@ const VictoryRenderer: React.FC<{
               orientation="horizontal"
               gutter={30}
               itemsPerRow={3}
-              style={{ 
+              style={{
                 border: { stroke: "#e0e0e0", strokeWidth: 1, fill: "#f9f9f9" },
                 title: { fontSize: 14, fontWeight: "bold" },
                 labels: { fontSize: 12, fontWeight: "500" }
               }}
               data={chartData.map(series => ({
                 name: series.name,
-                symbol: { 
-                  fill: series.color, 
-                  type: "circle", 
-                  size: 6 
+                symbol: {
+                  fill: series.color,
+                  type: "circle",
+                  size: 6
                 }
               }))}
             />
@@ -1087,17 +1095,17 @@ const VictoryRenderer: React.FC<{
               orientation="horizontal"
               gutter={30}
               itemsPerRow={3}
-              style={{ 
+              style={{
                 border: { stroke: "#e0e0e0", strokeWidth: 1, fill: "#f9f9f9" },
                 title: { fontSize: 14, fontWeight: "bold" },
                 labels: { fontSize: 12, fontWeight: "500" }
               }}
               data={measures.map(measure => ({
                 name: measure.label,
-                symbol: { 
-                  fill: measure.color, 
-                  type: "square", 
-                  size: 6 
+                symbol: {
+                  fill: measure.color,
+                  type: "square",
+                  size: 6
                 }
               }))}
             />
@@ -1355,7 +1363,7 @@ const HighchartsRenderer: React.FC<{
             }
           },
           labels: {
-            rotation: -45,
+            // rotation: -45,
             style: {
               fontSize: '11px',
               color: '#6B7280'
@@ -1498,7 +1506,7 @@ const HighchartsRenderer: React.FC<{
         options={chartOptions}
         immutable={false}
         containerProps={{
-          style: { height: '100%', width: '100%' }
+          style: { height: '99%', width: '100%' }
         }}
       />
     </div>

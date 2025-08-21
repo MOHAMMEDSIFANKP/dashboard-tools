@@ -594,7 +594,13 @@ export default function ChartJsPage() {
           },
         },
       },
-      legend: { position: "top" },
+      legend: {
+        position: "top", labels: {
+          padding: 10,
+          usePointStyle: true,
+          pointStyle: 'circle'
+        }
+      },
       title: {
         display: true
       }
@@ -617,9 +623,20 @@ export default function ChartJsPage() {
       }
     },
     scales: {
+      x: {
+        // Y-axis configuration (optional, but good practice)
+        title: {
+          display: true,
+          text: crossChartFilter ? 'Period' : 'Fiscal Year',
+        },
+      },
       y: {
         ticks: {
           callback: (value: any) => formatCurrency(value),
+        },
+        title: {
+          display: true,
+          text: 'Amount (USD)',
         },
       },
     },
@@ -807,7 +824,7 @@ export default function ChartJsPage() {
                 ref={pieChartRef}
                 options={{
                   ...chartOptions,
-                  scales: undefined, 
+                  scales: undefined,
                   // onClick: handlePieChartClick,
                 }}
                 data={pieChartData}
@@ -846,7 +863,7 @@ export default function ChartJsPage() {
                 ref={donutChartRef}
                 options={{
                   ...chartOptions,
-                  scales: undefined, 
+                  scales: undefined,
                   cutout: "50%",
                   // onClick: handleDonutChartClick
                 }}
@@ -856,7 +873,7 @@ export default function ChartJsPage() {
 
           </ChartContainer>
         )}
-         {/* <p className="col-span-1 md:col-span-2 text-sm text-gray-500">
+        {/* <p className="col-span-1 md:col-span-2 text-sm text-gray-500">
           <i>Click on any chart element to drill down into more detailed data</i>
         </p> */}
       </div>
