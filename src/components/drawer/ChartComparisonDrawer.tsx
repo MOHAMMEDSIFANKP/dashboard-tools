@@ -548,11 +548,13 @@ export const AGChartsRenderer: React.FC<AGChartsRendererProps> = ({
                     {
                         type: "category",
                         position: "bottom",
+                        title: { text: 'period' },
                         label: { rotation: -45 },
                     },
                     {
                         type: "number",
                         position: "left",
+                        title: { text: "Amount ($)" },
                         label: { formatter: (params) => formatCurrency(params.value) },
                     },
                 ],
@@ -773,7 +775,7 @@ export const PlotlyRenderer: React.FC<PlotlyRendererProps> = ({
         showlegend: true,
         legend: {
             orientation: 'h',
-            y: -0.2,
+            y: -0.4,
             xanchor: "center",
             x: 0.5
         },
@@ -794,12 +796,14 @@ export const PlotlyRenderer: React.FC<PlotlyRendererProps> = ({
         },
         ...(isTimeSeries ? {
             xaxis: {
-                title: 'Period',
-                tickangle: 0,
-                tickformat: 'digits'
+                title: { text: 'Period' },
+                tickformat: 'digits',
+                type: 'category',
+                tickangle: -25,
             },
             yaxis: {
-                title: 'Amount',
+                title: { text: 'Amount ($)' },
+                rangemode: 'tozero',
                 // tickformat: '$,.2f',
             },
         } : {}),
@@ -807,6 +811,7 @@ export const PlotlyRenderer: React.FC<PlotlyRendererProps> = ({
 
     return (
         <div className="w-full h-full p-4">
+            <h2 className="text-center font-bold">Financial Year {year} - {chartType.charAt(0).toUpperCase() + chartType.slice(1)}</h2>
             <Plot
                 data={getPlotlyData()}
                 layout={layout}
@@ -840,7 +845,7 @@ export const NivoRenderer: React.FC<NivoRendererProps> = ({
     const isPieLike = chartType === 'pie' || chartType === 'donut';
 
     const commonProps = {
-        margin: { top: 50, right: 130, bottom: 50, left: 60 },
+        margin: { top: 50, right: 130, bottom: 50, left: 75 },
         // colors: { scheme: 'nivo' },
         animate: true,
         // enableSlices: 'x',
@@ -859,6 +864,7 @@ export const NivoRenderer: React.FC<NivoRendererProps> = ({
         if (chartType === 'line') {
             return (
                 <div className="w-full h-full">
+                    <h2 className="text-center font-bold">Financial Year {year} - {chartType.charAt(0).toUpperCase() + chartType.slice(1)}</h2>
                     <ResponsiveLine
                         data={chartData}
                         {...commonProps}
@@ -869,14 +875,14 @@ export const NivoRenderer: React.FC<NivoRendererProps> = ({
                             max: 'auto',
                         }}
                         axisBottom={{
-                            tickRotation: 0,
+                            tickRotation: -30,
                             legend: 'Period',
-                            legendOffset: 36,
+                            legendOffset: 40,
                             legendPosition: 'middle',
                         }}
                         axisLeft={{
                             legend: 'Amount',
-                            legendOffset: -40,
+                            legendOffset: -65,
                             legendPosition: 'middle',
                             format: value => formatCurrency(value),
                         }}
@@ -907,6 +913,7 @@ export const NivoRenderer: React.FC<NivoRendererProps> = ({
         } else { // bar chart
             return (
                 <div className="w-full h-full">
+                    <h2 className="text-center font-bold">Financial Year {year} - {chartType.charAt(0).toUpperCase() + chartType.slice(1)}</h2>
                     <ResponsiveBar
                         data={data.map(item => ({
                             period: item.period,
@@ -916,16 +923,18 @@ export const NivoRenderer: React.FC<NivoRendererProps> = ({
                         keys={yKeys}
                         indexBy="period"
                         groupMode="grouped"
+                        enableLabel={false}
                         axisBottom={{
-                            tickRotation: 0,
                             legend: 'Period',
-                            legendOffset: 36,
+                            tickRotation: -30,
+                            legendOffset: 40,
                             legendPosition: 'middle',
                         }}
                         axisLeft={{
                             legend: 'Amount',
-                            legendOffset: -40,
+                            legendOffset: -66,
                             format: value => formatCurrency(value),
+                            legendPosition: 'middle',
                         }}
                         labelSkipWidth={12}
                         labelSkipHeight={12}
@@ -978,6 +987,7 @@ export const NivoRenderer: React.FC<NivoRendererProps> = ({
 
         return (
             <div className="w-full h-full">
+                <h2 className="text-center font-bold">Financial Year {year} - {chartType.charAt(0).toUpperCase() + chartType.slice(1)}</h2>
                 <ResponsivePie
                     data={pieData}
                     margin={{ top: 40, right: 80, bottom: 80, left: 80 }}
@@ -992,6 +1002,7 @@ export const NivoRenderer: React.FC<NivoRendererProps> = ({
                     arcLinkLabelsThickness={2}
                     arcLinkLabelsColor={{ from: 'color' }}
                     arcLabelsSkipAngle={10}
+                    valueFormat={(v) => formatCurrency(Number(v))}
                     arcLabelsTextColor={{ from: 'color', modifiers: [['darker', 2]] }}
                     legends={[
                         {
@@ -1046,6 +1057,7 @@ export const VictoryRenderer: React.FC<VictoryRendererProps> = ({
 
         return (
             <div className="w-full h-full p-4">
+                <h2 className="text-center font-bold">Financial Year {year} - {chartType.charAt(0).toUpperCase() + chartType.slice(1)}</h2>
                 <VictoryChart
                     theme={VictoryTheme.material}
                     domainPadding={20}
@@ -1143,6 +1155,7 @@ export const VictoryRenderer: React.FC<VictoryRendererProps> = ({
 
         return (
             <div className="w-full h-full p-4">
+                <h2 className="text-center font-bold">Financial Year {year} - {chartType.charAt(0).toUpperCase() + chartType.slice(1)}</h2>
                 <VictoryPie
                     data={pieData}
                     colorScale={['#4bc0c0', '#ff6384', '#36a2eb', '#ffce56', '#9966ff', '#ff9f40']}

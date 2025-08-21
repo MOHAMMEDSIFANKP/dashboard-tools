@@ -2,6 +2,7 @@ import { AccumulationChartComponent, ChartComponent } from "@syncfusion/ej2-reac
 import { AgGridReact } from "ag-grid-react";
 
 export const formatCurrency = (value: number): string => {
+  
   if (value >= 1000000000) {
     return `$${(value / 1000000000).toFixed(1)}B`;
   }
@@ -119,6 +120,9 @@ export const NivoCaptureChartScreenshot = (chartContainerRef: React.RefObject<HT
       const svgRect = svgElement.getBoundingClientRect();
       canvas.width = svgRect.width;
       canvas.height = svgRect.height;
+
+       ctx.fillStyle = 'white';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       // Create image from SVG
       const img = new Image();

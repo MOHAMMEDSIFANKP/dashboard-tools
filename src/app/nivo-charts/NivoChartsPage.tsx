@@ -61,7 +61,7 @@ interface ChartContainerProps {
   isDrilled?: boolean;
   isCrossChartFiltered?: string;
   onBack?: () => void;
-  onExport?: () => void;
+  exportToPNG:  (title: string, chartRef: React.RefObject<HTMLDivElement>) => void;
   onResetFilter?: () => void;
   isLoading?: boolean;
   handleShareChart: (title: string, chartRef: React.RefObject<HTMLDivElement>) => void;
@@ -78,8 +78,8 @@ const ChartContainer: React.FC<ChartContainerProps> = ({
   isDrilled,
   isCrossChartFiltered,
   onBack,
-  onExport,
   onResetFilter,
+  exportToPNG,
   isLoading = false,
   handleShareChart,
   chartRef,
@@ -126,7 +126,8 @@ const ChartContainer: React.FC<ChartContainerProps> = ({
   };
 
   return (
-    <ChartContainerView
+   <div className="bg-white">
+     <ChartContainerView
       title={title}
       isDrilled={isDrilled}
       resetDrillDown={onBack}
@@ -134,12 +135,14 @@ const ChartContainer: React.FC<ChartContainerProps> = ({
       isCrossChartFiltered={isCrossChartFiltered}
       resetCrossChartFilter={onResetFilter}
       exportToCSV={exportToCSV}
+      exportToPNG={() => exportToPNG(title, chartRef)}
       hasData={hasData}
       chartRef={chartRef}
       children={children}
       onShareChart={() => handleShareChart(title, chartRef)}
       onComparisonOpen={() => onComparisonOpen(chartType || '')}
     />
+   </div>
   );
 };
 
@@ -520,6 +523,7 @@ export default function NivoChartsPage() {
     }
   };
 
+
   // Event handlers
   const handleResetDrillDown = useCallback(() => {
     setDrillDownState({
@@ -590,9 +594,30 @@ export default function NivoChartsPage() {
     }
   };
 
+  // Handle export to PNG
+  const handleExportToPNG = async (
+    title: string,
+    chartContainerRef: React.RefObject<HTMLDivElement>
+  ) => {
+    try {
+      const imageData = await NivoCaptureChartScreenshot(chartContainerRef);
+
+      // Create download link
+      const link = document.createElement('a');
+      link.href = imageData;
+      link.download = `${title.replace(/\s+/g, '_').toLowerCase()}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error('Failed to export chart as PNG:', error);
+      alert('Failed to export chart as PNG');
+    }
+  };
+
 
   return (
-    <section className="p-5">
+    <section className="p-5 bg-white">
       <h1 className="text-2xl font-bold text-center mb-4">Financial Dashboard - Nivo Charts</h1>
 
       {isGroupModalOpen && <GroupModal
@@ -642,12 +667,13 @@ export default function NivoChartsPage() {
           onResetFilter={handleResetCrossChartFilter}
           handleShareChart={handleShareChart}
           chartRef={lineChartRef}
+          exportToPNG={handleExportToPNG}
         >
           {drillDownState.chartType === 'line' ? renderDrillDown() : (
             <div style={{ height: "400px" }}>
               <ResponsiveLine
                 data={lineChartData}
-                margin={{ top: 50, right: 110, bottom: 50, left: 75 }}
+                margin={{ top: 70, right: 110, bottom: 50, left: 75 }}
                 xScale={{ type: "point" }}
                 yScale={{
                   type: "linear",
@@ -658,7 +684,8 @@ export default function NivoChartsPage() {
                 }}
                 axisBottom={{
                   legend: crossChartFilter ? "Period" : "Fiscal Year",
-                  legendOffset: 36,
+                  legendOffset: 40,
+                  tickRotation: -30,
                   legendPosition: "middle",
                 }}
                 axisLeft={{
@@ -717,6 +744,7 @@ export default function NivoChartsPage() {
                     symbolSize: 12,
                     symbolShape: "circle",
                     toggleSerie: true,
+
                   }
                 ]}
               />
@@ -735,6 +763,7 @@ export default function NivoChartsPage() {
           onBack={handleResetDrillDown}
           handleShareChart={handleShareChart}
           chartRef={barChartRef}
+          exportToPNG={handleExportToPNG}
         >
           {drillDownState.chartType === 'bar' ? renderDrillDown() : (
             <div style={{ height: "400px" }}>
@@ -742,7 +771,7 @@ export default function NivoChartsPage() {
                 data={barChartData}
                 keys={["revenue", "expenses"]}
                 indexBy={crossChartFilter ? "period" : "fiscalYear"}
-                margin={{ top: 50, right: 130, bottom: 50, left: 70 }}
+                margin={{ top: 70, right: 130, bottom: 50, left: 70 }}
                 padding={0.3}
                 groupMode="grouped"
                 colors={{ scheme: "paired" }}
@@ -756,8 +785,9 @@ export default function NivoChartsPage() {
 
                 axisBottom={{
                   legend: crossChartFilter ? "Period" : "Fiscal Year",
-                  legendOffset: 36,
+                  legendOffset: 40,
                   legendPosition: "middle",
+                  tickRotation: -30,
                 }}
                 axisLeft={{
                   legend: "Amount",
@@ -823,6 +853,7 @@ export default function NivoChartsPage() {
           onBack={handleResetDrillDown}
           handleShareChart={handleShareChart}
           chartRef={pieChartRef}
+          exportToPNG={handleExportToPNG}
         >
           {drillDownState.chartType === 'pie' ? renderDrillDown() : (
             <div style={{ height: "400px" }}>
@@ -880,6 +911,7 @@ export default function NivoChartsPage() {
           onBack={handleResetDrillDown}
           handleShareChart={handleShareChart}
           chartRef={donutChartRef}
+          exportToPNG={handleExportToPNG}
         >
           {drillDownState.chartType === 'donut' ? renderDrillDown() : (
             <div style={{ height: "400px" }}>
@@ -926,7 +958,7 @@ export default function NivoChartsPage() {
           )}
         </ChartContainer>
 
-         {/* <p className="col-span-1 md:col-span-2 text-sm text-gray-500">
+        {/* <p className="col-span-1 md:col-span-2 text-sm text-gray-500">
           <i>Click on any chart element to drill down into more detailed data</i>
         </p> */}
       </div>
