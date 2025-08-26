@@ -1234,10 +1234,16 @@ export const EChartsRenderer: React.FC<EChartsRendererProps> = ({
                 },
                 legend: {
                     data: yKeys,
-                    bottom: 0
+                    // bottom: 0,
+                    top: 30,
+                    left: 'center'
                 },
+               
                 xAxis: {
                     type: 'category',
+                    name: 'Period',
+                    nameLocation: 'middle',
+                    nameGap: 60,
                     data: data.map(item => item.period),
                     axisLabel: {
                         rotate: 45
@@ -1245,6 +1251,9 @@ export const EChartsRenderer: React.FC<EChartsRendererProps> = ({
                 },
                 yAxis: {
                     type: 'value',
+                    name: 'Amount ($)',
+                    nameLocation: 'middle',
+                    nameGap: 60,
                     axisLabel: {
                         formatter: (value: number) => formatCurrency(value)
                     }
