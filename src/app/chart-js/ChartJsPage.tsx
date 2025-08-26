@@ -250,7 +250,7 @@ export default function ChartJsPage() {
               pointHoverRadius: 4,
             },
             {
-              label: "grossMargin",
+              label: "Gross Margin",
               data: lineData.map((item: LineChartData) => item.grossMargin || 0),
               borderColor: "rgb(53, 162, 235)",
               backgroundColor: "rgba(53, 162, 235, 0.5)",
@@ -260,7 +260,7 @@ export default function ChartJsPage() {
               pointHoverRadius: 4,
             },
             {
-              label: "netProfit",
+              label: "Net Profit",
               data: lineData.map((item: LineChartData) => item.netProfit || 0),
               borderColor: "rgb(255, 99, 132)",
               backgroundColor: "rgba(255, 99, 132, 0.5)",

@@ -2,7 +2,7 @@ import { ApiResponse, Post } from "@/types/Schemas";
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
 export const databaseName = "sample_1m";
-
+// financial_data__10M
 // Chart request body interfaces
 interface ChartRequestBody {
   chartType: string;

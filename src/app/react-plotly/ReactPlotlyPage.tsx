@@ -649,7 +649,7 @@ export default function ReactPlotlyPage() {
         text: chartData.line.map(d => formatCurrency(Number(d.grossMargin))),
         type: "scatter" as const,
         mode: "lines+markers" as const,
-        name: "GrossMargin",
+        name: "Gross Margin",
         line: {
           color: "#F59E0B",
           width: 2
@@ -694,7 +694,7 @@ export default function ReactPlotlyPage() {
         text: chartData.line.map(d => formatCurrency(Number(d.netProfit))),
         type: "scatter" as const,
         mode: "lines+markers" as const,
-        name: "NetProfit",
+        name: "Net Profit",
         line: {
           color: "#10B981",
           width: 2
@@ -850,8 +850,8 @@ export default function ReactPlotlyPage() {
               layout={{
                 title: "Revenue Trends Over Time",
                 autosize: true,
-                xaxis: { tickformat: 'digits', title: { text: `${crossChartFilter ? 'periods' : 'Years'}` },type: 'category' ,  tickangle: -25, },
-                yaxis: { title: { text: "Amount ($)" } },
+                xaxis: { tickformat: 'digits', title: { text: `${crossChartFilter ? 'Periods' : 'Fiscal Year'}` },type: 'category' ,  tickangle: -55, },
+                yaxis: { title: { text: "Amount ($)" },range: [0, null], },
                 hovermode: 'closest',
                 hoverdistance: 50,
                 // Enable selection mode for hover effects
@@ -901,7 +901,7 @@ export default function ReactPlotlyPage() {
                 title: "Revenue vs Operating Expenses",
                 barmode: "group",
                 autosize: true,
-                xaxis: { tickformat: 'digits', title: { text: `${crossChartFilter ? 'periods' : 'Years'}` },type: 'category',  tickangle: -25, automargin: true },
+                xaxis: { tickformat: 'digits', title: { text: `${crossChartFilter ? 'Periods' : 'Fiscal Year'}` },type: 'category',  tickangle: -55, automargin: true },
                 yaxis: { title: { text: "Amount ($)" } },
                 hovermode: 'closest',
                 hoverdistance: 50,

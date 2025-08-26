@@ -33,7 +33,8 @@ import {
     VictoryTooltip,
     VictoryLegend,
     VictoryScatter,
-    VictoryGroup
+    VictoryGroup,
+    VictoryLabel
 } from 'victory';
 // Echarts
 import ReactECharts from 'echarts-for-react';
@@ -512,6 +513,16 @@ export const ComparisonDrawer: React.FC<ComparisonDrawerProps> = ({
 };
 
 
+const ALTERNATIVE_NAMES: { [key: string]: string } = {
+    revenue: "Revenue",
+    grossProfit: "Gross Profit",
+    grossMargin: "Gross Margin",
+    operatingProfit: "Operating Profit",
+    operatingMargin: "Operating Margin",
+    netProfit: "Net Profit",
+    netMargin: "Net Margin",
+    period: "Period"
+};
 
 interface AGChartsRendererProps {
     chartType: string;
@@ -526,6 +537,7 @@ export const AGChartsRenderer: React.FC<AGChartsRendererProps> = ({
     columns,
     year,
 }) => {
+
     const getChartOptions = (): AgChartOptions => {
         const isTimeSeries = chartType === "line" || chartType === "bar";
         const isPieLike = chartType === "pie" || chartType === "donut";
@@ -541,14 +553,14 @@ export const AGChartsRenderer: React.FC<AGChartsRendererProps> = ({
                     type: chartType,
                     xKey: "period",
                     yKey,
-                    yName: yKey,
+                    yName: ALTERNATIVE_NAMES[yKey] || yKey,
 
                 })),
                 axes: [
                     {
                         type: "category",
                         position: "bottom",
-                        title: { text: 'period' },
+                        title: { text: 'Period' },
                         label: { rotation: -45 },
                     },
                     {
@@ -627,7 +639,7 @@ export const ChartJSRenderer: React.FC<ChartJSRendererProps> = ({
                 datasets: columns
                     .filter((col) => col !== "period")
                     .map((key) => ({
-                        label: key,
+                        label: ALTERNATIVE_NAMES[key] || key,
                         data: data.map((item) => item[key]),
                         // backgroundColor: `rgba(54, 162, 235, 0.6)`,
                         // borderColor: `rgba(54, 162, 235, 1)`,
@@ -944,7 +956,7 @@ export const NivoRenderer: React.FC<NivoRendererProps> = ({
                                 anchor: 'bottom-right',
                                 direction: 'column',
                                 justify: false,
-                                translateX: 120,
+                                translateX: 100,
                                 translateY: 0,
                                 itemsSpacing: 2,
                                 itemWidth: 100,
@@ -1012,7 +1024,7 @@ export const NivoRenderer: React.FC<NivoRendererProps> = ({
                             translateX: 0,
                             translateY: 56,
                             itemsSpacing: 0,
-                            itemWidth: 100,
+                            itemWidth: 120,
                             itemHeight: 18,
                             itemTextColor: '#999',
                             itemDirection: 'left-to-right',
@@ -1063,7 +1075,7 @@ export const VictoryRenderer: React.FC<VictoryRendererProps> = ({
                     domainPadding={20}
                     //   height={400}
                     width={1000}
-                    padding={{ top: 50, bottom: 80, left: 60, right: 50 }}
+                    padding={{ top: 50, bottom: 80, left: 80, right: 50 }}
                 >
                     <VictoryLegend
                         x={125}
@@ -1077,12 +1089,16 @@ export const VictoryRenderer: React.FC<VictoryRendererProps> = ({
                     />
 
                     <VictoryAxis
-                        tickFormat={(x) => x}
-                        style={{ tickLabels: { fontSize: 10, angle: -45 } }}
+                        label='Period'
+                        axisLabelComponent={<VictoryLabel dy={40} />}
+                        tickFormat={(x: number) => x}
+                        style={{ tickLabels: { fontSize: 10, angle: -45, textAnchor: "end" } }}
                     />
                     <VictoryAxis
+                        label='Amount ($)'
+                        axisLabelComponent={<VictoryLabel dy={-56} />}
                         dependentAxis
-                        tickFormat={(y) => formatCurrency(y)}
+                        tickFormat={(y: number) => formatCurrency(y)}
                     />
 
                     {chartType === 'line' ? (
@@ -1681,10 +1697,10 @@ export const AGChartsEnterpriseRenderer: React.FC<AGChartsEnterpriseRendererProp
                         fill: getColorForIndex(index),
                         stroke: getColorForIndex(index),
                         strokeWidth: 1,
-                        label: {
-                            enabled: true,
-                            formatter: ({ value }: any) => formatCurrency(value),
-                        },
+                        // label: {
+                        //     enabled: true,
+                        //     formatter: ({ value }: any) => formatCurrency(value),
+                        // },
                     }),
                     // tooltip: {
                     //     renderer: ({ datum, xKey, yKey }: any) =>

@@ -258,14 +258,14 @@ export default function NivoChartsPage() {
             })),
           },
           {
-            id: "grossMargin",
+            id: "gross Margin",
             data: lineData.map((d: any) => ({
               x: d[Xkey] || '',
               y: Number(d.grossMargin) || 0,
             })),
           },
           {
-            id: "netProfit",
+            id: "Net Profit",
             data: lineData.map((d: any) => ({
               x: d[Xkey] || '',
               y: Number(d.netProfit) || 0,
@@ -280,8 +280,8 @@ export default function NivoChartsPage() {
       if (barData.length > 0) {
         const ChartSeries = barData.map((item: any) => ({
           [Xkey]: item[Xkey] || 'Unknown',
-          revenue: Math.round(Number(item.revenue || 0)),
-          expenses: Math.round(Number(item.expenses || 0)),
+          Revenue: Math.round(Number(item.revenue || 0)),
+          Expenses: Math.round(Number(item.expenses || 0)),
         }));
         setBarChartData(ChartSeries);
       }
@@ -769,7 +769,7 @@ export default function NivoChartsPage() {
             <div style={{ height: "400px" }}>
               <ResponsiveBar
                 data={barChartData}
-                keys={["revenue", "expenses"]}
+                keys={["Revenue", "Expenses"]}
                 indexBy={crossChartFilter ? "period" : "fiscalYear"}
                 margin={{ top: 70, right: 130, bottom: 50, left: 70 }}
                 padding={0.3}
