@@ -300,6 +300,14 @@ const DataGrid = ({ }) => {
       floatingFilter: true,
       valueParser: (params) => String(params.newValue)
     },
+     {
+      field: 'otherIncome',
+      headerName: 'Other Income',
+      sortable: true,
+      editable: true,
+      floatingFilter: true,
+      valueParser: (params) => String(params.newValue)
+    },
     {
       field: 'operating_expenses_amount_usd',
       headerName: 'Operating Expenses',
@@ -356,54 +364,47 @@ const DataGrid = ({ }) => {
       floatingFilter: true,
       valueParser: (params) => String(params.newValue)
     },
-    {
-      field: 'account_type_code',
-      headerName: 'Account Type Code',
-      sortable: true,
-      editable: true,
-      floatingFilter: true,
-      valueParser: (params) => String(params.newValue)
-    },
-    {
-      field: 'account_category_code',
-      headerName: 'Account Category Code',
-      sortable: true,
-      editable: true,
-      floatingFilter: true,
-      valueParser: (params) => String(params.newValue)
-    },
-    {
-      field: 'normal_balance_type',
-      headerName: 'Normal Balance Type',
-      sortable: true,
-      editable: true,
-      floatingFilter: true,
-      valueParser: (params) => String(params.newValue)
-    },
-    {
-      field: 'level_1_division_name',
-      headerName: 'level_1_division_name',
-      sortable: true,
-      editable: true,
-      floatingFilter: true,
-      valueParser: (params) => String(params.newValue)
-    },
-    {
-      field: 'level_2_department_name',
-      headerName: 'level_2_department_name',
-      sortable: true,
-      editable: true,
-      floatingFilter: true,
-      valueParser: (params) => String(params.newValue)
-    },
-    {
-      field: 'level_3_category_name',
-      headerName: 'level_3_category_name',
-      sortable: true,
-      editable: true,
-      floatingFilter: true,
-      valueParser: (params) => String(params.newValue)
-    },
+   
+    // {
+    //   field: 'account_category_code',
+    //   headerName: 'Account Category Code',
+    //   sortable: true,
+    //   editable: true,
+    //   floatingFilter: true,
+    //   valueParser: (params) => String(params.newValue)
+    // },
+    // {
+    //   field: 'normal_balance_type',
+    //   headerName: 'Normal Balance Type',
+    //   sortable: true,
+    //   editable: true,
+    //   floatingFilter: true,
+    //   valueParser: (params) => String(params.newValue)
+    // },
+    // {
+    //   field: 'level_1_division_name',
+    //   headerName: 'level_1_division_name',
+    //   sortable: true,
+    //   editable: true,
+    //   floatingFilter: true,
+    //   valueParser: (params) => String(params.newValue)
+    // },
+    // {
+    //   field: 'level_2_department_name',
+    //   headerName: 'level_2_department_name',
+    //   sortable: true,
+    //   editable: true,
+    //   floatingFilter: true,
+    //   valueParser: (params) => String(params.newValue)
+    // },
+    // {
+    //   field: 'level_3_category_name',
+    //   headerName: 'level_3_category_name',
+    //   sortable: true,
+    //   editable: true,
+    //   floatingFilter: true,
+    //   valueParser: (params) => String(params.newValue)
+    // },
   ];
 
   const columnDefs = isTestCase1 ? columnDefsTestCase1 : columnDefsTestCase2;

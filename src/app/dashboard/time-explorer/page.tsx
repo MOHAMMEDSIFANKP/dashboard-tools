@@ -184,8 +184,10 @@ const DateRangePicker: React.FC<{
 
   // Reset to default range
   const resetSelection = useCallback(() => {
-    setSelectedStartDate(value.start);
-    setSelectedEndDate(value.end);
+    setSelectedStartDate(null);
+    setSelectedEndDate(null);
+    onChange({ start: new Date(), end: new Date() });
+    setIsOpen(false);
   }, [value]);
 
   // Handle preset selection

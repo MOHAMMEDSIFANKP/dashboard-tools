@@ -451,14 +451,14 @@ const AGChartsRenderer: React.FC<{
       yName: measure.label,
       stroke: measure.color,
       fill: measure.color,
-      tooltip: {
-        renderer: (params: any) => {
-          return `<div class="p-2 bg-white border border-gray-200 rounded shadow">
-            <div class="font-semibold">${params.xValue}</div>
-            <div>${params.yName}: ${formatCurrency(params.yValue)}</div>
-          </div>`;
-        }
-      },
+      // tooltip: {
+      //   renderer: (params: any) => {
+      //     return `<div class="p-2 bg-white border border-gray-200 rounded shadow">
+      //       <div class="font-semibold">${params.xValue}</div>
+      //       <div>${params.yName}: ${formatCurrency(params.yValue)}</div>
+      //     </div>`;
+      //   }
+      // },
     }));
 
     return {
@@ -469,7 +469,7 @@ const AGChartsRenderer: React.FC<{
         {
           type: 'category',
           position: 'bottom',
-          title: { text: xKey },
+          title: { text: availableDimensions.find(d => d.key === xKey)?.label },
           label: { rotation: -45 }
         },
         {
@@ -589,7 +589,7 @@ const ChartJSRenderer: React.FC<{
         },
         title: {
           display: true,
-          text: xKey,
+          text: availableDimensions.find(d => d.key === xKey)?.label || xKey,
         },
       }
     },
@@ -663,7 +663,7 @@ const PlotlyRenderer: React.FC<{
   const layout = useMemo(() => ({
     title: `${chartType.label} - Financial Analysis (Plotly)`,
     xaxis: {
-      title: { text: xKey },
+      title: { text: availableDimensions.find(d => d.key === xKey)?.label },
       type: 'category', // Force categorical x-axis to prevent interpolation
       tickmode: 'array',
       tickvals: chartData[0]?.x || [], // Explicitly set tick values
@@ -795,7 +795,7 @@ const NivoRenderer: React.FC<{
               tickSize: 5,
               tickPadding: 5,
               tickRotation: -45,
-              legend: xKey,
+              legend: availableDimensions.find(d => d.key === xKey)?.label || xKey,
               legendOffset: 50,
               legendPosition: 'middle'
             }}
@@ -846,7 +846,7 @@ const NivoRenderer: React.FC<{
               <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-md">
                 <div className="font-semibold text-gray-800">{point.data.xFormatted}</div>
                 <div className="text-sm" style={{ color: point.serieColor }}>
-                  {point.serieId}: {formatCurrency(Number(point.data.yFormatted))}
+                  {point.serieId}: {formatCurrency(Number(point.data.y))}
                 </div>
               </div>
             )}
@@ -891,7 +891,7 @@ const NivoRenderer: React.FC<{
               tickSize: 5,
               tickPadding: 5,
               tickRotation: -45,
-              legend: xKey,
+              legend: availableDimensions.find(d => d.key === xKey)?.label || xKey,
               legendPosition: 'middle',
               legendOffset: 50
             }}
@@ -1002,7 +1002,7 @@ const VictoryRenderer: React.FC<{
               }}
             />
             <VictoryAxis
-              label={xKey}
+              label={availableDimensions.find(d => d.key === xKey)?.label || xKey}
               axisLabelComponent={<VictoryLabel dy={30} className='capitalize font-bold' />}
               style={{
                 tickLabels: { fontSize: 12, padding: 5, angle: -45 }
@@ -1158,7 +1158,7 @@ const EChartsRenderer: React.FC<{
         },
         xAxis: {
           type: 'category',
-          name: xKey.toUpperCase(),
+          name: availableDimensions.find(d => d.key === xKey)?.label || xKey,
           nameLocation: 'middle',
           nameGap: 44,
           boundaryGap: false,
@@ -1356,7 +1356,7 @@ const HighchartsRenderer: React.FC<{
         xAxis: {
           categories: categories,
           title: {
-            text: xKey,
+            text: availableDimensions.find(d => d.key === xKey)?.label || xKey,
             style: {
               fontSize: '12px',
               color: '#374151'
@@ -1557,7 +1557,7 @@ const SyncfusionRenderer: React.FC<{
           subTitle="Interactive financial data visualization"
           primaryXAxis={{
             valueType: 'Category',
-            title: xKey,
+            title: availableDimensions.find(d => d.key === xKey)?.label || xKey,
             labelRotation: -45,
             labelStyle: { color: '#666', size: '12px' },
             majorGridLines: { width: 0 },
@@ -1636,7 +1636,7 @@ const SyncfusionRenderer: React.FC<{
           subTitle="Interactive financial data visualization"
           primaryXAxis={{
             valueType: 'Category',
-            title: xKey,
+            title: availableDimensions.find(d => d.key === xKey)?.label || xKey,
             labelRotation: -45,
             labelStyle: { color: '#666', size: '12px' },
             majorGridLines: { width: 0 },
@@ -2902,7 +2902,7 @@ const AGChartsEnterpriseRenderer: React.FC<{
       type: chartType.key,
       xKey: xKey,
       yKey: measure.key,
-      yName: measure.label,
+      yName: availableDimensions.find(d => d.key === xKey)?.label || xKey,
       stroke: measure.color,
       fill: measure.color,
       tooltip: {

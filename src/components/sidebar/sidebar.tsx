@@ -146,12 +146,12 @@ const SideBarLayout: React.FC<SideBarLayoutProps> = ({ children }) => {
                                 )}
                                 <Link
                                     href={item.href}
-                                    className={`flex items-center px-3 py-2 text-sm font-medium rounded-lg transition duration-150 ease-in-out group ${item.active
+                                    className={`flex items-center px-2 py-2 text-sm font-medium rounded-lg transition duration-150 ease-in-out group ${item.active
                                         ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-700'
                                         : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                                         }`}
                                 >
-                                    <Icon className={` ${isMobile || isExpanded ? 'mr-3' : 'mx-auto'
+                                    <Icon size={22} className={` ${isMobile || isExpanded ? 'mr-3' : 'mx-auto'
                                         } transition-all duration-300 ease-in-out`} />
                                     {(isMobile || isExpanded) && (
                                         <span className="transition-opacity duration-300 ease-in-out">
@@ -272,7 +272,7 @@ const SideBarLayout: React.FC<SideBarLayoutProps> = ({ children }) => {
             {/* Desktop Layout */}
             <div className="pt-16 hidden md:flex">
                 {/* Desktop Sidebar */}
-                <aside className={`${isExpanded ? 'w-64' : 'w-20'
+                <aside className={`${isExpanded ? 'w-64' : 'w-26'
                     } bg-white border-r border-gray-200 min-h-screen transition-all duration-300 ease-in-out fixed left-0 top-16 z-40`}>
                     <SidebarContent />
                 </aside>
