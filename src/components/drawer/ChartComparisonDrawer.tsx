@@ -521,7 +521,8 @@ const ALTERNATIVE_NAMES: { [key: string]: string } = {
     operatingMargin: "Operating Margin",
     netProfit: "Net Profit",
     netMargin: "Net Margin",
-    period: "Period"
+    period: "Period",
+    expenses: "Expences",
 };
 
 interface AGChartsRendererProps {
@@ -749,7 +750,7 @@ export const PlotlyRenderer: React.FC<PlotlyRendererProps> = ({
                 type: chartType,
                 x: data.map(item => item.period),
                 y: data.map(item => item[key]),
-                name: key,
+                name: ALTERNATIVE_NAMES[key] || key,
                 hovertemplate: '<b>%{fullData.name}</b><br>' +
                     'Year: %{x}<br>' +
                     'Amount: $%{y:,.0f}<br>' +
@@ -866,7 +867,7 @@ export const NivoRenderer: React.FC<NivoRendererProps> = ({
     if (isTimeSeries) {
         const yKeys = columns.filter(col => col !== 'period');
         const chartData = yKeys.map(key => ({
-            id: key,
+            id: ALTERNATIVE_NAMES[key] || key,
             data: data.map(item => ({
                 x: item.period,
                 y: item[key],
@@ -929,10 +930,10 @@ export const NivoRenderer: React.FC<NivoRendererProps> = ({
                     <ResponsiveBar
                         data={data.map(item => ({
                             period: item.period,
-                            ...yKeys.reduce((acc, key) => ({ ...acc, [key]: item[key] }), {}),
+                            ...yKeys.reduce((acc, key) => ({ ...acc, [ALTERNATIVE_NAMES[key] || key]: item[key] }), {}),
                         }))}
                         {...commonProps}
-                        keys={yKeys}
+                        keys={yKeys.map(key => ALTERNATIVE_NAMES[key] || key)}
                         indexBy="period"
                         groupMode="grouped"
                         enableLabel={false}
@@ -964,6 +965,7 @@ export const NivoRenderer: React.FC<NivoRendererProps> = ({
                                 itemDirection: 'left-to-right',
                                 itemOpacity: 0.85,
                                 symbolSize: 20,
+                                toggleSerie: true,
                             },
                         ]}
                         tooltip={({ id, value, color, indexValue }) => (
@@ -1083,7 +1085,7 @@ export const VictoryRenderer: React.FC<VictoryRendererProps> = ({
                         orientation="horizontal"
                         gutter={20}
                         data={yKeys.map(key => ({
-                            name: key,
+                            name: ALTERNATIVE_NAMES[key] || key,
                             symbol: { fill: getColorForKey(key) }
                         }))}
                     />
@@ -1115,7 +1117,7 @@ export const VictoryRenderer: React.FC<VictoryRendererProps> = ({
                                             strokeWidth: 2
                                         }
                                     }}
-                                    labels={({ datum }) => `${key}: ${formatCurrency(datum[key])}`}
+                                    labels={({ datum }) => `${ALTERNATIVE_NAMES[key] || key}: ${formatCurrency(datum[key])}`}
                                     labelComponent={<VictoryTooltip />}
                                 />
                             ))}
@@ -1151,7 +1153,7 @@ export const VictoryRenderer: React.FC<VictoryRendererProps> = ({
                                             strokeWidth: 1
                                         }
                                     }}
-                                    labels={({ datum }) => `${key}: ${formatCurrency(datum[key])}`}
+                                    labels={({ datum }) => `${ALTERNATIVE_NAMES[key] || key}: ${formatCurrency(datum[key])}`}
                                     labelComponent={<VictoryTooltip />}
                                 />
                             ))}
@@ -1233,12 +1235,12 @@ export const EChartsRenderer: React.FC<EChartsRendererProps> = ({
                     }
                 },
                 legend: {
-                    data: yKeys,
+                    data: yKeys.map(key => ALTERNATIVE_NAMES[key] || key),
                     // bottom: 0,
                     top: 30,
                     left: 'center'
                 },
-               
+
                 xAxis: {
                     type: 'category',
                     name: 'Period',
@@ -1259,7 +1261,7 @@ export const EChartsRenderer: React.FC<EChartsRendererProps> = ({
                     }
                 },
                 series: yKeys.map(key => ({
-                    name: key,
+                    name: ALTERNATIVE_NAMES[key] || key,
                     type: chartType,
                     data: data.map(item => item[key]),
                     itemStyle: {
@@ -1354,12 +1356,12 @@ export const HighchartsRenderer: React.FC<HighchartsRendererProps> = ({
             },
             tooltip: {
                 valueDecimals: 2,
-                formatter: function () {
-                    const point = this as any;
-                    return `<b>${point.series?.name || point.point?.name}</b><br/>
-                           ${point.x ? `Period: ${point.x}<br/>` : ''}
-                           ${point.series?.name ? `${point.series.name}: ` : ''}${formatCurrency(point.y || 0)}`;
-                }
+                // formatter: function () {
+                //     const point = this as any;
+                //     return `<b>${point.series?.name || point.point?.name}</b><br/>
+                //            ${point.x ? `Period: ${point.x}<br/>` : ''}
+                //            ${point.series?.name ? `${point.series.name}: ` : ''}${formatCurrency(point.y || 0)}`;
+                // }
             },
             legend: {
                 enabled: true,
@@ -1397,7 +1399,7 @@ export const HighchartsRenderer: React.FC<HighchartsRendererProps> = ({
                 },
                 series: yKeys.map((key, index) => ({
                     type: chartType === 'line' ? 'line' as const : 'column' as const,
-                    name: key,
+                    name: ALTERNATIVE_NAMES[key] || key,
                     data: data.map(item => item[key]),
                     // color: getColorForKey(key)
                 }))
@@ -1536,7 +1538,7 @@ export const SyncfusionRenderer: React.FC<SyncfusionRendererProps> = ({
                                 xName="period"
                                 yName={key}
                                 type={chartType === 'line' ? 'Line' : 'Column'}
-                                name={key}
+                                name={ALTERNATIVE_NAMES[key] || key}
                                 width={chartType === 'line' ? 3 : undefined}
                                 marker={chartType === 'line' ? {
                                     visible: true,
@@ -1678,6 +1680,8 @@ export const AGChartsEnterpriseRenderer: React.FC<AGChartsEnterpriseRendererProp
                 text: 'Comparison data',
                 fontSize: 14,
             },
+            tooltip: { mode: 'single' },
+
         };
 
         if (isTimeSeries) {
@@ -1690,7 +1694,7 @@ export const AGChartsEnterpriseRenderer: React.FC<AGChartsEnterpriseRendererProp
                     type: chartType as 'line' | 'bar',
                     xKey: "period",
                     yKey,
-                    yName: yKey,
+                    yName: ALTERNATIVE_NAMES[yKey] || yKey,
                     ...(chartType === 'line' ? {
                         stroke: getColorForIndex(index),
                         strokeWidth: 3,

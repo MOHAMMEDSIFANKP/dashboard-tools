@@ -391,13 +391,27 @@ export default function NivoChartsPage() {
             }))}
             keys={['value']}
             indexBy="category"
-            margin={{ top: 50, right: 130, bottom: 50, left: 60 }}
+            margin={{ top: 50, right: 130, bottom: 80, left: 60 }}
             padding={0.3}
             colors={{ scheme: "paired" }}
             axisBottom={{
               legend: labelKey,
-              legendOffset: 36,
+              legendOffset: 50,
               legendPosition: "middle",
+              tickRotation: -45,
+              tickSize: 5,
+              tickPadding: 8,
+              tickValues: (() => {
+                // Show only every nth tick to prevent overcrowding
+                const dataLength = rawData.drillDown.length || 0;
+                if (dataLength <= 10) return undefined; // Show all ticks if 10 or fewer
+                
+                const tickInterval = Math.ceil(dataLength / 25); // Show max 8 ticks
+                const allValues = rawData.drillDown.map(item => item[labelKey]) || [];
+                return allValues.filter((_, index) => 
+                  index % tickInterval === 0 || index === allValues.length - 1
+                );
+              })()
             }}
             axisLeft={{
               legend: valueKey,
@@ -446,7 +460,7 @@ export default function NivoChartsPage() {
                 y: Number(d[yKey] || 0),
               }))
             }]}
-            margin={{ top: 50, right: 110, bottom: 50, left: 60 }}
+            margin={{ top: 50, right: 110, bottom: 80, left: 60 }}
             xScale={{ type: "point" }}
             yScale={{
               type: "linear",
@@ -470,8 +484,22 @@ export default function NivoChartsPage() {
             )}
             axisBottom={{
               legend: xKey,
-              legendOffset: 36,
+              legendOffset: 50,
               legendPosition: "middle",
+              tickRotation: -45,
+              tickSize: 5,
+              tickPadding: 8,
+              tickValues: (() => {
+                // Show only every nth tick to prevent overcrowding
+                const dataLength = rawData.drillDown.length || 0;
+                if (dataLength <= 10) return undefined; // Show all ticks if 10 or fewer
+                
+                const tickInterval = Math.ceil(dataLength / 25); // Show max 8 ticks
+                const allValues = rawData.drillDown.map(d => d[xKey]) || [];
+                return allValues.filter((_, index) => 
+                  index % tickInterval === 0 || index === allValues.length - 1
+                );
+              })()
             }}
             axisLeft={{
               format: value => formatCurrency(value),
@@ -673,7 +701,7 @@ export default function NivoChartsPage() {
             <div style={{ height: "400px" }}>
               <ResponsiveLine
                 data={lineChartData}
-                margin={{ top: 70, right: 110, bottom: 50, left: 75 }}
+                margin={{ top: 70, right: 110, bottom: 80, left: 75 }}
                 xScale={{ type: "point" }}
                 yScale={{
                   type: "linear",
@@ -684,9 +712,22 @@ export default function NivoChartsPage() {
                 }}
                 axisBottom={{
                   legend: crossChartFilter ? "Period" : "Fiscal Year",
-                  legendOffset: 40,
-                  tickRotation: -30,
+                  legendOffset: 50,
+                  tickRotation: -45,
                   legendPosition: "middle",
+                  tickSize: 5,
+                  tickPadding: 8,
+                  tickValues: (() => {
+                    // Show only every nth tick to prevent overcrowding
+                    const dataLength = lineChartData[0]?.data?.length || 0;
+                    if (dataLength <= 10) return undefined; // Show all ticks if 10 or fewer
+                    
+                    const tickInterval = Math.ceil(dataLength / 25); // Show max 8 ticks
+                    const allValues = lineChartData[0]?.data?.map(d => d.x) || [];
+                    return allValues.filter((_, index) => 
+                      index % tickInterval === 0 || index === allValues.length - 1
+                    );
+                  })()
                 }}
                 axisLeft={{
                   legend: "Amount",
@@ -771,7 +812,7 @@ export default function NivoChartsPage() {
                 data={barChartData}
                 keys={["Revenue", "Expenses"]}
                 indexBy={crossChartFilter ? "period" : "fiscalYear"}
-                margin={{ top: 70, right: 130, bottom: 50, left: 70 }}
+                margin={{ top: 70, right: 130, bottom: 80, left: 70 }}
                 padding={0.3}
                 groupMode="grouped"
                 colors={{ scheme: "paired" }}
@@ -785,9 +826,22 @@ export default function NivoChartsPage() {
 
                 axisBottom={{
                   legend: crossChartFilter ? "Period" : "Fiscal Year",
-                  legendOffset: 40,
+                  legendOffset: 50,
                   legendPosition: "middle",
-                  tickRotation: -30,
+                  tickRotation: -45,
+                  tickSize: 5,
+                  tickPadding: 8,
+                  tickValues: (() => {
+                    // Show only every nth tick to prevent overcrowding
+                    const dataLength = barChartData.length || 0;
+                    if (dataLength <= 10) return undefined; // Show all ticks if 10 or fewer
+                    
+                    const tickInterval = Math.ceil(dataLength / 25); // Show max 8 ticks
+                    const allValues = barChartData.map(d => d[crossChartFilter ? "period" : "fiscalYear"]) || [];
+                    return allValues.filter((_, index) => 
+                      index % tickInterval === 0 || index === allValues.length - 1
+                    );
+                  })()
                 }}
                 axisLeft={{
                   legend: "Amount",

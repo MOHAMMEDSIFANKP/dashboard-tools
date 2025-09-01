@@ -631,7 +631,7 @@ const LineChartComponent = ({
     xAxis: {
       type: 'category',
       data: data.map(item => item[xAxis]),
-      name: xAxis,
+      name: xAxis === 'period' ? 'Period' : 'Fiscal Year',
       nameLocation: 'middle',
       nameGap: 30,           
       axisLabel: {
@@ -745,7 +745,7 @@ const BarChartComponent = ({
     },
     xAxis: {
       type: 'category',
-      name: xAxis,
+      name: xAxis === 'period' ? 'Period' : 'Fiscal Year',
       nameLocation: 'middle',
       nameGap: 30,           
       data: data.map(item => item[xAxis]),

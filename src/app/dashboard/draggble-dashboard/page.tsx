@@ -2902,17 +2902,17 @@ const AGChartsEnterpriseRenderer: React.FC<{
       type: chartType.key,
       xKey: xKey,
       yKey: measure.key,
-      yName: availableDimensions.find(d => d.key === xKey)?.label || xKey,
+      yName: measure.label,
       stroke: measure.color,
-      fill: measure.color,
-      tooltip: {
-        renderer: (params: any) => {
-          return `<div class="p-2 bg-white border border-gray-200 rounded shadow">
-            <div class="font-semibold">${params.xValue}</div>
-            <div>${params.yName}: ${formatCurrency(params.yValue)}</div>
-          </div>`;
-        }
-      },
+      fill: measure.color, 
+      // tooltip: {
+      //   renderer: (params: any) => {
+      //     return `<div class="p-2 bg-white border border-gray-200 rounded shadow">
+      //       <div class="font-semibold">${params.xValue}</div>
+      //       <div>${params.yName}: ${formatCurrency(params.yValue)}</div>
+      //     </div>`;
+      //   }
+      // },
     }));
 
     return {
@@ -2946,6 +2946,7 @@ const AGChartsEnterpriseRenderer: React.FC<{
           },
         },
       },
+      tooltip: { mode: 'single' },
     };
   }, [chartType, measures, xKey, data]);
 
