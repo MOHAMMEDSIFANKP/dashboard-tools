@@ -1005,7 +1005,7 @@ const VictoryRenderer: React.FC<{
               label={availableDimensions.find(d => d.key === xKey)?.label || xKey}
               axisLabelComponent={<VictoryLabel dy={30} className='capitalize font-bold' />}
               style={{
-                tickLabels: { fontSize: 12, padding: 5, angle: -45 }
+                tickLabels: { fontSize: 12, padding: 5, angle: -0 }
               }}
             />
             <VictoryGroup>
@@ -1020,6 +1020,35 @@ const VictoryRenderer: React.FC<{
                     duration: 1000,
                     onLoad: { duration: 500 }
                   }}
+                />
+              ))}
+              {chartData.map((series, index) => (
+                <VictoryScatter
+                  key={`scatter-${series.name}`}
+                  data={series.data}
+                  size={4}
+                  style={{
+                    data: {
+                      fill: series.color,
+                      stroke: series.color,
+                      strokeWidth: 1
+                    }
+                  }}
+                  labels={({ datum }) => `${series.name}: ${formatCurrency(datum.y)}`}
+                  labelComponent={
+                    <VictoryTooltip
+                      cornerRadius={5}
+                      style={{ fontSize: 12 }}
+                      flyoutStyle={{
+                        fill: "rgba(255, 255, 255, 0.95)",
+                        stroke: series.color,
+                        strokeWidth: 2,
+                        filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.1))"
+                      }}
+                      pointerLength={8}
+                      pointerWidth={12}
+                    />
+                  }
                 />
               ))}
             </VictoryGroup>
@@ -1082,6 +1111,21 @@ const VictoryRenderer: React.FC<{
                   style={{
                     data: { fill: measure.color }
                   }}
+                  labels={({ datum }) => `${measure.label}: ${formatCurrency(datum[measure.key])}`}
+                  labelComponent={
+                    <VictoryTooltip
+                      cornerRadius={5}
+                      style={{ fontSize: 12 }}
+                      flyoutStyle={{
+                        fill: "rgba(255, 255, 255, 0.95)",
+                        stroke: measure.color,
+                        strokeWidth: 2,
+                        filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.1))"
+                      }}
+                      pointerLength={8}
+                      pointerWidth={12}
+                    />
+                  }
                   animate={{
                     duration: 1000,
                     onLoad: { duration: 500 }
@@ -2904,7 +2948,7 @@ const AGChartsEnterpriseRenderer: React.FC<{
       yKey: measure.key,
       yName: measure.label,
       stroke: measure.color,
-      fill: measure.color, 
+      fill: measure.color,
       // tooltip: {
       //   renderer: (params: any) => {
       //     return `<div class="p-2 bg-white border border-gray-200 rounded shadow">

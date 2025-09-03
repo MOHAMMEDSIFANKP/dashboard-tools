@@ -705,6 +705,7 @@ export const ChartJSRenderer: React.FC<ChartJSRendererProps> = ({
                     },
                 },
                 y: {
+                    beginAtZero: true,
                     ticks: {
                         callback: (value: any) => formatCurrency(value),
                     },
@@ -1075,7 +1076,6 @@ export const VictoryRenderer: React.FC<VictoryRendererProps> = ({
                 <VictoryChart
                     theme={VictoryTheme.material}
                     domainPadding={20}
-                    //   height={400}
                     width={1000}
                     padding={{ top: 50, bottom: 80, left: 80, right: 50 }}
                 >
@@ -1117,8 +1117,6 @@ export const VictoryRenderer: React.FC<VictoryRendererProps> = ({
                                             strokeWidth: 2
                                         }
                                     }}
-                                    labels={({ datum }) => `${ALTERNATIVE_NAMES[key] || key}: ${formatCurrency(datum[key])}`}
-                                    labelComponent={<VictoryTooltip />}
                                 />
                             ))}
                             {yKeys.map(key => (
@@ -1135,6 +1133,21 @@ export const VictoryRenderer: React.FC<VictoryRendererProps> = ({
                                             strokeWidth: 1
                                         }
                                     }}
+                                    labels={({ datum }) => `${ALTERNATIVE_NAMES[key] || key}: ${formatCurrency(datum[key])}`}
+                                    labelComponent={
+                                        <VictoryTooltip
+                                            cornerRadius={5}
+                                            style={{ fontSize: 12 }}
+                                            flyoutStyle={{
+                                                fill: "rgba(255, 255, 255, 0.95)",
+                                                stroke: getColorForKey(key),
+                                                strokeWidth: 2,
+                                                filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.1))"
+                                            }}
+                                            pointerLength={8}
+                                            pointerWidth={12}
+                                        />
+                                    }
                                 />
                             ))}
                         </VictoryGroup>
@@ -1154,7 +1167,20 @@ export const VictoryRenderer: React.FC<VictoryRendererProps> = ({
                                         }
                                     }}
                                     labels={({ datum }) => `${ALTERNATIVE_NAMES[key] || key}: ${formatCurrency(datum[key])}`}
-                                    labelComponent={<VictoryTooltip />}
+                                    labelComponent={
+                                        <VictoryTooltip
+                                            cornerRadius={5}
+                                            style={{ fontSize: 12 }}
+                                            flyoutStyle={{
+                                                fill: "rgba(255, 255, 255, 0.95)",
+                                                stroke: getColorForKey(key),
+                                                strokeWidth: 2,
+                                                filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.1))"
+                                            }}
+                                            pointerLength={8}
+                                            pointerWidth={12}
+                                        />
+                                    }
                                 />
                             ))}
                         </VictoryGroup>

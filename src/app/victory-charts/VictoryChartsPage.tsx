@@ -622,15 +622,18 @@ const LineChart: React.FC<LineChartProps> = ({
   isDrilled,
   isCrossChartFiltered
 }) => {
-  if (!data?.length) return <div className="text-center text-gray-500">No data available</div>;
-
   const [visibleSeries, setVisibleSeries] = useState<VisibleLineSeries>({
     revenue: true,
     grossMargin: true,
     netProfit: true,
   });
 
-  // Initialize visible series based on available data
+  const series: LineSeriesConfig[] = useMemo(() => [
+    { key: 'revenue', name: 'Revenue', color: '#4bc0c0' },
+    { key: 'grossMargin', name: 'Gross Margin', color: '#36a2eb' },
+    { key: 'netProfit', name: 'Net Profit', color: '#ff6384' }
+  ], []);
+
   useEffect(() => {
     if (data.length > 0) {
       const firstItem = data[0];
@@ -642,27 +645,25 @@ const LineChart: React.FC<LineChartProps> = ({
     }
   }, [data]);
 
-  const series = useMemo<LineSeriesConfig[]>(() => [
-    { key: 'revenue', name: 'Revenue', color: '#4bc0c0' },
-    { key: 'grossMargin', name: 'Gross Margin', color: '#36a2eb' },
-    { key: 'netProfit', name: 'Net Profit', color: '#ff6384' }
-  ], []);
+  const availableSeries = useMemo(() =>
+    series.filter(s =>
+      data[0]?.[s.key] != null ||
+      data[0]?.[s.key === 'grossMargin' ? 'grossmargin' : s.key === 'netProfit' ? 'netprofit' : s.key] != null
+    ),
+    [series, data]
+  );
 
-  // Create legend data with proper visibility state
-  const legendData = useMemo<LegendDataItem[]>(() =>
-    series
-      .filter(s => data[0]?.[s.key] != null || data[0]?.[s.key === 'grossMargin' ? 'grossmargin' : s.key === 'netProfit' ? 'netprofit' : s.key] != null)
-      .map(s => ({
-        name: s.name,
-        symbol: {
-          fill: visibleSeries[s.key] ? s.color : '#cccccc',
-          opacity: visibleSeries[s.key] ? 1 : 0.3
-        }
-      })), [visibleSeries, series, data]);
+  const legendData = useMemo(() =>
+    availableSeries.map(s => ({
+      name: s.name,
+      symbol: {
+        fill: visibleSeries[s.key] ? s.color : '#cccccc',
+        opacity: visibleSeries[s.key] ? 1 : 0.3
+      }
+    })), [visibleSeries, availableSeries]);
 
-  // Handle legend click events
-  const handleLegendClick = useCallback((legendItem: LegendDataItem) => {
-    const seriesKey = series.find(s => s.name === legendItem.name)?.key;
+  const handleLegendClick = useCallback((seriesName: string) => {
+    const seriesKey = series.find(s => s.name === seriesName)?.key;
     if (seriesKey) {
       setVisibleSeries(prev => ({
         ...prev,
@@ -671,104 +672,53 @@ const LineChart: React.FC<LineChartProps> = ({
     }
   }, [series]);
 
-  // Create scatter events for interaction with different hover colors
-  const createScatterEvents = useCallback((type: keyof Pick<ChartDataPoint, 'revenue' | 'grossMargin' | 'netProfit'>) => {
-    const seriesConfig = series.find(s => s.key === type);
-    const originalColor = seriesConfig?.color || '#4bc0c0';
+  const handlePointClick = useCallback((event: React.MouseEvent, type: string, datum: any) => {
+    if (!isDrilled && datum) {
+      const xAxis = isDrilled || isCrossChartFiltered ? "period" : "fiscalYear";
+      const category = datum[xAxis];
+      const value = datum[type];
 
-    // Different hover colors for each series
-    const hoverColors = {
-      revenue: '#2d8a8a',      // Darker teal
-      grossMargin: '#2563eb',   // Darker blue
-      netProfit: '#dc2626'      // Darker red
-    };
-
-    const hoverColor = hoverColors[type] || '#1E40AF';
-
-    return [{
-      target: "data" as const,
-      eventHandlers: {
-        onMouseOver: () => {
-          return [
-            {
-              target: "data",
-              mutation: () => ({
-                style: {
-                  fill: hoverColor,
-                  cursor: "pointer",
-                  r: 6,
-                  stroke: hoverColor,
-                  strokeWidth: 2,
-                  fillOpacity: 0.9
-                }
-              })
-            }
-          ];
-        },
-        onMouseOut: () => {
-          return [
-            {
-              target: "data",
-              mutation: () => ({
-                style: {
-                  fill: originalColor,
-                  r: 4,
-                  stroke: "none",
-                  strokeWidth: 0,
-                  fillOpacity: 0.9
-                }
-              })
-            }
-          ];
-        },
-        onClick: (event: any, { data: chartData, index }: EventHandlerProps) => {
-          const clickedPoint = chartData[index];
-          if (!clickedPoint || isDrilled) return;
-
-          const value = clickedPoint[type];
-          const category = clickedPoint.fiscalYear || clickedPoint.period;
-
-          if (category) {
-            setContextMenu({
-              isOpen: true,
-              position: { x: event.clientX, y: event.clientY },
-              category: category,
-              value: value,
-              chartType: 'line',
-              dataType: type
-            });
-          }
-
-          return null;
-        }
+      if (category && value != null) {
+        setContextMenu({
+          isOpen: true,
+          position: { x: event.clientX, y: event.clientY },
+          category: category,
+          value: value,
+          chartType: 'line',
+          dataType: type
+        });
       }
-    }];
-  }, [onDrillDown, series, setContextMenu]);
-
-  const tooltipStyle = useMemo(() => ({
-    cornerRadius: 5,
-    flyoutStyle: {
-      fill: "white",
-      stroke: "#d4d4d4",
-      strokeWidth: 1,
     }
-  }), []);
+  }, [isDrilled, isCrossChartFiltered, setContextMenu]);
 
   const xAxis = isDrilled || isCrossChartFiltered ? "period" : "fiscalYear";
 
-  // Filter series to show only those with data
-  const availableSeries = series.filter(s =>
-    data[0]?.[s.key] != null ||
-    data[0]?.[s.key === 'grossMargin' ? 'grossmargin' : s.key === 'netProfit' ? 'netprofit' : s.key] != null
-  );
+  if (!data?.length) {
+    return <div className="text-center text-gray-500 py-8">No data available</div>;
+  }
 
   return (
-    <div>
-      <VictoryChart theme={VictoryTheme.clean} domainPadding={20} padding={{ top: 20, bottom: 60, left: 80, right: 20 }} height={350} width={800}>
+    <div className="mt-10">
+      <VictoryChart
+        theme={VictoryTheme.clean}
+        domainPadding={20}
+        padding={{ top: 20, bottom: 60, left: 80, right: 20 }}
+        height={350}
+        width={800}
+
+      >
         <VictoryAxis
           label={isCrossChartFiltered ? 'Periods' : "Years"}
           axisLabelComponent={<VictoryLabel dy={10} />}
           tickFormat={(x: any) => String(x)}
+          fixLabelOverlap={true}
+          tickCount={(() => {
+            const dataLength = data.length;
+            if (dataLength <= 6) return dataLength;
+            if (dataLength <= 20) return 8;
+            return 16;
+          })()}
+
           style={{
             tickLabels: { fontSize: 10, angle: -45, textAnchor: "end" },
             grid: { stroke: "#e0e0e0", strokeDasharray: "2,2" }
@@ -785,7 +735,6 @@ const LineChart: React.FC<LineChartProps> = ({
           }}
         />
 
-        {/* Lines */}
         {availableSeries.map(s => visibleSeries[s.key] && (
           <VictoryLine
             key={`line-${s.key}`}
@@ -806,7 +755,6 @@ const LineChart: React.FC<LineChartProps> = ({
           />
         ))}
 
-        {/* Scatter points for interaction with enhanced tooltips */}
         {availableSeries.map(s => visibleSeries[s.key] && (
           <VictoryScatter
             key={`scatter-${s.key}`}
@@ -824,16 +772,12 @@ const LineChart: React.FC<LineChartProps> = ({
             labels={({ datum }: { datum: ChartDataPoint }) => {
               const value = Number(datum[s.key]);
               const period = datum[xAxis];
-              return `${period}\n${s.name}: ${Math.round((value || 0) / 1000)}k`;
+              return `${period}\n${s.name}: ${formatCurrency(value)}`;
             }}
             labelComponent={
               <VictoryTooltip
-                {...tooltipStyle}
-                style={{
-                  fill: "#333",
-                  fontSize: 12,
-                  textAnchor: "middle"
-                }}
+                cornerRadius={5}
+                style={{ fontSize: 12 }}
                 flyoutStyle={{
                   fill: "rgba(255, 255, 255, 0.95)",
                   stroke: s.color,
@@ -847,18 +791,25 @@ const LineChart: React.FC<LineChartProps> = ({
                 pointerWidth={12}
               />
             }
-            events={createScatterEvents(s.key)}
+            events={[{
+              target: "data",
+              eventHandlers: {
+                onClick: (event, { datum }) => {
+                  handlePointClick(event as unknown as React.MouseEvent, s.key, datum);
+                  return [];
+                }
+              }
+            }]}
           />
         ))}
       </VictoryChart>
 
-      {/* Custom Legend */}
       <div className="flex flex-wrap justify-center mt-4 gap-4">
         {legendData.map((item, index) => (
           <div
             key={index}
             className="flex items-center cursor-pointer hover:opacity-80"
-            onClick={() => handleLegendClick(item)}
+            onClick={() => handleLegendClick(item.name)}
           >
             <div
               className="w-4 h-4 mr-2 rounded"
@@ -884,7 +835,6 @@ const LineChart: React.FC<LineChartProps> = ({
 };
 
 
-
 interface SeriesConfig {
   key: keyof Pick<ChartDataPoint, 'revenue' | 'expenses'>;
   name: string;
@@ -905,14 +855,16 @@ const BarChart: React.FC<BarChartProps> = ({
   isDrilled,
   isCrossChartFiltered
 }) => {
-  if (!data?.length) return <div className="text-center text-gray-500">No data available</div>;
-
   const [visibleSeries, setVisibleSeries] = useState<VisibleSeries>({
     revenue: true,
     expenses: true,
   });
 
-  // Initialize visible series based on available data
+  const series: SeriesConfig[] = useMemo(() => [
+    { key: 'revenue', name: 'Revenue', color: '#4bc0c0' },
+    { key: 'expenses', name: 'Expenses', color: '#ff6384' }
+  ], []);
+
   useEffect(() => {
     if (data.length > 0) {
       const firstItem = data[0];
@@ -923,26 +875,22 @@ const BarChart: React.FC<BarChartProps> = ({
     }
   }, [data]);
 
-  const series = useMemo<SeriesConfig[]>(() => [
-    { key: 'revenue', name: 'Revenue', color: '#4bc0c0' },
-    { key: 'expenses', name: 'Expenses', color: '#ff6384' }
-  ], []);
+  const availableSeries = useMemo(() =>
+    series.filter(s => data[0]?.[s.key] != null),
+    [series, data]
+  );
 
-  // Create legend data with proper visibility state
-  const legendData = useMemo<LegendDataItem[]>(() =>
-    series
-      .filter(s => data[0]?.[s.key] != null)
-      .map(s => ({
-        name: s.name,
-        symbol: {
-          fill: visibleSeries[s.key] ? s.color : '#cccccc',
-          opacity: visibleSeries[s.key] ? 1 : 0.3
-        }
-      })), [visibleSeries, series, data]);
+  const legendData = useMemo(() =>
+    availableSeries.map(s => ({
+      name: s.name,
+      symbol: {
+        fill: visibleSeries[s.key] ? s.color : '#cccccc',
+        opacity: visibleSeries[s.key] ? 1 : 0.3
+      }
+    })), [visibleSeries, availableSeries]);
 
-  // Handle legend click events
-  const handleLegendClick = useCallback((legendItem: LegendDataItem) => {
-    const seriesKey = series.find(s => s.name === legendItem.name)?.key;
+  const handleLegendClick = useCallback((seriesName: string) => {
+    const seriesKey = series.find(s => s.name === seriesName)?.key;
     if (seriesKey) {
       setVisibleSeries(prev => ({
         ...prev,
@@ -951,82 +899,44 @@ const BarChart: React.FC<BarChartProps> = ({
     }
   }, [series]);
 
-  // Create bar events for interaction with different hover colors
-  const createBarEvents = useCallback((type: keyof Pick<ChartDataPoint, 'revenue' | 'expenses'>) => {
-    const seriesConfig = series.find(s => s.key === type);
-    const originalColor = seriesConfig?.color || '#4bc0c0';
+  const handleBarClick = useCallback((event: React.MouseEvent, type: string, datum: any) => {
+    if (!isDrilled && datum) {
+      const xAxis = isDrilled || isCrossChartFiltered ? "period" : "fiscalYear";
+      const category = datum[xAxis];
+      const value = datum[type];
 
-    // Different hover colors for each series
-    const hoverColors = {
-      revenue: '#2d8a8a',    // Darker teal
-      expenses: '#dc2626'    // Darker red
-    };
-
-    const hoverColor = hoverColors[type] || '#1E40AF';
-
-    return [{
-      target: "data" as const,
-      eventHandlers: {
-        onMouseOver: () => {
-          return [
-            {
-              target: "data",
-              mutation: () => ({
-                style: {
-                  fill: hoverColor,
-                  cursor: "pointer",
-                  fillOpacity: 0.9,
-                  stroke: hoverColor,
-                  strokeWidth: 2,
-                  filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.2))"
-                }
-              })
-            }
-          ];
-        },
-        onMouseOut: () => {
-          return [
-            {
-              target: "data",
-              mutation: () => ({
-                style: {
-                  fill: originalColor,
-                  cursor: "pointer",
-                  fillOpacity: 0.8,
-                  stroke: originalColor,
-                  strokeWidth: 0.5,
-                  filter: "none"
-                }
-              })
-            }
-          ];
-        },
-        onClick: (_e: any, { datum }: EventHandlerProps) => {
-          if (!isDrilled && datum) {
-            const category = datum.fiscalYear || datum.period;
-            const value = datum[type];
-            if (category && value != null) {
-              onDrillDown('bar', category, value, type);
-            }
-          }
-          return null;
-        }
+      if (category && value != null) {
+        onDrillDown('bar', category, value, type);
       }
-    }];
-  }, [onDrillDown, isDrilled, series]);
+    }
+  }, [isDrilled, isCrossChartFiltered, onDrillDown]);
 
   const xAxis = isDrilled || isCrossChartFiltered ? "period" : "fiscalYear";
 
-  // Filter series to show only those with data
-  const availableSeries = series.filter(s => data[0]?.[s.key] != null);
+  if (!data?.length) {
+    return <div className="text-center text-gray-500 py-8">No data available</div>;
+  }
 
   return (
-    <div>
-      <VictoryChart theme={VictoryTheme.clean} domainPadding={40} padding={{ top: 20, bottom: 60, left: 80, right: 20 }} height={350} width={800}>
+    <div className="mt-10">
+      <VictoryChart
+        theme={VictoryTheme.clean}
+        domainPadding={40}
+        padding={{ top: 20, bottom: 60, left: 80, right: 20 }}
+        height={350}
+        width={800}
+      >
         <VictoryAxis
           label={isCrossChartFiltered ? 'Periods' : "Years"}
           axisLabelComponent={<VictoryLabel dy={10} />}
           tickFormat={(x: any) => String(x)}
+          fixLabelOverlap={true}
+          tickCount={(() => {
+            const dataLength = data.length;
+            if (dataLength <= 6) return dataLength;
+            if (dataLength <= 20) return 6;
+            return 16;
+          })()}
           style={{
             tickLabels: { fontSize: 10, angle: -45, textAnchor: "end" },
             grid: { stroke: "#e0e0e0", strokeDasharray: "2,2" }
@@ -1036,14 +946,14 @@ const BarChart: React.FC<BarChartProps> = ({
           label='Amount ($)'
           axisLabelComponent={<VictoryLabel dy={-20} />}
           dependentAxis
-          tickFormat={(y:number) => formatCurrency(y)}
+          tickFormat={(y: number) => formatCurrency(y)}
           style={{
             tickLabels: { fontSize: 10 },
             grid: { stroke: "#e0e0e0", strokeDasharray: "2,2" }
           }}
         />
 
-        <VictoryGroup offset={availableSeries.length > 1 ? 30 : 0} colorScale="qualitative">
+        <VictoryGroup offset={availableSeries.length > 1 ? 30 : 0}>
           {availableSeries.map(s => visibleSeries[s.key] && (
             <VictoryBar
               key={s.key}
@@ -1062,30 +972,34 @@ const BarChart: React.FC<BarChartProps> = ({
               labels={({ datum }) => {
                 const value = Number(datum[s.key]);
                 const period = datum[xAxis];
-                return `${period}\n${s.name}: ${Math.round((value || 0) / 1000)}k`;
+                return `${period}\n${s.name}: ${formatCurrency(value)}`;
               }}
               labelComponent={
                 <VictoryTooltip
                   cornerRadius={5}
-                  style={{
-                    fill: "#333",
-                    fontSize: 12,
-                    textAnchor: "middle"
-                  }}
+                  style={{ fontSize: 12 }}
                   flyoutStyle={{
                     fill: "rgba(255, 255, 255, 0.95)",
                     stroke: s.color,
                     strokeWidth: 2,
                     filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.1))"
                   }}
-                  dx={0}
-                  dy={-10}
-                  orientation="top"
+                  // dx={0}
+                  // dy={-10}
+                  // orientation="top"
                   pointerLength={8}
                   pointerWidth={12}
                 />
               }
-              events={createBarEvents(s.key)}
+              events={[{
+                target: "data",
+                eventHandlers: {
+                  onClick: (event, { datum }) => {
+                    handleBarClick(event as unknown as React.MouseEvent, s.key, datum);
+                    return [];
+                  }
+                }
+              }]}
               animate={{
                 duration: 300,
                 onLoad: { duration: 300 }
@@ -1095,13 +1009,12 @@ const BarChart: React.FC<BarChartProps> = ({
         </VictoryGroup>
       </VictoryChart>
 
-      {/* Custom Legend */}
       <div className="flex flex-wrap justify-center mt-4 gap-4">
         {legendData.map((item, index) => (
           <div
             key={index}
             className="flex items-center cursor-pointer hover:opacity-80"
-            onClick={() => handleLegendClick(item)}
+            onClick={() => handleLegendClick(item.name)}
           >
             <div
               className="w-4 h-4 mr-2 rounded"
@@ -1147,12 +1060,10 @@ const PieChart: React.FC<{
   });
 
   // Filter data based on visible categories
-  const filteredData = useMemo(() =>
-    data.filter(item => item.catfinancialview && visibleCategories[item.catfinancialview]),
+  const filteredData = useMemo(
+    () => data.filter(item => item.catfinancialview && visibleCategories[item.catfinancialview]),
     [data, visibleCategories]
-  );
-
-  // Create legend data
+  );  // Create legend data
   const legendData = useMemo<LegendDataItem[]>(() =>
     data.map((item, index) => ({
       name: item.catfinancialview || '',
@@ -1191,29 +1102,31 @@ const PieChart: React.FC<{
         events={legendEvents}
         itemsPerRow={3}
       />
-      <VictoryPie
-        data={filteredData}
-        x="catfinancialview"
-        y="revenue"
-        animate={{ duration: 1000 }}
-        colorScale={colorScale}
-        labelRadius={80}
-        style={{ labels: { fontSize: 10, fill: "#333" }, data: { cursor: "pointer" } }}
-        labels={({ datum }) => `${datum.catfinancialview}: $${Math.round(datum.revenue / 1000)}k`}
-        labelComponent={<VictoryTooltip />}
-        radius={100}
-        theme={VictoryTheme.clean}
-        height={350}
-        padding={{ top: 80, bottom: 50, left: 50, right: 50 }}
-        events={[{
-          target: "data",
-          eventHandlers: {
-            onClick: (event, datum) => {
-              onDrillDown('pie', datum.datum.catfinancialview, datum.datum.revenue, 'revenue');
+      <div className="h-96 flex items-center justify-center">
+        <VictoryPie
+          data={filteredData}
+          x="catfinancialview"
+          y="revenue"
+          animate={{ duration: 1000 }}
+          colorScale={colorScale}
+          labelRadius={80}
+          style={{ labels: { fontSize: 10, fill: "#333" }, data: { cursor: "pointer" } }}
+          labels={({ datum }) => `${datum.catfinancialview}: $${Math.round(datum.revenue / 1000)}k`}
+          labelComponent={<VictoryTooltip />}
+          radius={100}
+          theme={VictoryTheme.clean}
+          height={350}
+          padding={{ top: 80, bottom: 50, left: 50, right: 50 }}
+          events={[{
+            target: "data",
+            eventHandlers: {
+              onClick: (event, datum) => {
+                onDrillDown('pie', datum.datum.catfinancialview, datum.datum.revenue, 'revenue');
+              }
             }
-          }
-        }]}
-      />
+          }]}
+        />
+      </div>
     </div>
   );
 };
@@ -1291,31 +1204,33 @@ const DonutChart: React.FC<{
         }]}
         itemsPerRow={3}
       />
-      <VictoryPie
-        data={filteredData}
-        x="cataccountingview"
-        y="revenue"
-        colorScale={colorScale}
-        innerRadius={70}
-        labelRadius={90}
-        style={{
-          labels: { fontSize: 12, cursor: "pointer" },
-          data: { cursor: "pointer" }
-        }}
-        labels={({ datum }) => `${datum.cataccountingview}: $${Math.round(datum.revenue / 1000)}k`}
-        labelComponent={<VictoryTooltip />}
-        theme={VictoryTheme.clean}
-        height={350}
-        padding={{ top: 80, bottom: 50, left: 50, right: 50 }}
-        events={[{
-          target: "data",
-          eventHandlers: {
-            onClick: (event, datum) => {
-              onDrillDown('donut', datum.datum.cataccountingview, datum.datum.revenue, 'revenue');
-            },
-          }
-        }]}
-      />
+      <div className="h-96 flex items-center justify-center">
+        <VictoryPie
+          data={filteredData}
+          x="cataccountingview"
+          y="revenue"
+          colorScale={colorScale}
+          innerRadius={70}
+          labelRadius={90}
+          style={{
+            labels: { fontSize: 12, cursor: "pointer" },
+            data: { cursor: "pointer" }
+          }}
+          labels={({ datum }) => `${datum.cataccountingview}: $${Math.round(datum.revenue / 1000)}k`}
+          labelComponent={<VictoryTooltip />}
+          theme={VictoryTheme.clean}
+          height={350}
+          padding={{ top: 80, bottom: 50, left: 50, right: 50 }}
+          events={[{
+            target: "data",
+            eventHandlers: {
+              onClick: (event, datum) => {
+                onDrillDown('donut', datum.datum.cataccountingview, datum.datum.revenue, 'revenue');
+              },
+            }
+          }]}
+        />
+      </div>
     </div>
   );
 };

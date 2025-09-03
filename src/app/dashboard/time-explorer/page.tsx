@@ -328,7 +328,7 @@ const DateRangePicker: React.FC<{
           <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${isSelectOpen ? 'rotate-180' : ''}`} />
         </button>
         {isSelectOpen && (
-          <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
+          <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg max-h-44 overflow-auto">
             {options.map((option) => (
               <div
                 key={`${option.value}`}
@@ -530,7 +530,7 @@ const DateRangePicker: React.FC<{
               </div>
             )}
 
-            {/* Quick Select View */}
+           {/* Quick Select View */}
             {view === 'quick' && (
               <div className="space-y-6">
                 <div className="grid md:grid-cols-2 gap-6">
@@ -539,15 +539,14 @@ const DateRangePicker: React.FC<{
                     <div className="flex gap-3">
                       <CustomSelect
                         options={monthOptions}
-                        value={monthOptions.find(m => m.value === (selectedStartDate?.getMonth() || new Date().getMonth()))}
+                        value={monthOptions[selectedStartDate?.getMonth() ?? new Date().getMonth()]}
                         onChange={(option) => {
-                          if (selectedStartDate) {
-                            setSelectedStartDate(new Date(
-                              selectedStartDate.getFullYear(),
-                              option.value as number,
-                              selectedStartDate.getDate()
-                            ));
-                          }
+                          const currentStartDate = selectedStartDate || new Date();
+                          setSelectedStartDate(new Date(
+                            currentStartDate.getFullYear(),
+                            option.value as number,
+                            1
+                          ));
                         }}
                         className="flex-1"
                       />
@@ -555,13 +554,12 @@ const DateRangePicker: React.FC<{
                         options={yearOptions.map(y => ({ label: y.toString(), value: y }))}
                         value={{ label: (selectedStartDate?.getFullYear() || new Date().getFullYear()).toString(), value: selectedStartDate?.getFullYear() || new Date().getFullYear() }}
                         onChange={(option) => {
-                          if (selectedStartDate) {
-                            setSelectedStartDate(new Date(
-                              option.value as number,
-                              selectedStartDate.getMonth(),
-                              selectedStartDate.getDate()
-                            ));
-                          }
+                          const currentStartDate = selectedStartDate || new Date();
+                          setSelectedStartDate(new Date(
+                            option.value as number,
+                            currentStartDate.getMonth(),
+                            1
+                          ));
                         }}
                         className="flex-1"
                       />
@@ -572,15 +570,14 @@ const DateRangePicker: React.FC<{
                     <div className="flex gap-3">
                       <CustomSelect
                         options={monthOptions}
-                        value={monthOptions.find(m => m.value === (selectedEndDate?.getMonth() || new Date().getMonth()))}
+                        value={monthOptions[selectedEndDate?.getMonth() ?? new Date().getMonth()]}
                         onChange={(option) => {
-                          if (selectedEndDate) {
-                            setSelectedEndDate(new Date(
-                              selectedEndDate.getFullYear(),
-                              option.value as number,
-                              selectedEndDate.getDate()
-                            ));
-                          }
+                          const currentEndDate = selectedEndDate || new Date();
+                          setSelectedEndDate(new Date(
+                            currentEndDate.getFullYear(),
+                            option.value as number,
+                            new Date(currentEndDate.getFullYear(), option.value as number + 1, 0).getDate()
+                          ));
                         }}
                         className="flex-1"
                       />
@@ -588,13 +585,12 @@ const DateRangePicker: React.FC<{
                         options={yearOptions.map(y => ({ label: y.toString(), value: y }))}
                         value={{ label: (selectedEndDate?.getFullYear() || new Date().getFullYear()).toString(), value: selectedEndDate?.getFullYear() || new Date().getFullYear() }}
                         onChange={(option) => {
-                          if (selectedEndDate) {
-                            setSelectedEndDate(new Date(
-                              option.value as number,
-                              selectedEndDate.getMonth(),
-                              selectedEndDate.getDate()
-                            ));
-                          }
+                          const currentEndDate = selectedEndDate || new Date();
+                          setSelectedEndDate(new Date(
+                            option.value as number,
+                            currentEndDate.getMonth(),
+                            new Date(option.value as number, currentEndDate.getMonth() + 1, 0).getDate()
+                          ));
                         }}
                         className="flex-1"
                       />

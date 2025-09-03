@@ -631,6 +631,7 @@ export default function ChartJsPage() {
         },
       },
       y: {
+        beginAtZero: true,
         ticks: {
           callback: (value: any) => formatCurrency(value),
         },
