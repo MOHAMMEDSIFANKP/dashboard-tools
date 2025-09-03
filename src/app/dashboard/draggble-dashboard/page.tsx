@@ -2987,6 +2987,7 @@ const AGChartsEnterpriseRenderer: React.FC<{
 }> = ({ chartType, measures, xKey, data }) => {
   const chartRef = useRef<HTMLDivElement>(null);
 
+  //@ts-ignore
   const chartOptions: AgChartOptionsEnterprise = useMemo(() => {
     const series = measures.map(measure => ({
       type: chartType.key,
