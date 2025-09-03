@@ -478,7 +478,8 @@ const AGChartsRenderer: React.FC<{
           title: { text: 'Amount ($)' },
           label: {
             formatter: (params: any) => formatCurrency(params.value)
-          }
+          },
+          line: { stroke: '#e0e0e0', width: 2 }
         },
       ],
       legend: {
@@ -671,13 +672,20 @@ const PlotlyRenderer: React.FC<{
       tickangle: -45,
       automargin: true,
       categoryorder: 'array', // Use the order from our sorted array
-      categoryarray: chartData[0]?.x || []
+      categoryarray: chartData[0]?.x || [],
+      showline: true,
     },
     yaxis: {
       title: { text: 'Amount ($)' },
       tickprefix: '$',
       // tickformat: ',.2f',
-      // hoverformat: '$,.2f'
+      // hoverformat: '$,.2f',
+      range: [0, null],
+      zeroline: true,
+      zerolinewidth: 2,
+      zerolinecolor: '#E5E7EB',
+      gridcolor: '#E5E7EB',
+      showline: true,
     },
     legend: {
       orientation: 'h',
@@ -781,7 +789,7 @@ const NivoRenderer: React.FC<{
             xScale={{ type: 'point' }}
             yScale={{
               type: 'linear',
-              min: 'auto',
+              min: 0,
               max: 'auto',
               stacked: false,
               reverse: false
@@ -841,6 +849,16 @@ const NivoRenderer: React.FC<{
                 ]
               }
             ]}
+            theme={{
+              axis: {
+                domain: {
+                  line: {
+                    stroke: "#B8B4B4",
+                    strokeWidth: 2,
+                  },
+                },
+              },
+            }}
             colors={colors}
             tooltip={({ point }) => (
               <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-md">
@@ -934,6 +952,16 @@ const NivoRenderer: React.FC<{
                 ]
               }
             ]}
+            theme={{
+              axis: {
+                domain: {
+                  line: {
+                    stroke: "#B8B4B4",
+                    strokeWidth: 2,
+                  },
+                },
+              },
+            }}
             role="application"
             ariaLabel="Financial data bar chart"
             barAriaLabel={(e) => `${e.id}: ${formatCurrency(Number(e.value))} for ${e.indexValue}`}
@@ -978,7 +1006,16 @@ const VictoryRenderer: React.FC<{
       });
     }
   }, [chartType, measures, xKey, data]);
-
+  const maxY = useMemo(() => {
+    let max = 0;
+    data.forEach(item => {
+      measures.forEach(measure => {
+        const value = (item as any)[measure.key] || 0;
+        if (value > max) max = value;
+      });
+    });
+    return max;
+  }, [data, measures]);
   if (chartType.key === 'line') {
     return (
       <div className="w-full h-full p-4">
@@ -991,6 +1028,7 @@ const VictoryRenderer: React.FC<{
             width={800}
             height={450}
             padding={{ left: 80, top: 20, right: 40, bottom: 130 }}
+            domain={{ y: [0, maxY * 1.1] }}
           >
             <VictoryAxis
               label='Amount ($)'
@@ -1220,6 +1258,13 @@ const EChartsRenderer: React.FC<{
           axisLabel: {
             formatter: (value: number) => formatCurrency(value),
             fontSize: 12
+          },
+          axisLine: {
+            show: true,
+            lineStyle: {
+              color: 'gray',
+              width: 2,
+            }
           }
         },
         series: measures.map(measure => ({
@@ -1417,6 +1462,7 @@ const HighchartsRenderer: React.FC<{
           lineColor: '#E5E7EB'
         },
         yAxis: {
+          lineWidth: 1,
           title: {
             text: 'Amount (USD)',
             style: {
@@ -2968,7 +3014,13 @@ const AGChartsEnterpriseRenderer: React.FC<{
           type: 'category',
           position: 'bottom',
           title: { text: xKey },
-          label: { rotation: -45 }
+          label: { rotation: -45 },
+          line: {
+            color: '#e0e0e0',
+          },
+          tick: {
+            color: '#e0e0e0',
+          },
         },
         {
           type: 'number',
@@ -2976,7 +3028,13 @@ const AGChartsEnterpriseRenderer: React.FC<{
           title: { text: 'Amount ($)' },
           label: {
             formatter: (params: any) => formatCurrency(params.value)
-          }
+          },
+          line: {
+            color: '#e0e0e0',
+          },
+          tick: {
+            color: '#e0e0e0',
+          },
         },
       ],
       legend: {

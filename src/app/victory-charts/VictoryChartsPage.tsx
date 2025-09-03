@@ -696,6 +696,7 @@ const LineChart: React.FC<LineChartProps> = ({
   if (!data?.length) {
     return <div className="text-center text-gray-500 py-8">No data available</div>;
   }
+  const maxY = Math.max(...data.map(d => d.revenue || 0).concat(...data.map(d => d.grossMargin || 0)).concat(...data.map(d => d.netProfit || 0)));
 
   return (
     <div className="mt-10">
@@ -705,19 +706,19 @@ const LineChart: React.FC<LineChartProps> = ({
         padding={{ top: 20, bottom: 60, left: 80, right: 20 }}
         height={350}
         width={800}
-
+        domain={{ y: [0, maxY] }}
       >
         <VictoryAxis
           label={isCrossChartFiltered ? 'Periods' : "Years"}
           axisLabelComponent={<VictoryLabel dy={10} />}
           tickFormat={(x: any) => String(x)}
           fixLabelOverlap={true}
-          tickCount={(() => {
-            const dataLength = data.length;
-            if (dataLength <= 6) return dataLength;
-            if (dataLength <= 20) return 8;
-            return 16;
-          })()}
+          // tickCount={(() => {
+          //   const dataLength = data.length;
+          //   if (dataLength <= 6) return dataLength;
+          //   if (dataLength <= 20) return 8;
+          //   return 16;
+          // })()}
 
           style={{
             tickLabels: { fontSize: 10, angle: -45, textAnchor: "end" },
@@ -916,6 +917,7 @@ const BarChart: React.FC<BarChartProps> = ({
   if (!data?.length) {
     return <div className="text-center text-gray-500 py-8">No data available</div>;
   }
+  const maxY = Math.max(...data.map(d => d.revenue || 0).concat(...data.map(d => d.expenses || 0)));
 
   return (
     <div className="mt-10">
@@ -925,18 +927,19 @@ const BarChart: React.FC<BarChartProps> = ({
         padding={{ top: 20, bottom: 60, left: 80, right: 20 }}
         height={350}
         width={800}
+        domain={{ y: [0, maxY] }}
       >
         <VictoryAxis
           label={isCrossChartFiltered ? 'Periods' : "Years"}
           axisLabelComponent={<VictoryLabel dy={10} />}
           tickFormat={(x: any) => String(x)}
           fixLabelOverlap={true}
-          tickCount={(() => {
-            const dataLength = data.length;
-            if (dataLength <= 6) return dataLength;
-            if (dataLength <= 20) return 6;
-            return 16;
-          })()}
+          // tickCount={(() => {
+          //   const dataLength = data.length;
+          //   if (dataLength <= 6) return dataLength;
+          //   if (dataLength <= 20) return 6;
+          //   return 16;
+          // })()}
           style={{
             tickLabels: { fontSize: 10, angle: -45, textAnchor: "end" },
             grid: { stroke: "#e0e0e0", strokeDasharray: "2,2" }

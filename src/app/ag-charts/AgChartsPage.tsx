@@ -218,7 +218,7 @@ const AgChartsPage: React.FC = () => {
         ],
         axes: [
           { type: "category", position: "bottom", title: { text: Xkey === 'fiscalYear' ? 'Fiscal Year' : 'Period' } },
-          { type: "number", position: "left", title: { text: "Amount ($)" }, label: { formatter: (params: any) => formatCurrency(params.value) }, },
+          {type: "number", position: "left", title: { text: "Amount ($)" }, label: { formatter: (params: any) => formatCurrency(params.value) }, line: { stroke: '#e0e0e0', width: 2}},
         ],
         listeners: {
           // @ts-ignore
@@ -266,7 +266,7 @@ const AgChartsPage: React.FC = () => {
         ],
         axes: [
           { type: 'category', position: 'bottom', title: { text: Xkey === 'fiscalYear' ? 'Fiscal Year' : 'Period' } },
-          { type: 'number', position: 'left', title: { text: 'Amount ($)' }, label: { formatter: (params: any) => formatCurrency(params.value) }, }
+          { type: 'number', position: 'left', title: { text: 'Amount ($)' }, label: { formatter: (params: any) => formatCurrency(params.value) }, line: { stroke: '#e0e0e0', width: 2} },
         ],
         // listeners: {
         //   // @ts-ignore

@@ -114,7 +114,7 @@ const CHART_CONFIG = {
         title: { text: 'Revenue Trends Over Time' },
         subtitle: { text: 'Showing financial metrics by period' },
         xAxis: { title: { text: 'Period' } },
-        yAxis: { title: { text: 'Amount (USD)' } },
+        yAxis: { title: { text: 'Amount (USD)' },lineWidth: 1  },
     },
     BAR: {
         chart: { type: 'column' as const, zooming: { type: 'x' as const } },
@@ -127,7 +127,8 @@ const CHART_CONFIG = {
                 formatter: function (this: Highcharts.AxisLabelsFormatterContextObject) {
                     return formatCurrency(this.value as number);
                 }
-            }
+            },
+            lineWidth: 1 
         },
         plotOptions: {
             column: {

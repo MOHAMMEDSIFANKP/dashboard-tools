@@ -84,8 +84,8 @@ const DashboardHomepage = () => {
             name: 'Test Case 2 - P&L Dashboard',
             subtitle: 'Multi-table join structure for Profit & Loss analysis with account categories',
             description: "",
-            status: 'In Progress',
-            recordsCount: '1,000,000',
+            status: 'Complete',
+            recordsCount: '10 M',
             apiEndpoint: '/api/v1/pl-analysis',
             dashboardUrl: '/dashboard/pl-analysis',
             lastUpdated: '2024-01-20',
@@ -166,7 +166,7 @@ const DashboardHomepage = () => {
                                 </div>
                                 <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4 col-span-2 md:col-span-2">
                                     <div className="text-xl font-bold">Test Case 2</div>
-                                    <div className="text-sm opacity-90">Records</div>
+                                    <div className="text-sm opacity-90">10 M Records</div>
                                 </div>
                             </div>
                         </div>

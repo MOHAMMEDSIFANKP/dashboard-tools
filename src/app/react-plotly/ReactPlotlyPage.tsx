@@ -850,8 +850,8 @@ export default function ReactPlotlyPage() {
               layout={{
                 title: "Revenue Trends Over Time",
                 autosize: true,
-                xaxis: { tickformat: 'digits', title: { text: `${crossChartFilter ? 'Periods' : 'Fiscal Year'}` },type: 'category' ,  tickangle: -55, },
-                yaxis: { title: { text: "Amount ($)" },range: [0, null], },
+                xaxis: { tickformat: 'digits', title: { text: `${crossChartFilter ? 'Periods' : 'Fiscal Year'}` }, type: 'category', tickangle: -55, },
+                yaxis: { title: { text: "Amount ($)" }, range: [0, null], showline: true, },
                 hovermode: 'closest',
                 hoverdistance: 50,
                 // Enable selection mode for hover effects
@@ -901,8 +901,8 @@ export default function ReactPlotlyPage() {
                 title: "Revenue vs Operating Expenses",
                 barmode: "group",
                 autosize: true,
-                xaxis: { tickformat: 'digits', title: { text: `${crossChartFilter ? 'Periods' : 'Fiscal Year'}` },type: 'category',  tickangle: -55, automargin: true },
-                yaxis: { title: { text: "Amount ($)" } },
+                xaxis: { tickformat: 'digits', title: { text: `${crossChartFilter ? 'Periods' : 'Fiscal Year'}` }, type: 'category', tickangle: -55, automargin: true },
+                yaxis: { title: { text: "Amount ($)" }, showline: true, range: [0, null] },
                 hovermode: 'closest',
                 hoverdistance: 50,
                 // Bar hover effects
@@ -1080,7 +1080,7 @@ export default function ReactPlotlyPage() {
           </ChartContainer>
         )}
 
-         {/* <p className="col-span-1 md:col-span-2 text-sm text-gray-500">
+        {/* <p className="col-span-1 md:col-span-2 text-sm text-gray-500">
           <i>Click on any chart element to drill down into more detailed data</i>
         </p> */}
       </div>

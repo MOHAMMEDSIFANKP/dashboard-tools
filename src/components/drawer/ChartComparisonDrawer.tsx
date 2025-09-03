@@ -569,6 +569,7 @@ export const AGChartsRenderer: React.FC<AGChartsRendererProps> = ({
                         position: "left",
                         title: { text: "Amount ($)" },
                         label: { formatter: (params) => formatCurrency(params.value) },
+                        line: { stroke: '#e0e0e0', width: 2 }
                     },
                 ],
             };
@@ -819,6 +820,7 @@ export const PlotlyRenderer: React.FC<PlotlyRendererProps> = ({
                 title: { text: 'Amount ($)' },
                 rangemode: 'tozero',
                 // tickformat: '$,.2f',
+                showline: true,
             },
         } : {}),
     };
@@ -885,7 +887,7 @@ export const NivoRenderer: React.FC<NivoRendererProps> = ({
                         xScale={{ type: 'point' }}
                         yScale={{
                             type: 'linear',
-                            min: 'auto',
+                            min: 0,
                             max: 'auto',
                         }}
                         axisBottom={{
@@ -905,6 +907,16 @@ export const NivoRenderer: React.FC<NivoRendererProps> = ({
                         pointBorderWidth={2}
                         pointBorderColor={{ from: "serieColor" }}
                         useMesh={true}
+                        theme={{
+                            axis: {
+                                domain: {
+                                    line: {
+                                        stroke: "#B8B4B4",
+                                        strokeWidth: 2,
+                                    },
+                                },
+                            },
+                        }}
                         legends={[
                             {
                                 anchor: 'bottom-right',
@@ -969,6 +981,16 @@ export const NivoRenderer: React.FC<NivoRendererProps> = ({
                                 toggleSerie: true,
                             },
                         ]}
+                        theme={{
+                            axis: {
+                                domain: {
+                                    line: {
+                                        stroke: "#B8B4B4",
+                                        strokeWidth: 2,
+                                    },
+                                },
+                            },
+                        }}
                         tooltip={({ id, value, color, indexValue }) => (
                             <div
                                 style={{
@@ -1069,7 +1091,7 @@ export const VictoryRenderer: React.FC<VictoryRendererProps> = ({
     if (isTimeSeries) {
         // Filter out period and get all measure columns
         const yKeys = columns.filter(col => !['period', 'fiscalYear'].includes(col));
-
+        const maxY = Math.max(...data.flatMap(d => yKeys.map(key => d[key] || 0)));
         return (
             <div className="w-full h-full p-4">
                 <h2 className="text-center font-bold">Financial Year {year} - {chartType.charAt(0).toUpperCase() + chartType.slice(1)}</h2>
@@ -1078,6 +1100,7 @@ export const VictoryRenderer: React.FC<VictoryRendererProps> = ({
                     domainPadding={20}
                     width={1000}
                     padding={{ top: 50, bottom: 80, left: 80, right: 50 }}
+                    domain={{ y: [0, maxY] }}
                 >
                     <VictoryLegend
                         x={125}
@@ -1284,6 +1307,13 @@ export const EChartsRenderer: React.FC<EChartsRendererProps> = ({
                     nameGap: 60,
                     axisLabel: {
                         formatter: (value: number) => formatCurrency(value)
+                    },
+                    axisLine: {
+                        show: true,
+                        lineStyle: {
+                            color: 'gray',
+                            width: 2,
+                        }
                     }
                 },
                 series: yKeys.map(key => ({
@@ -1421,7 +1451,8 @@ export const HighchartsRenderer: React.FC<HighchartsRendererProps> = ({
                         formatter: function () {
                             return formatCurrency(this.value as number);
                         }
-                    }
+                    },
+                    lineWidth: 1 
                 },
                 series: yKeys.map((key, index) => ({
                     type: chartType === 'line' ? 'line' as const : 'column' as const,

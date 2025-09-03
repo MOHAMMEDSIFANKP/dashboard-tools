@@ -175,7 +175,7 @@ const dashboardTools = [
                 'Next.js Integration'
             ],
             documentation: 'https://charts.ag-grid.com/documentation/enterprise/',
-            status: 'Not Active'
+            status: 'Active'
         },
         {
             name: 'Highcharts',
@@ -208,7 +208,7 @@ const dashboardTools = [
                 'Next.js Integration'
             ],
             documentation: 'https://ej2.syncfusion.com/react/documentation/chart/getting-started/',
-            status: 'Not Active'
+            status: 'Active'
         }
     ];
 

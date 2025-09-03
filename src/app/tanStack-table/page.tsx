@@ -31,7 +31,7 @@ function Page() {
     ],
     dataRecords: {
       "test-case-1": "1,000,000 Records",
-      "test-case-2": "Records"
+      "test-case-2": "10 M Records"
     }
   }
 

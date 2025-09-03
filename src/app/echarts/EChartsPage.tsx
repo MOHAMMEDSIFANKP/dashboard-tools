@@ -611,9 +611,9 @@ const LineChartComponent = ({
       formatter: (params: any) => {
         return `
       ${params[0].axisValue}<br/>
-      ${params[0].seriesName}: ${params[0].value ? formatCurrency(params[0].value):""}<br/>
-      ${params[1].seriesName}: ${params[1].value ? formatCurrency(params[1].value):""}<br/>
-      ${params[2].seriesName}: ${params[2].value ? formatCurrency(params[2].value):""}
+      ${params[0].seriesName}: ${params[0].value ? formatCurrency(params[0].value) : ""}<br/>
+      ${params[1].seriesName}: ${params[1].value ? formatCurrency(params[1].value) : ""}<br/>
+      ${params[2].seriesName}: ${params[2].value ? formatCurrency(params[2].value) : ""}
     `;
       }
     },
@@ -633,7 +633,7 @@ const LineChartComponent = ({
       data: data.map(item => item[xAxis]),
       name: xAxis === 'period' ? 'Period' : 'Fiscal Year',
       nameLocation: 'middle',
-      nameGap: 30,           
+      nameGap: 30,
       axisLabel: {
         rotate: 45,
         fontSize: 10
@@ -643,11 +643,17 @@ const LineChartComponent = ({
       type: 'value',
       name: 'Amount ($)',
       nameLocation: 'middle',
-      nameGap: 55,   
+      nameGap: 55,
       axisLabel: {
         formatter: (value: number) => formatCurrency(value)
+      },
+      axisLine: {
+        show: true,
+        lineStyle: {
+          color: 'gray',
+          width: 2,
+        }
       }
-
     },
     series: [
       {
@@ -728,8 +734,8 @@ const BarChartComponent = ({
       formatter: (params: any) => {
         return `
       ${params[0].axisValue}<br/>
-      ${params[0].seriesName}: ${params[0].value?formatCurrency(params[0].value):""}<br/>
-      ${params[1].seriesName}: ${params[1].value ? formatCurrency(params[1].value):""}
+      ${params[0].seriesName}: ${params[0].value ? formatCurrency(params[0].value) : ""}<br/>
+      ${params[1].seriesName}: ${params[1].value ? formatCurrency(params[1].value) : ""}
     `;
       }
     },
@@ -747,7 +753,7 @@ const BarChartComponent = ({
       type: 'category',
       name: xAxis === 'period' ? 'Period' : 'Fiscal Year',
       nameLocation: 'middle',
-      nameGap: 30,           
+      nameGap: 30,
       data: data.map(item => item[xAxis]),
       axisLabel: {
         rotate: 45,
@@ -758,9 +764,16 @@ const BarChartComponent = ({
       type: 'value',
       name: 'Amount ($)',
       nameLocation: 'middle',
-      nameGap: 55,   
+      nameGap: 55,
       axisLabel: {
         formatter: (value: number) => formatCurrency(value)
+      },
+      axisLine: {
+        show: true,
+        lineStyle: {
+          color: 'gray',
+          width: 2,
+        }
       }
     },
     series: [

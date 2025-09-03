@@ -61,7 +61,7 @@ interface ChartContainerProps {
   isDrilled?: boolean;
   isCrossChartFiltered?: string;
   onBack?: () => void;
-  exportToPNG:  (title: string, chartRef: React.RefObject<HTMLDivElement>) => void;
+  exportToPNG: (title: string, chartRef: React.RefObject<HTMLDivElement>) => void;
   onResetFilter?: () => void;
   isLoading?: boolean;
   handleShareChart: (title: string, chartRef: React.RefObject<HTMLDivElement>) => void;
@@ -126,23 +126,23 @@ const ChartContainer: React.FC<ChartContainerProps> = ({
   };
 
   return (
-   <div className="bg-white">
-     <ChartContainerView
-      title={title}
-      isDrilled={isDrilled}
-      resetDrillDown={onBack}
-      isLoading={isLoading}
-      isCrossChartFiltered={isCrossChartFiltered}
-      resetCrossChartFilter={onResetFilter}
-      exportToCSV={exportToCSV}
-      exportToPNG={() => exportToPNG(title, chartRef)}
-      hasData={hasData}
-      chartRef={chartRef}
-      children={children}
-      onShareChart={() => handleShareChart(title, chartRef)}
-      onComparisonOpen={() => onComparisonOpen(chartType || '')}
-    />
-   </div>
+    <div className="bg-white">
+      <ChartContainerView
+        title={title}
+        isDrilled={isDrilled}
+        resetDrillDown={onBack}
+        isLoading={isLoading}
+        isCrossChartFiltered={isCrossChartFiltered}
+        resetCrossChartFilter={onResetFilter}
+        exportToCSV={exportToCSV}
+        exportToPNG={() => exportToPNG(title, chartRef)}
+        hasData={hasData}
+        chartRef={chartRef}
+        children={children}
+        onShareChart={() => handleShareChart(title, chartRef)}
+        onComparisonOpen={() => onComparisonOpen(chartType || '')}
+      />
+    </div>
   );
 };
 
@@ -405,10 +405,10 @@ export default function NivoChartsPage() {
                 // Show only every nth tick to prevent overcrowding
                 const dataLength = rawData.drillDown.length || 0;
                 if (dataLength <= 10) return undefined; // Show all ticks if 10 or fewer
-                
+
                 const tickInterval = Math.ceil(dataLength / 25); // Show max 8 ticks
                 const allValues = rawData.drillDown.map(item => item[labelKey]) || [];
-                return allValues.filter((_, index) => 
+                return allValues.filter((_, index) =>
                   index % tickInterval === 0 || index === allValues.length - 1
                 );
               })()
@@ -493,10 +493,10 @@ export default function NivoChartsPage() {
                 // Show only every nth tick to prevent overcrowding
                 const dataLength = rawData.drillDown.length || 0;
                 if (dataLength <= 10) return undefined; // Show all ticks if 10 or fewer
-                
+
                 const tickInterval = Math.ceil(dataLength / 25); // Show max 8 ticks
                 const allValues = rawData.drillDown.map(d => d[xKey]) || [];
-                return allValues.filter((_, index) => 
+                return allValues.filter((_, index) =>
                   index % tickInterval === 0 || index === allValues.length - 1
                 );
               })()
@@ -705,7 +705,7 @@ export default function NivoChartsPage() {
                 xScale={{ type: "point" }}
                 yScale={{
                   type: "linear",
-                  min: "auto",
+                  min: 0,
                   max: "auto",
                   stacked: false,
                   reverse: false,
@@ -721,10 +721,10 @@ export default function NivoChartsPage() {
                     // Show only every nth tick to prevent overcrowding
                     const dataLength = lineChartData[0]?.data?.length || 0;
                     if (dataLength <= 10) return undefined; // Show all ticks if 10 or fewer
-                    
+
                     const tickInterval = Math.ceil(dataLength / 25); // Show max 8 ticks
                     const allValues = lineChartData[0]?.data?.map(d => d.x) || [];
-                    return allValues.filter((_, index) => 
+                    return allValues.filter((_, index) =>
                       index % tickInterval === 0 || index === allValues.length - 1
                     );
                   })()
@@ -736,6 +736,16 @@ export default function NivoChartsPage() {
                   format: value => formatCurrency(value),
                 }}
                 colors={{ scheme: "nivo" }}
+                theme={{
+                  axis: {
+                    domain: {
+                      line: {
+                        stroke: "#B8B4B4", 
+                        strokeWidth: 2, 
+                      },
+                    },
+                  },
+                }}
                 pointSize={10}
                 pointColor={{ theme: "background" }}
                 pointBorderWidth={2}
@@ -835,10 +845,10 @@ export default function NivoChartsPage() {
                     // Show only every nth tick to prevent overcrowding
                     const dataLength = barChartData.length || 0;
                     if (dataLength <= 10) return undefined; // Show all ticks if 10 or fewer
-                    
+
                     const tickInterval = Math.ceil(dataLength / 25); // Show max 8 ticks
                     const allValues = barChartData.map(d => d[crossChartFilter ? "period" : "fiscalYear"]) || [];
-                    return allValues.filter((_, index) => 
+                    return allValues.filter((_, index) =>
                       index % tickInterval === 0 || index === allValues.length - 1
                     );
                   })()
@@ -848,6 +858,16 @@ export default function NivoChartsPage() {
                   legendOffset: -55,
                   legendPosition: "middle",
                   format: value => formatCurrency(value),
+                }}
+                 theme={{
+                  axis: {
+                    domain: {
+                      line: {
+                        stroke: "#B8B4B4", 
+                        strokeWidth: 2, 
+                      },
+                    },
+                  },
                 }}
                 // onClick={(data) => {
                 //   handleDrillDown(
