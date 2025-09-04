@@ -4,7 +4,7 @@ import Link from 'next/link';
 import React from 'react'
 
 interface ApiEntry {
-    method: "GET" | "POST";
+    method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
     endpoint: string;
     description: string;
     testCase: string;
@@ -14,23 +14,30 @@ interface ApiEntry {
 
 const apiData: ApiEntry[] = [
     // ✅ Test Case 1 - Frontend Used
-    { method: "GET", endpoint: "/api/dashboard/financial-data", description: "Retrieve all financial records for the dashboard", testCase: "Test Case 1", records: "1,000,000", used: true },
     { method: "POST", endpoint: "/api/dashboard/all-charts", description: "Fetch chart datasets based on applied filters and parameters", testCase: "Test Case 1", records: "Variable", used: true },
     { method: "POST", endpoint: "/api/dashboard/drill-down", description: "Retrieve detailed breakdown data for selected chart items", testCase: "Test Case 1", records: "Variable", used: true },
     { method: "POST", endpoint: "/api/dashboard/group-filter", description: "Save custom grouping and filter preferences for the user", testCase: "Test Case 1", records: "Variable", used: true },
+    { method: "GET", endpoint: "/api/dashboard/group-filters", description: "Fetch all saved group filters", testCase: "Test Case 1", records: "List", used: false },
+    { method: "DELETE", endpoint: "/api/dashboard/group-filters/{groupName}", description: "Delete a specific saved group filter by name", testCase: "Test Case 1", records: "N/A", used: false },
     { method: "GET", endpoint: "/api/dashboard/available-years/{table}", description: "List all available fiscal years for a given table", testCase: "Test Case 1", records: "Dynamic", used: true },
     { method: "GET", endpoint: "/api/dashboard/tables/{table}/dimensions", description: "Retrieve dimension for create group", testCase: "Test Case 1", records: "Metadata", used: true },
     { method: "GET", endpoint: "/api/duckdb/tables/{table}/data", description: "Fetch paginated table data with optional filters applied", testCase: "Test Case 1", records: "1,000,000 - Paginated", used: true },
     { method: "POST", endpoint: "/api/dashboard/charts/compare?table_name={table}", description: "Fetch chart comparison data for the selected 2 years", testCase: "Test Case 1", records: "Variable", used: true },
+    { method: "GET", endpoint: "/api/dashboard/financial-data/{tableName}?year={year}&month={month}", description: "Retrieve financial data for a specific year and month", testCase: "Test Case 1", records: "Monthly Data", used: true },
+
 
     // 🚧 Test Case 2 - Backend Only
-    { method: "POST", endpoint: "/api/dashboard/all-charts?product_id={Product id}", description: "Retrieve all chart datasets for a specific product", testCase: "Test Case 2", records: "100,000", used: false },
+    { method: "POST", endpoint: "/api/dashboard/all-charts?product_id={Product id}", description: "Retrieve all chart datasets for a specific product", testCase: "Test Case 2", records: "10M", used: false },
     { method: "POST", endpoint: "/api/dashboard/drill-down?product_id={Product id}", description: "Retrieve detailed breakdown data for selected chart items", testCase: "Test Case 2", records: "Variable", used: false },
     { method: "GET", endpoint: "/api/dashboard/tables/{Product id}/dimensions", description: "Retrieve dimension for create group", testCase: "Test Case 2", records: "Metadata", used: false },
     { method: "POST", endpoint: "/apidashboard/group-filter", description: "Save custom grouping and filter preferences for the user", testCase: "Test Case 2", records: "Variable", used: false },
-    { method: "GET", endpoint: "/api/data-products/data-products/{Product id}/records", description: "Retrieve all records for a product in paginated format", testCase: "Test Case 2", records: "100,000 - Paginated", used: false },
-    { method: "GET", endpoint: "/api/data-products/data-products/{Product id}/records", description: "Fetch paginated table data with optional filters applied", testCase: "Test Case 2", records: "Filtered", used: false },
-    { method: "POST", endpoint: "/api/dashboard/charts/compare?product_id={Product id}", description: "Fetch chart comparison data for the selected 2 years", testCase: "Test Case 2", records: "Variable", used: false }
+    { method: "GET", endpoint: "/api/data-products/data-products/{Product id}/records", description: "Retrieve all records for a product in paginated format", testCase: "Test Case 2", records: "10M - Paginated", used: false },
+    { method: "POST", endpoint: "/api/dashboard/charts/compare?product_id={Product id}", description: "Fetch chart comparison data for the selected 2 years", testCase: "Test Case 2", records: "Variable", used: false },
+    { method: "GET", endpoint: "/api/dashboard/financial-data/{Product id}?year={year}&month={month}", description: "Retrieve financial data for a specific month and year", testCase: "Test Case 2", records: "Monthly Data", used: false },
+    { method: "GET", endpoint: "/api/dashboard/group-filters", description: "Fetch all saved group filters", testCase: "Test Case 2", records: "List", used: false },
+    { method: "DELETE", endpoint: "/api/dashboard/group-filters/{groupName}", description: "Delete a specific saved group filter by name", testCase: "Test Case 2", records: "N/A", used: false },
+    { method: "GET", endpoint: "/api/dashboard/available-years/{Product id}", description: "Retrieve a list of available years for a product", testCase: "Test Case 2", records: "Year List", used: false },
+
 ];
 
 
@@ -100,7 +107,7 @@ function ApiTable({ apis }: { apis: ApiEntry[] }) {
                     {apis.map((api, index) => (
                         <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
                             <td className="py-3 px-4">
-                                <span className={`px-2 py-1 text-xs font-medium rounded ${api.method === 'GET' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
+                                <span className={`px-2 py-1 text-xs font-medium rounded ${api.method === 'GET' ? 'bg-green-100 text-green-800' : api.method === 'DELETE' ? 'bg-red-100 text-black' : 'bg-blue-100 text-blue-800'
                                     }`}>
                                     {api.method}
                                 </span>

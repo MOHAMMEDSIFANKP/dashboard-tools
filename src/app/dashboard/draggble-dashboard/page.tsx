@@ -1462,6 +1462,7 @@ const HighchartsRenderer: React.FC<{
           lineColor: '#E5E7EB'
         },
         yAxis: {
+          min: 0,
           lineWidth: 1,
           title: {
             text: 'Amount (USD)',
@@ -1546,6 +1547,7 @@ const HighchartsRenderer: React.FC<{
           lineColor: '#E5E7EB'
         },
         yAxis: {
+          min: 0,
           title: {
             text: 'Amount (USD)',
             style: {

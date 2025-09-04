@@ -114,7 +114,7 @@ const CHART_CONFIG = {
         title: { text: 'Revenue Trends Over Time' },
         subtitle: { text: 'Showing financial metrics by period' },
         xAxis: { title: { text: 'Period' } },
-        yAxis: { title: { text: 'Amount (USD)' },lineWidth: 1  },
+        yAxis: { title: { text: 'Amount (USD)' }, lineWidth: 1  },
     },
     BAR: {
         chart: { type: 'column' as const, zooming: { type: 'x' as const } },

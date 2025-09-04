@@ -1822,6 +1822,7 @@ export const AGChartsEnterpriseRenderer: React.FC<AGChartsEnterpriseRendererProp
                             //@ts-ignore
                             color: '#e0e0e0',
                         },
+                         min: 0,
                     },
                 ],
             };
