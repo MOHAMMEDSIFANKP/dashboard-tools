@@ -12,7 +12,10 @@ import {
     Layers,
     Home,
     ArrowUpRight,
-    LucideIcon
+    LucideIcon,
+    Clock,
+    Globe,
+    AlertCircle
 } from 'lucide-react';
 import { MetaDataSection } from './(home)/MetaDataSection';
 import { ApiDocumentation } from './(home)/ApiDocumentation';
@@ -167,6 +170,53 @@ const DashboardHomepage = () => {
                                 <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4 col-span-2 md:col-span-2">
                                     <div className="text-xl font-bold">Test Case 2</div>
                                     <div className="text-sm opacity-90">10 M Records</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Opening Hours Section */}
+                        <div className="bg-gradient-to-r from-orange-500 to-red-500 text-white p-6 rounded-2xl">
+                            <div className="flex items-center gap-3 mb-4">
+                                <Clock className="text-white" size={28} />
+                                <h3 className="text-2xl font-bold">Dashboard Availability Hours</h3>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-4">
+                                    <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <Globe className="text-white" size={20} />
+                                            <span className="font-semibold">Indian Standard Time (IST)</span>
+                                        </div>
+                                        <div className="text-lg font-bold">10:00 AM - 6:00 PM</div>
+                                        <div className="text-sm opacity-90">Monday to Friday</div>
+                                    </div>
+                                    <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <AlertCircle className="text-white" size={20} />
+                                            <span className="font-semibold">Weekend & Holidays</span>
+                                        </div>
+                                        <div className="text-lg font-bold">Closed</div>
+                                        <div className="text-sm opacity-90">Saturday, Sunday & Public Holidays</div>
+                                    </div>
+                                </div>
+                                <div className="space-y-4">
+                                    <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <Globe className="text-white" size={20} />
+                                            <span className="font-semibold">France Time (CET/CEST)</span>
+                                        </div>
+                                        <div className="text-lg font-bold">5:30 AM - 1:30 PM</div>
+                                        <div className="text-sm opacity-90">Monday to Friday (Winter)</div>
+                                        <div className="text-lg font-bold">4:30 AM - 12:30 PM</div>
+                                        <div className="text-sm opacity-90">Monday to Friday (Summer)</div>
+                                    </div>
+                                    <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <AlertCircle className="text-white" size={20} />
+                                            <span className="font-semibold">Important Note</span>
+                                        </div>
+                                        <div className="text-sm opacity-90">Dashboard may be unavailable during weekends and Indian public holidays as the backend server is maintained from India.</div>
+                                    </div>
                                 </div>
                             </div>
                         </div>

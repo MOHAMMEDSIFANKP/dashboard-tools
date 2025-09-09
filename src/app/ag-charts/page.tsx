@@ -32,6 +32,9 @@ const dashboardInfoDatas = {
     { feature: "TypeScript Support", supported: true },
     { feature: "Open Source", supported: true },
     { feature: "Drag and Drop. ", supported: true, link: "dashboard/draggble-dashboard" },
+    { feature: "Email Share", supported: true },
+    { feature: "Chart Comparison", supported: true },
+    { feature: "Group Management", supported: true },
   ],
   dataRecords: {
     "test-case-1": "1,000,000 Records",
