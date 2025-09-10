@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, BarChart3, TrendingUp, PieChart, Activity, Calendar, ArrowRight, Loader2, Sparkles, Target } from "lucide-react";
 import { formatCurrency } from "@/utils/utils";
 import { CustomSelect } from "../ui/inputs";
-import { useFetchAvailableYearsQuery, useFetchComparisonDataMutation } from "@/lib/services/usersApi";
+import { databaseName, useFetchAvailableYearsQuery, useFetchComparisonDataMutation } from "@/lib/services/usersApi";
 
 // Ag charts
 import { AgCharts } from "ag-charts-react";
@@ -144,7 +144,7 @@ export const ComparisonDrawer: React.FC<ComparisonDrawerProps> = ({
         error: yearsError,
         isLoading: yearsLoading,
     } = testCase === 'test-case-1'
-            ? useFetchAvailableYearsQuery('sample_100k')
+            ? useFetchAvailableYearsQuery(databaseName)
             : useFetchTestCase2AvailableYearsQuery(testCase2ProductId);
 
     const [triggerComparisonTC1, { isLoading: isComparingTC1 }] = useFetchComparisonDataMutation();
@@ -170,7 +170,7 @@ export const ComparisonDrawer: React.FC<ComparisonDrawerProps> = ({
 
             if (testCase === 'test-case-1') {
                 result = await triggerComparisonTC1({
-                    tableName: 'sample_100k',
+                    tableName: databaseName,
                     chartType,
                     year1: selectedYear1,
                     year2: selectedYear2,

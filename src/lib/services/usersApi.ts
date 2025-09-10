@@ -1,7 +1,7 @@
 import { ApiResponse, Post } from "@/types/Schemas";
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
-export const databaseName = "sample_1m";
+export const databaseName = "financial_data_1M";
 // financial_data__10M
 // Chart request body interfaces
 interface ChartRequestBody {
@@ -64,6 +64,7 @@ export const api = createApi({
   reducerPath: 'api',
   baseQuery: fetchBaseQuery({
     baseUrl: 'https://testcase.mohammedsifankp.online/api/',
+    // baseUrl: 'http://localhost:8000/api/',
   }),
   endpoints: (builder) => ({
     // Table API Endpoints

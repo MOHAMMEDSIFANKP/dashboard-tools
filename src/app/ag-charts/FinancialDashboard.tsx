@@ -5,6 +5,7 @@ import FinancialTable from "./FinancialTable"
 import type { FinancialData } from "@/types/Schemas"
 import { CustomSelect } from "@/components/ui/inputs"
 import {
+  databaseName,
   useFetchAvailableYearsQuery,
   useLazyFetchFinancialDataQuery
 } from "@/lib/services/usersApi"
@@ -48,7 +49,7 @@ export default function FinancialDashboard() {
   const [lastFetchedMonth, setLastFetchedMonth] = useState<string>('');
 
   // API hooks
-  const result1 = useFetchAvailableYearsQuery('sample_100k', {
+  const result1 = useFetchAvailableYearsQuery(databaseName, {
     skip: testCase !== 'test-case-1'
   });
   const result2 = useFetchTestCase2AvailableYearsQuery(testCase2ProductId, {
@@ -110,7 +111,7 @@ export default function FinancialDashboard() {
       // Fetch current month and YTD data from API
       const result: any = testCase === 'test-case-1'
         ? await fetchFinancialData({
-          tableName: 'sample_100k',
+          tableName: databaseName,
           year: selectedYear,
           month: selectedMonth
         }).unwrap()

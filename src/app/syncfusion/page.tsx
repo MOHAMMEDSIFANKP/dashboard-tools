@@ -11,9 +11,9 @@ import SyncfusionCharts from './syncfusionPage'
 
 const dashboardInfoDatas = {
   apiEndpoints: [
-    { testCase: "test-case-1", method: "POST", apiName: "api/dashboard/all-charts?table_name=sample_1m", api: "https://testcase.mohammedsifankp.online/api/dashboard/all-charts?table_name=sample_1m", description: "Fetch all chart data for the dashboard" },
-    { testCase: "test-case-1", method: "POST", apiName: "api/dashboard/drill-down?table_name=sample_1m&chart_type=bar&category=201907&data_type=revenue&value=4299212962.550013", api: "https://testcase.mohammedsifankp.online/api/dashboard/drill-down?table_name=sample_1m&chart_type=bar&category=201907&data_type=revenue&value=4299212962.550013", description: "Fetch Drill Down datas" },
-    { testCase: "test-case-1", method: "GET", apiName: "api/dashboard/tables/sample_1m/dimensions", api: "https://testcase.mohammedsifankp.online/api/dashboard/tables/sample_1m/dimensions", description: "Fetch dimensions for the dashboard" },
+    { testCase: "test-case-1", method: "POST", apiName: "api/dashboard/all-charts?table_name=financial_data_1M", api: "https://testcase.mohammedsifankp.online/api/dashboard/all-charts?table_name=financial_data_1M", description: "Fetch all chart data for the dashboard" },
+    { testCase: "test-case-1", method: "POST", apiName: "api/dashboard/drill-down?table_name=financial_data_1M&chart_type=bar&category=201907&data_type=revenue&value=4299212962.550013", api: "https://testcase.mohammedsifankp.online/api/dashboard/drill-down?table_name=financial_data_1M&chart_type=bar&category=201907&data_type=revenue&value=4299212962.550013", description: "Fetch Drill Down datas" },
+    { testCase: "test-case-1", method: "GET", apiName: "api/dashboard/tables/financial_data_1M/dimensions", api: "https://testcase.mohammedsifankp.online/api/dashboard/tables/financial_data_1M/dimensions", description: "Fetch dimensions for the dashboard" },
     { testCase: "test-case-1", method: "POST", apiName: "/api/dashboard/charts/compare?table_name={table}", api: "https://testcase.mohammedsifankp.online/api/dashboard/charts/compare?table_name=sample_100k&chart_type=line&year1=2015&year2=2016", description: "Fetch chart comparison data for the selected 2 years" },
 
     { testCase: "test-case-2", method: "POST", apiName: "api/dashboard/all-charts?product_id=sample_100k_product_v1&exclude_null_revenue=false", api: "https://testcase2.mohammedsifankp.online/api/dashboard/all-charts?product_id=sample_100k_product_v1&exclude_null_revenue=false", description: "Fetch all chart data for the dashboard" },
