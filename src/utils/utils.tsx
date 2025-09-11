@@ -1,15 +1,28 @@
 import { AccumulationChartComponent, ChartComponent } from "@syncfusion/ej2-react-charts";
 import { AgGridReact } from "ag-grid-react";
 
-export const formatCurrency = (value: number): string => {
+// export const formatCurrency = (value: number): string => {
   
-  if (value >= 1000000000) {
-    return `$${(value / 1000000000).toFixed(1)}B`;
-  }
-  else if (value >= 1000000) {
-    return `$${(value / 1000000).toFixed(1)}M`;
-  } else if (value >= 1000) {
-    return `$${(value / 1000).toFixed(1)}K`;
+//   if (value >= 1000000000) {
+//     return `$${(value / 1000000000).toFixed(1)}B`;
+//   }
+//   else if (value >= 1000000) {
+//     return `$${(value / 1000000).toFixed(1)}M`;
+//   } else if (value >= 1000) {
+//     return `$${(value / 1000).toFixed(1)}K`;
+//   }
+//   return `$${value.toFixed(2)}`;
+// };
+
+export const formatCurrency = (value: number): string => {
+  if (value >= 1_000_000_000_000) {
+    return `$${(value / 1_000_000_000_000).toFixed(1)}T`;
+  } else if (value >= 1_000_000_000) {
+    return `$${(value / 1_000_000_000).toFixed(1)}B`;
+  } else if (value >= 1_000_000) {
+    return `$${(value / 1_000_000).toFixed(1)}M`;
+  } else if (value >= 1_000) {
+    return `$${(value / 1_000).toFixed(1)}K`;
   }
   return `$${value.toFixed(2)}`;
 };

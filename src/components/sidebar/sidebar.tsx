@@ -285,7 +285,7 @@ const SideBarLayout: React.FC<SideBarLayoutProps> = ({ children }) => {
             </div>
 
             {/* Mobile Main Content */}
-            <main className="md:hidden pt-0">
+            <main className="md:hidden min-h-screen containers pt-16">
                 {children}
             </main>
         </div>

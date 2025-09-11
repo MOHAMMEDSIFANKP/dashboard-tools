@@ -41,7 +41,7 @@ const DashboardInfoCard: React.FC<DashboardInfoCardProps> = ({
     };
 
     return (
-        <Card className={`m-5 transition-shadow duration-200 hover:shadow-md ${className}`}>
+        <Card className={`md:m-5 transition-shadow duration-200 hover:shadow-md ${className}`}>
             <CardHeader className="pb-2">
                 <div className="flex items-center gap-3">
                     <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-secondary to-white border border-border flex items-center justify-center shadow-sm">

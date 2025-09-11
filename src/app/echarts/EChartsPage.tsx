@@ -623,8 +623,8 @@ const LineChartComponent = ({
       textStyle: { fontSize: 10 }
     },
     grid: {
-      left: '3%',
-      right: '4%',
+      left: '6%',
+      right: '0%',
       bottom: '4%',
       containLabel: true
     },

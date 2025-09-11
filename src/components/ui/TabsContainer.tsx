@@ -56,12 +56,12 @@ export const TabsContainer = ({ selectedTab, setSelectedTab }: TabsContainerProp
   ];
 
   return (
-    <div className="relative bg-white mx-4 my-6 rounded-2xl shadow-lg shadow-gray-100/50 border border-gray-100 overflow-hidden">
+    <div className="relative bg-white md:mx-4 my-3 md:my-6 rounded-2xl shadow-lg shadow-gray-100/50 border border-gray-100 overflow-hidden">
       {/* Background gradient decoration */}
       <div className="absolute inset-0 bg-gradient-to-r from-gray-50/50 via-white to-gray-50/50"></div>
 
-      <div className="relative px-6 py-4">
-        <div className="flex items-center justify-center space-x-2">
+      <div className="relative px-3 md:px-6 py-3 md:py-4">
+        <div className="grid grid-cols-2 md:flex items-center justify-center gap-2">
           {items.map((item, index) => {
             const Icon = item.icon;
             const isActive = item.id === selectedTab;
@@ -74,8 +74,8 @@ export const TabsContainer = ({ selectedTab, setSelectedTab }: TabsContainerProp
                   onMouseEnter={() => setHoveredTab(item.id)}
                   onMouseLeave={() => setHoveredTab(null)}
                   className={`
-                    relative flex items-center space-x-3 px-6 py-3 rounded-xl font-medium text-sm
-                    transition-all duration-500 ease-out transform
+                    relative flex items-center space-x-2 md:space-x-3 px-3 md:px-6 py-3 rounded-xl font-medium text-sm
+                    transition-all duration-500 ease-out transform w-full
                     ${isActive
                       ? `${item.activeBg} ${item.activeText} shadow-lg shadow-gray-200/50 scale-105 translate-y-0`
                       : `text-gray-600 ${item.hoverBg} hover:text-gray-800 hover:shadow-md hover:shadow-gray-100/50 hover:scale-102 hover:-translate-y-0.5`
@@ -123,7 +123,7 @@ export const TabsContainer = ({ selectedTab, setSelectedTab }: TabsContainerProp
                   <div className={`
                     absolute -bottom-4 left-1/2 transform -translate-x-1/2
                     w-12 h-1 rounded-full bg-gradient-to-r ${item.gradient}
-                    shadow-lg animate-pulse
+                    shadow-lg animate-pulse hidden md:block
                   `}></div>
                 )}
 

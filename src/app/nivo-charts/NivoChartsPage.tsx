@@ -822,7 +822,7 @@ export default function NivoChartsPage() {
                 data={barChartData}
                 keys={["Revenue", "Expenses"]}
                 indexBy={crossChartFilter ? "period" : "fiscalYear"}
-                margin={{ top: 70, right: 130, bottom: 80, left: 70 }}
+                margin={{ top: 70, right: 110, bottom: 80, left: 80 }}
                 padding={0.3}
                 groupMode="grouped"
                 colors={{ scheme: "paired" }}
@@ -855,7 +855,7 @@ export default function NivoChartsPage() {
                 }}
                 axisLeft={{
                   legend: "Amount",
-                  legendOffset: -55,
+                  legendOffset: -65,
                   legendPosition: "middle",
                   format: value => formatCurrency(value),
                 }}
