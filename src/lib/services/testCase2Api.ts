@@ -1,7 +1,7 @@
 import { ApiResponse } from "@/types/Schemas";
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
-export const testCase2ProductId = "financial_data_1M_product_v1";
+export const testCase2ProductId = "financia_data_1M_product_v1";
 // data_1m_product_v1
 
 interface ChartRequestBody {
@@ -95,8 +95,8 @@ interface TableApiResponse {
 export const testCase2Api = createApi({
   reducerPath: 'testCase2Api',
   baseQuery: fetchBaseQuery({
-    // baseUrl: 'http://localhost:8000/api/',
-    baseUrl: 'https://testcase2.mohammedsifankp.online/api/',
+    baseUrl: 'http://localhost:8000/api/',
+    // baseUrl: 'https://testcase2.mohammedsifankp.online/api/',
   }),
   endpoints: (builder) => ({
     // Chart Data Endpoints for Test Case 2
@@ -210,6 +210,39 @@ export const testCase2Api = createApi({
       }),
     }),
 
+    // Hierarchical Data for DataGrid
+    fetchTestCase2HierarchicalData: builder.query<any, {
+      productId?: string;
+      continent?: string;
+      country?: string;
+      state?: string;
+      column_filters?: Record<string, string>;
+      limit?: number;
+      offset?: number;
+    }>({
+      query: ({
+        productId = testCase2ProductId,
+        continent,
+        country,
+        state,
+        column_filters,
+        limit = 100,
+        offset = 0,
+      }) => {
+        const params = new URLSearchParams();
+        if (continent) params.set('continent', continent);
+        if (country) params.set('country', country);
+        if (state) params.set('state', state);
+        if (column_filters && Object.keys(column_filters).length > 0) {
+          params.set('column_filters', JSON.stringify(column_filters));
+        }
+        params.set('limit', limit.toString());
+        params.set('offset', offset.toString());
+        
+        return `dataset/tables/${productId}/hierarchical-data?${params.toString()}`;
+      },
+    }),
+
 
   }),
 });
@@ -226,6 +259,9 @@ export const {
   useFetchTestCase2AvailableYearsQuery,
 
   // Comparing
-  useFetchTestCase2ComparisonDataMutation
+  useFetchTestCase2ComparisonDataMutation,
+
+  // Hierarchical Data
+  useLazyFetchTestCase2HierarchicalDataQuery
 
 } = testCase2Api;

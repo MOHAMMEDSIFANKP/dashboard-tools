@@ -44,6 +44,9 @@ interface SearchParams {
   column_filters?: Record<string, string | number>;
   limit?: number;
   offset?: number;
+  continent?: string;
+  country?: string;
+  state?: string;
 }
 
 interface SearchDataResponse {
@@ -63,7 +66,7 @@ interface SearchDataResponse {
 export const api = createApi({
   reducerPath: 'api',
   baseQuery: fetchBaseQuery({
-    baseUrl: 'https://testcase.mohammedsifankp.online/api/',
+    baseUrl: 'https://testcase.mohammedifankp.online/api/',
     // baseUrl: 'http://localhost:8000/api/',
   }),
   endpoints: (builder) => ({
@@ -82,6 +85,41 @@ export const api = createApi({
         return `duckdb/tables/${tableName}/data?${params.toString()}`;
       },
     }),
+    fetchHierarchicalDataData: builder.query<SearchDataResponse, SearchParams>({
+      query: ({ 
+        tableName = databaseName, 
+        search, 
+        column_filters, 
+        continent, 
+        country, 
+        state,
+        limit = 100, 
+        offset = 0 
+      }) => {
+        const params = new URLSearchParams();
+    
+        // Add search parameter if provided
+        if (search) params.append('search', search);
+    
+        // Add column_filters if provided
+        if (column_filters && Object.keys(column_filters).length > 0) {
+          params.append('column_filters', JSON.stringify(column_filters));
+        }
+    
+        // Add continent and country filters if provided
+        if (continent) params.append('continent', continent);
+        if (country) params.append('country', country);
+        if (state) params.append('state', state);
+    
+        // Add pagination parameters (limit and offset)
+        params.append('limit', limit.toString());
+        params.append('offset', offset.toString());
+    
+        // Updated endpoint format
+        return `duckdb/tables/${tableName}/hierarchical-data?${params.toString()}`;
+      },
+    }),
+    
 
     fetchSearchInfo: builder.query<SearchInfoResponse, { tableName?: string }>({
       query: ({ tableName = databaseName }) => `duckdb/tables/${tableName}/search-info`,
@@ -198,6 +236,8 @@ export const api = createApi({
 export const {
   // Table queries
   useFetchSearchableDataQuery,
+  useFetchHierarchicalDataDataQuery,
+  useLazyFetchHierarchicalDataDataQuery,
   useLazyFetchSearchableDataQuery,
   useFetchSearchInfoQuery,
 
