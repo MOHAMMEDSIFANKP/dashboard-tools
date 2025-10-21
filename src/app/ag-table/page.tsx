@@ -37,6 +37,7 @@ function Page() {
       { testCase: "test-case-2", method: "GET", apiName: "/api/data-products/data-products/sample_100k_product_v1/records?limit=10&offset=0&exclude_null_revenue=false&include_enrichment=true&column_filters=%7B%22fiscal_year_number%22%3A%222022%22%7D", api: "https://testcase2.mohammedsifankp.online/api/data-products/data-products/sample_100k_product_v1/records?limit=10&offset=0&exclude_null_revenue=false&include_enrichment=true&column_filters=%7B%22fiscal_year_number%22%3A%222022%22%7D", description: "Fetch data by filter" },
     ],
     availableFeatures: [
+      { feature: "Drill Down", supported: true },
       { feature: "Filter", supported: true },
       { feature: "Sorting", supported: true },
       { feature: "Pagination", supported: true },
