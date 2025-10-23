@@ -1,7 +1,7 @@
 import { ApiResponse } from "@/types/Schemas";
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
-export const testCase2ProductId = "financia_data_1M_product_v1";
+export const testCase2ProductId = "financial_data_1M_product_v1";
 // data_1m_product_v1
 
 interface ChartRequestBody {
@@ -95,8 +95,8 @@ interface TableApiResponse {
 export const testCase2Api = createApi({
   reducerPath: 'testCase2Api',
   baseQuery: fetchBaseQuery({
-    baseUrl: 'http://localhost:8000/api/',
-    // baseUrl: 'https://testcase2.mohammedsifankp.online/api/',
+    // baseUrl: 'http://localhost:8000/api/',
+    baseUrl: 'https://testcase2.mohammedifankp.online/api/',
   }),
   endpoints: (builder) => ({
     // Chart Data Endpoints for Test Case 2
