@@ -137,9 +137,9 @@ export default function TanstackTable() {
       revenue: item.revenue || item.revenue_amount_usd,
       grossmargin: item.grossmargin || item.gross_margin_amount_usd,
       operatingexpenses: item.operatingexpenses || item.operating_expenses_amount_usd,
-      operatingprofit: item.operatingprofit || item.operating_profit,
-      earningsbeforetax: item.earningsbeforetax || item.earnings_before_tax,
-      nonrecurringresult: item.nonrecurringresult || item.non_recurring_result,
+      operatingprofit: item.operatingprofit || item.operating_profit_amount_usd,
+      earningsbeforetax: item.earningsbeforetax || item.earnings_before_tax_amount_usd,
+      nonrecurringresult: item.nonrecurringresult || item.non_recurring_result_amount_usd,
       otherincome: item.otherincome || null,
       financialresult: item.financialresult || null,
       // Test Case 2 specific fields

@@ -182,7 +182,7 @@ useEffect(() => {
             <span>{params.value}</span>
           </div>
         ),
-        onCellClicked: (params) => handleDrillDown('state', params.value)
+        // onCellClicked: (params) => handleDrillDown('state', params.value)
       };
     } else {
       dimensionColumn = {

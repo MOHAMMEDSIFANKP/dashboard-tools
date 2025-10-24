@@ -42,7 +42,7 @@ export default function FinancialDashboard() {
   const [availableYears, setAvailableYears] = useState<FilterOption[]>([])
   const [selectedYear, setSelectedYear] = useState<string>('2022');
   const [selectedMonth, setSelectedMonth] = useState<string>('01');
-  
+
   // Track if data has been fetched for current selection
   const [dataFetched, setDataFetched] = useState(false);
   const [lastFetchedYear, setLastFetchedYear] = useState<string>('');
@@ -91,6 +91,7 @@ export default function FinancialDashboard() {
       setError("Failed to load available years");
     }
   }, [yearsError]);
+
 
   // Check if current selection has changed from last fetch
   const hasSelectionChanged = () => {
@@ -199,6 +200,20 @@ export default function FinancialDashboard() {
   const handleSubmit = () => {
     fetchData();
   };
+  useEffect(() => {
+    if (selectedYear && selectedMonth && !dataFetched) {
+      fetchData();
+    }
+  }, [selectedYear, selectedMonth, dataFetched, fetchData]);
+
+  useEffect(() => {
+    setDataFetched(false);
+    setLastFetchedYear('');
+    setLastFetchedMonth('');
+    setMonthData([]);
+    setYearData([]);
+  }, [testCase]);
+
 
   // Handle year selection change
   const handleYearChange = (option: any) => {
@@ -249,7 +264,7 @@ export default function FinancialDashboard() {
                     isDisabled={yearsLoading || isLoading}
                   />
                 </div>
-                
+
                 <div className="flex flex-col gap-1">
                   <label className="text-sm font-medium text-gray-700">Month</label>
                   <CustomSelect
@@ -269,11 +284,10 @@ export default function FinancialDashboard() {
                 <button
                   onClick={handleSubmit}
                   disabled={!canSubmit}
-                  className={`px-6 py-2.5 rounded-lg font-medium transition-all duration-200 shadow-sm min-w-[120px] ${
-                    canSubmit
+                  className={`px-6 py-2.5 rounded-lg font-medium transition-all duration-200 shadow-sm min-w-[120px] ${canSubmit
                       ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg transform hover:-translate-y-0.5'
                       : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  }`}
+                    }`}
                 >
                   {isLoading ? (
                     <div className="flex items-center justify-center gap-2">
