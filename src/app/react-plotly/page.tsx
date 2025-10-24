@@ -8,6 +8,7 @@ import { useDispatch } from 'react-redux'
 import { setSelectedLibrary } from '@/store/slices/dashboardSlice'
 import { ChartLibrary } from '@/types/Schemas'
 import EnhancedDashboard from '../dashboard/draggble-dashboard/page'
+import { useSyncedTab } from '@/hooks/useSyncedTab'
 
 const dashboardInfoDatas = {
     apiEndpoints: [
@@ -41,7 +42,7 @@ const dashboardInfoDatas = {
 
 function Page() {
   const dispatch = useDispatch();
-  const [selectedTab, setSelectedTab] = React.useState<TabOption>('tool-test-info')
+  const [selectedTab, setSelectedTab] = useSyncedTab('tabs:plotly')
 
   const handleLibraryChange = (library: ChartLibrary) => {
     dispatch(setSelectedLibrary(library));

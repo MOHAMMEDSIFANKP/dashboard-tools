@@ -8,6 +8,7 @@ import EnhancedDashboard from '../dashboard/draggble-dashboard/page'
 import { ChartLibrary } from '@/types/Schemas'
 import { useDispatch } from 'react-redux'
 import { setSelectedLibrary } from '@/store/slices/dashboardSlice'
+import { useSyncedTab } from '@/hooks/useSyncedTab'
 
 const dashboardInfoDatas = {
   apiEndpoints: [
@@ -44,7 +45,7 @@ const dashboardInfoDatas = {
 
 function Page() {
   const dispatch = useDispatch();
-  const [selectedTab, setSelectedTab] = React.useState<TabOption>('tool-test-info')
+  const [selectedTab, setSelectedTab] = useSyncedTab('tabs:ag-charts')
 
   const handleLibraryChange = (library: ChartLibrary) => {
     dispatch(setSelectedLibrary(library));

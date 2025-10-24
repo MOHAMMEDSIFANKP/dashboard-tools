@@ -4,10 +4,11 @@ import FinancialDashboard from '../ag-charts/FinancialDashboard'
 import { TabOption, TabsContainer } from '@/components/ui/TabsContainer'
 import TanstackTable from './TanstackTable'
 import DashboardInfoCard from '@/components/DashboardInfoCard'
+import { useSyncedTab } from '@/hooks/useSyncedTab'
 
 import './tanstack.css'
 function Page() {
-    const [selectedTab, setSelectedTab] = React.useState<TabOption>('tool-test-info')
+    const [selectedTab, setSelectedTab] = useSyncedTab('tabs:tanstack')
 
   const dashboardInfoDatas = {
     apiEndpoints: [

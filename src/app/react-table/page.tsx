@@ -4,9 +4,10 @@ import FinancialDashboard from '../ag-charts/FinancialDashboard'
 import { TabOption, TabsContainer } from '@/components/ui/TabsContainer'
 import ReactTable from './ReactTable'
 import DashboardInfoCard from '@/components/DashboardInfoCard'
+import { useSyncedTab } from '@/hooks/useSyncedTab'
 
 function Page() {
-    const [selectedTab, setSelectedTab] = React.useState<TabOption>('tool-test-info')
+    const [selectedTab, setSelectedTab] = useSyncedTab('tabs:react-table')
 
   const dashboardInfoDatas = {
     apiEndpoints: [
