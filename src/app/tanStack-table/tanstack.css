@@ -1,19 +1,56 @@
+/* TanStack Table Custom Styles */
 .tanstack-table table {
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   width: 100%;
 }
 
-.tanstack-table th, td {
-  border: 1px solid #e2e8f0;
-  padding: 8px 12px;
-  text-align: left;
+/* Smooth scrollbar styling */
+.tanstack-table ::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
 }
 
-.tanstack-table th {
-  background-color: #f8fafc;
-  font-weight: 600;
+.tanstack-table ::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
 }
 
-.tanstack-table tr:nth-child(even) {
-  background-color: #f8fafc;
+.tanstack-table ::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.tanstack-table ::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Column reordering styles */
+.tanstack-table th[draggable="true"] {
+  position: relative;
+}
+
+.tanstack-table th[draggable="true"]:hover {
+  background: linear-gradient(to bottom, #f1f5f9, #e2e8f0);
+  cursor: grab;
+}
+
+.tanstack-table th[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+/* Loading animation */
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite linear;
+  background: linear-gradient(to right, #f8fafc 4%, #e2e8f0 25%, #f8fafc 36%);
+  background-size: 1000px 100%;
 }

@@ -9,6 +9,10 @@ import { databaseName, useLazyFetchHierarchicalDataDataQuery } from "@/lib/servi
 import { RootState } from '@/store/store';
 import { useSelector } from 'react-redux';
 
+import { useEmailShareDrawer } from "@/hooks/useEmailShareDrawer";
+import { EmailShareDrawer } from "@/components/drawer/EmailShareDrawer";
+import { AGGridCaptureScreenshot } from "@/utils/utils";
+
 ModuleRegistry.registerModules([AllCommunityModule]);
 
 // Types
@@ -28,8 +32,8 @@ interface SearchParams {
 const HierarchicalDataGrid = () => {
   const gridRef = useRef<AgGridReact>(null);
   const testCase = useSelector((state: RootState) => state.dashboard.selectedTestCase);
+  const { emailDrawer, handleOpenDrawer, handleCloseDrawer } = useEmailShareDrawer();
 
-  
   const [drillDownState, setDrillDownState] = useState<DrillDownState>({
     level: 'continent'
   });
@@ -50,32 +54,48 @@ const HierarchicalDataGrid = () => {
   const error = testCase === 'test-case-1' ? error1 : error2;
   const fetchData = testCase === 'test-case-1' ? fetchDataTestCase1 : fetchDataTestCase2;
 
-const data = queryResult?.data || [];
-const totalRecords = queryResult?.total_rows || 0;
+  const data = queryResult?.data || [];
+  const totalRecords = queryResult?.total_rows || 0;
 
-// Add useEffect to trigger the lazy query
-useEffect(() => {
-  if (testCase === 'test-case-1') {
-    fetchDataTestCase1({
-      tableName: databaseName,
-      continent: drillDownState.continent,
-      country: drillDownState.country,
-      state: drillDownState.state,
-      column_filters: searchParams.column_filters,
-      limit: searchParams.limit,
-      offset: searchParams.offset,
-    });
-  } else if (testCase === 'test-case-2') {
-    fetchDataTestCase2({
-      continent: drillDownState.continent,
-      country: drillDownState.country,
-      state: drillDownState.state,
-      column_filters: searchParams.column_filters,
-      limit: searchParams.limit,
-      offset: searchParams.offset,
-    });
-  }
-}, [drillDownState, searchParams, testCase, fetchDataTestCase1, fetchDataTestCase2]);
+  // Add useEffect to trigger the lazy query
+  useEffect(() => {
+    if (testCase === 'test-case-1') {
+      fetchDataTestCase1({
+        tableName: databaseName,
+        continent: drillDownState.continent,
+        country: drillDownState.country,
+        state: drillDownState.state,
+        column_filters: searchParams.column_filters,
+        limit: searchParams.limit,
+        offset: searchParams.offset,
+      });
+    } else if (testCase === 'test-case-2') {
+      fetchDataTestCase2({
+        continent: drillDownState.continent,
+        country: drillDownState.country,
+        state: drillDownState.state,
+        column_filters: searchParams.column_filters,
+        limit: searchParams.limit,
+        offset: searchParams.offset,
+      });
+    }
+  }, [drillDownState, searchParams, testCase, fetchDataTestCase1, fetchDataTestCase2]);
+
+  const handleShareGrid = async () => {
+    if (!gridRef.current) {
+      console.error('Grid reference not available');
+      return;
+    }
+
+    try {
+      const imageData = await AGGridCaptureScreenshot(gridRef as React.RefObject<any>);
+      handleOpenDrawer("Financial Data - AG Grid", imageData);
+    } catch (error) {
+      console.error('Failed to capture grid:', error);
+      // Add user-friendly error handling
+      alert('Failed to capture grid screenshot. Please try again.');
+    }
+  };
 
   // Pagination calculations
   const currentPage = Math.floor(searchParams.offset / searchParams.limit) + 1;
@@ -103,7 +123,7 @@ useEffect(() => {
         state: value
       });
     }
-    
+
     // Reset pagination
     setSearchParams(prev => ({ ...prev, offset: 0 }));
   };
@@ -197,7 +217,7 @@ useEffect(() => {
       {
         field: `${testCase === 'test-case-1' ? 'revenue' : 'revenue_amount_usd'}`,
         headerName: 'Revenue',
-        filter:false,
+        filter: false,
         width: 150,
         valueFormatter: (params) => formatCurrency(params.value),
         cellClass: 'font-semibold'
@@ -205,28 +225,28 @@ useEffect(() => {
       {
         field: `${testCase === 'test-case-1' ? 'otherincome' : 'other_income_amount_usd'}`,
         headerName: 'Other Income',
-        filter:false,
+        filter: false,
         width: 150,
         valueFormatter: (params) => formatCurrency(params.value)
       },
       {
         field: `${testCase === 'test-case-1' ? 'grossmargin' : 'gross_margin_amount_usd'}`,
         headerName: 'Gross Margin',
-        filter:false,
+        filter: false,
         width: 150,
         valueFormatter: (params) => formatCurrency(params.value)
       },
       {
         field: `${testCase === 'test-case-1' ? 'operatingexpenses' : 'operating_expense_amount_usd'}`,
         headerName: 'Operating Expenses',
-        filter:false,
+        filter: false,
         width: 180,
         valueFormatter: (params) => formatCurrency(params.value)
       },
       {
         field: `${testCase === 'test-case-1' ? 'operatingprofit' : 'operating_profit_amount_usd'}`,
         headerName: 'Operating Profit',
-        filter:false,
+        filter: false,
         width: 160,
         valueFormatter: (params) => formatCurrency(params.value),
         cellClass: 'font-semibold'
@@ -234,28 +254,28 @@ useEffect(() => {
       {
         field: `${testCase === 'test-case-1' ? 'financialresult' : 'financial_result_amount_usd'}`,
         headerName: 'Financial Result',
-        filter:false,
+        filter: false,
         width: 160,
         valueFormatter: (params) => formatCurrency(params.value)
       },
       {
         field: `${testCase === 'test-case-1' ? 'earningsbeforetax' : 'earnings_before_tax_amount_usd'}`,
         headerName: 'Earnings Before Tax',
-        filter:false,
+        filter: false,
         width: 180,
         valueFormatter: (params) => formatCurrency(params.value)
       },
       {
         field: `${testCase === 'test-case-1' ? 'nonrecurringresult' : 'non_recurring_result_amount_usd'}`,
         headerName: 'Non-Recurring',
-        filter:false,
+        filter: false,
         width: 150,
         valueFormatter: (params) => formatCurrency(params.value)
       },
       {
         field: `${testCase === 'test-case-1' ? 'netprofit' : 'net_profit_amount_usd'}`,
         headerName: 'Net Profit',
-        filter:false,
+        filter: false,
         width: 150,
         valueFormatter: (params) => formatCurrency(params.value),
         cellClass: 'font-bold text-green-600'
@@ -303,13 +323,13 @@ useEffect(() => {
   };
 
   return (
-    <div className="w-full h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-6">
+    <div className="w-full bg-gradient-to-br from-slate-50 to-blue-50 p-6">
       <div className="max-w-[1600px] mx-auto bg-white rounded-2xl shadow-xl overflow-hidden">
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-600 to-indigo-700 px-6 py-4">
           <div className="flex justify-between items-center">
             <h1 className="text-2xl font-bold text-white">Financial Analytics Dashboard</h1>
-            <button className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg transition-all">
+            <button onClick={handleShareGrid} className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg transition-all">
               <Share className="w-4 h-4" />
               Share
             </button>
@@ -419,7 +439,7 @@ useEffect(() => {
               </button>
             </div>
           ) : (
-            <div className="ag-theme-alpine rounded-lg overflow-hidden border border-gray-200" style={{ height: 600 }}>
+            <div className="ag-theme-alpine rounded-lg overflow-hidden border border-gray-200" >
               <AgGridReact
                 ref={gridRef}
                 rowData={data}
@@ -429,6 +449,7 @@ useEffect(() => {
                 rowSelection="multiple"
                 pagination={false}
                 onFilterChanged={onFilterChanged}
+                domLayout="autoHeight"
               />
             </div>
           )}
@@ -455,7 +476,7 @@ useEffect(() => {
               >
                 Previous
               </button>
-              
+
               {/* Page Numbers */}
               <div className="flex gap-1">
                 {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
@@ -474,11 +495,10 @@ useEffect(() => {
                     <button
                       key={pageNum}
                       onClick={() => handlePageChange(pageNum)}
-                      className={`px-4 py-2 rounded-lg text-sm transition-all ${
-                        pageNum === currentPage
+                      className={`px-4 py-2 rounded-lg text-sm transition-all ${pageNum === currentPage
                           ? 'bg-blue-600 text-white font-semibold'
                           : 'border border-gray-300 hover:bg-gray-100'
-                      }`}
+                        }`}
                     >
                       {pageNum}
                     </button>
@@ -504,6 +524,12 @@ useEffect(() => {
           </div>
         </div>
       </div>
+      <EmailShareDrawer
+        isOpen={emailDrawer.isOpen}
+        onClose={handleCloseDrawer}
+        chartTitle={emailDrawer.chartTitle}
+        chartImage={emailDrawer.chartImage}
+      />
     </div>
   );
 };

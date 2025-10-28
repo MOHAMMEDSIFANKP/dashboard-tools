@@ -279,7 +279,7 @@ const SideBarLayout: React.FC<SideBarLayoutProps> = ({ children }) => {
 
                 {/* Desktop Main Content */}
                 <main className={`flex-1 ${isExpanded ? 'ml-64' : 'ml-20'
-                    } transition-all duration-300 ease-in-out`}>
+                    } transition-all duration-300 ease-in-out max-w-[100%] overflow-y-auto`}>
                     {children}
                 </main>
             </div>
