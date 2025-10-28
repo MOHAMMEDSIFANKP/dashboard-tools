@@ -222,22 +222,22 @@ const AgChartsPage: React.FC = () => {
         ],
         listeners: {
           // @ts-ignore
-          seriesNodeClick: (event) => {
-            const { datum, yKey } = event;
+          // seriesNodeClick: (event) => {
+          //   const { datum, yKey } = event;
 
-            if (datum && datum.fiscalYear) {
-              const nativeEvent = event.event;
+          //   if (datum && datum.fiscalYear) {
+          //     const nativeEvent = event.event;
 
-              setContextMenu({
-                isOpen: true,
-                position: { x: nativeEvent.clientX, y: nativeEvent.clientY },
-                category: datum.fiscalYear,
-                value: datum[yKey],
-                chartType: 'line',
-                dataType: yKey
-              });
-            }
-          },
+          //     setContextMenu({
+          //       isOpen: true,
+          //       position: { x: nativeEvent.clientX, y: nativeEvent.clientY },
+          //       category: datum.fiscalYear,
+          //       value: datum[yKey],
+          //       chartType: 'line',
+          //       dataType: yKey
+          //     });
+          //   }
+          // },
 
         }
       } : null;

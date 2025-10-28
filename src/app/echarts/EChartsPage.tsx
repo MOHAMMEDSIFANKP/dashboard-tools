@@ -686,17 +686,17 @@ const LineChartComponent = ({
     let dataType = 'revenue';
     if (seriesName === 'Gross Margin') dataType = 'grossMargin';
     if (seriesName === 'Net Profit') dataType = 'netProfit';
-    if (crossChartFilter) {
-      name = name.slice(0, 4)
-    }
-    setContextMenu({
-      isOpen: true,
-      position: { x: event?.event?.clientX, y: event?.event?.clientY },
-      category: name,
-      value: value,
-      chartType: 'line',
-      dataType: dataType
-    });
+    // if (crossChartFilter) {
+    //   name = name.slice(0, 4)
+    // }
+    // setContextMenu({
+    //   isOpen: true,
+    //   position: { x: event?.event?.clientX, y: event?.event?.clientY },
+    //   category: name,
+    //   value: value,
+    //   chartType: 'line',
+    //   dataType: dataType
+    // });
   };
 
   const onEvents = {

@@ -474,14 +474,14 @@ export default function ReactPlotlyPage() {
         clickedValue.slice(0, 4) :
         clickedValue;
 
-      setContextMenu({
-        isOpen: true,
-        position: { x: nativeEvent.clientX, y: nativeEvent.clientY },
-        category: category,
-        value: Number(data.points[0].value || data.points[0].y),
-        chartType: 'line',
-        dataType: data.points[0].data?.name?.toLowerCase() || 'revenue'
-      });
+      // setContextMenu({
+      //   isOpen: true,
+      //   position: { x: nativeEvent.clientX, y: nativeEvent.clientY },
+      //   category: category,
+      //   value: Number(data.points[0].value || data.points[0].y),
+      //   chartType: 'line',
+      //   dataType: data.points[0].data?.name?.toLowerCase() || 'revenue'
+      // });
       // // @ts-ignore   
       // if (data.event?.ctrlKey || data.event?.metaKey) {
       //   handleChartClick('line', data.points[0]);

@@ -757,14 +757,14 @@ export default function NivoChartsPage() {
                       typeof point.data.x === 'string' && point.data.x.length > 4
                         ? point.data.x.slice(0, 4)
                         : point.data.x.toString();
-                    setContextMenu({
-                      isOpen: true,
-                      position: { x: event.clientX, y: event.clientY },
-                      category: category,
-                      value: point.data.y,
-                      chartType: 'line',
-                      dataType: point.serieId as string
-                    });
+                    // setContextMenu({
+                    //   isOpen: true,
+                    //   position: { x: event.clientX, y: event.clientY },
+                    //   category: category,
+                    //   value: point.data.y,
+                    //   chartType: 'line',
+                    //   dataType: point.serieId as string
+                    // });
                   }
                 }}
                 tooltip={({ point }) => (

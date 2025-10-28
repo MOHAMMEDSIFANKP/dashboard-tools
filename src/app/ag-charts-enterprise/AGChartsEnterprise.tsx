@@ -9,16 +9,16 @@ import { AgChartOptions } from 'ag-charts-enterprise';
 import { BarChartData, Dimensions, DonutChartData, LineChartData, PieChartData } from '@/types/Schemas';
 import { GroupModal } from '@/components/GroupManagement';
 import {
-    useFetchChartDataMutation,
     useFetchDrillDownDataMutation,
-    databaseName
+    databaseName,
+    useFetchChartDataWithCrossChartFilterMutation
 } from '@/lib/services/usersApi';
 import { DashboardActionButtonComponent } from '@/components/ui/action-button';
 import { ErrorAlert, LoadingAlert } from '@/components/ui/status-alerts';
 import { buildRequestBody } from '@/lib/services/buildWhereClause';
 import { ChartContextMenu } from '@/components/charts/ChartContextMenu';
 import { ChartContainerView } from '@/components/charts/ChartContainerView';
-import { testCase2ProductId, useFetchTestCase2ChartDataMutation, useFetchTestCase2DrillDownDataMutation } from '@/lib/services/testCase2Api';
+import { testCase2ProductId, useFetchTestCase2ChartDataWithCrossChartFilterMutation, useFetchTestCase2DrillDownDataMutation } from '@/lib/services/testCase2Api';
 import { RootState } from '@/store/store';
 import { useSelector } from 'react-redux';
 import { transformTestCase2DrillDownData, transformTestCase2ToCommonFormat } from '@/lib/testCase2Transformer';
@@ -40,7 +40,7 @@ interface ChartContainerProps {
     isLoading?: boolean;
     isDrilled?: boolean;
     resetDrillDown?: () => void;
-    isCrossChartFiltered?: string;
+    isCrossChartFiltered?: { Year?: string; selected_region?: string; selected_country?: string };
     resetCrossChartFilter?: () => void;
     handleShareChart: (title: string, containerRef: React.RefObject<HTMLDivElement>) => void;
     onComparisonOpen: (chartType: string) => void;
@@ -198,7 +198,7 @@ const AGChartsEnterprise: React.FC = () => {
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [isGroupModalOpen, setIsGroupModalOpen] = useState<boolean>(false);
     const [dimensions, setDimensions] = useState<Dimensions | null>(null);
-    const [crossChartFilter, setCrossChartFilter] = useState<string>('');
+    const [crossChartFilter, setCrossChartFilter] = useState<{ Year?: string; selected_region?: string; selected_country?: string }>({});
     const [drillDownState, setDrillDownState] = useState<{
         type: ChartType | null;
         data: any[];
@@ -227,21 +227,13 @@ const AGChartsEnterprise: React.FC = () => {
     const testCase = useSelector((state: RootState) => state.dashboard.selectedTestCase);
 
     // Test Case 1 API Mutations
-    const [fetchAllChartData] = useFetchChartDataMutation();
+    const [fetchChartDataWithCrossChartFilter] = useFetchChartDataWithCrossChartFilterMutation();
     const [fetchDrillDownData] = useFetchDrillDownDataMutation();
 
     // Test Case 2 API Mutations
-    const [FetchTestCase2AllChartData] = useFetchTestCase2ChartDataMutation();
+    const [fetchTestCase2ChartDataWithCrossChartFilter] = useFetchTestCase2ChartDataWithCrossChartFilterMutation();
     const [fetchTestCase2DrillDownData] = useFetchTestCase2DrillDownDataMutation();
 
-    const [contextMenu, setContextMenu] = useState<{
-        isOpen: boolean;
-        position: { x: number; y: number };
-        category: string;
-        value: any;
-        chartType: string;
-        dataType: string;
-    } | null>(null);
 
     // Chart refs for AG Charts
     const lineChartRef = useRef<HTMLDivElement>(null);
@@ -420,194 +412,318 @@ const AGChartsEnterprise: React.FC = () => {
             options[drillDownState.type] = drillDownOption;
         }
 
-        // Determine x-axis key based on cross-chart filter
-        const xKey = crossChartFilter ? 'period' : 'fiscalYear';
+        // Determine x-axis key based on year filter in crossChartFilter
+        const xKey = crossChartFilter?.Year ? 'period' : 'fiscalYear';
 
         // Line Chart
         if (chartData.line.length > 0 && drillDownState.type !== 'line') {
+            // Separate highlighted and non-highlighted data
+            const regularData = chartData.line.filter(d => !d.ishighlighted);
+            const highlightedData = chartData.line.filter(d => d.ishighlighted);
+            const hasHighlighted = highlightedData.length > 0;
+
+            const baseSeries = [
+                {
+                    // @ts-ignore
+                    type: 'line',
+                    xKey: xKey,
+                    yKey: 'revenue',
+                    yName: 'Revenue',
+                    stroke: hasHighlighted ? 'rgba(5, 141, 199, 0.3)' : '#058DC7',
+                    strokeWidth: 3,
+                    marker: {
+                        enabled: true,
+                        fill: hasHighlighted ? 'rgba(5, 141, 199, 0.3)' : '#058DC7',
+                        stroke: hasHighlighted ? 'rgba(5, 141, 199, 0.3)' : '#058DC7',
+                        strokeWidth: 2,
+                        size: 6,
+                    },
+                    data: regularData,
+                    listeners: {
+                        seriesNodeClick: (event: any) => {
+                            const { datum } = event;
+                            if (xKey === 'fiscalYear' && datum?.fiscalYear) {
+                                setCrossChartFilter(prev => ({ ...prev, Year: String(datum.fiscalYear) }));
+                            }
+                        }
+                    }
+                },
+                {
+                    // @ts-ignore
+                    type: 'line',
+                    xKey: xKey,
+                    yKey: 'grossMargin',
+                    yName: 'Gross Margin',
+                    stroke: hasHighlighted ? 'rgba(80, 180, 50, 0.3)' : '#50B432',
+                    strokeWidth: 3,
+                    marker: {
+                        enabled: true,
+                        fill: hasHighlighted ? 'rgba(80, 180, 50, 0.3)' : '#50B432',
+                        stroke: hasHighlighted ? 'rgba(80, 180, 50, 0.3)' : '#50B432',
+                        strokeWidth: 2,
+                        size: 6,
+                    },
+                    data: regularData,
+                    listeners: {
+                        seriesNodeClick: (event: any) => {
+                            const { datum } = event;
+                            if (xKey === 'fiscalYear' && datum?.fiscalYear) {
+                                setCrossChartFilter(prev => ({ ...prev, Year: String(datum.fiscalYear) }));
+                            }
+                        }
+                    }
+                },
+                {
+                    // @ts-ignore
+                    type: 'line',
+                    xKey: xKey,
+                    yKey: 'netProfit',
+                    yName: 'Net Profit',
+                    stroke: hasHighlighted ? 'rgba(237, 86, 27, 0.3)' : '#ED561B',
+                    strokeWidth: 3,
+                    marker: {
+                        enabled: true,
+                        fill: hasHighlighted ? 'rgba(237, 86, 27, 0.3)' : '#ED561B',
+                        stroke: hasHighlighted ? 'rgba(237, 86, 27, 0.3)' : '#ED561B',
+                        strokeWidth: 2,
+                        size: 6,
+                    },
+                    data: regularData,
+                    listeners: {
+                        seriesNodeClick: (event: any) => {
+                            const { datum } = event;
+                            if (xKey === 'fiscalYear' && datum?.fiscalYear) {
+                                setCrossChartFilter(prev => ({ ...prev, Year: String(datum.fiscalYear) }));
+                            }
+                        }
+                    }
+                },
+            ];
+
+            // Add highlighted series if they exist
+            const highlightedSeries = hasHighlighted ? [
+                {
+                    // @ts-ignore
+                    type: 'line',
+                    xKey: xKey,
+                    yKey: 'revenue',
+                    yName: highlightedData[0]?.filterLabel ? `Revenue (${highlightedData[0].filterLabel})` : 'Revenue (Filtered)',
+                    stroke: '#058DC7',
+                    strokeWidth: 4,
+                    strokeOpacity: 1,
+                    marker: {
+                        enabled: true,
+                        fill: '#058DC7',
+                        stroke: '#058DC7',
+                        strokeWidth: 2,
+                        size: 8,
+                    },
+                    data: highlightedData,
+                    listeners: {
+                        seriesNodeClick: (event: any) => {
+                            const { datum } = event;
+                            if (xKey === 'fiscalYear' && datum?.fiscalYear) {
+                                setCrossChartFilter(prev => ({ ...prev, Year: String(datum.fiscalYear) }));
+                            }
+                        }
+                    }
+                },
+                {
+                    // @ts-ignore
+                    type: 'line',
+                    xKey: xKey,
+                    yKey: 'grossMargin',
+                    yName: highlightedData[0]?.filterLabel ? `Gross Margin (${highlightedData[0].filterLabel})` : 'Gross Margin (Filtered)',
+                    stroke: '#50B432',
+                    strokeWidth: 4,
+                    strokeOpacity: 1,
+                    marker: {
+                        enabled: true,
+                        fill: '#50B432',
+                        stroke: '#50B432',
+                        strokeWidth: 2,
+                        size: 8,
+                    },
+                    data: highlightedData,
+                    listeners: {
+                        seriesNodeClick: (event: any) => {
+                            const { datum } = event;
+                            if (xKey === 'fiscalYear' && datum?.fiscalYear) {
+                                setCrossChartFilter(prev => ({ ...prev, Year: String(datum.fiscalYear) }));
+                            }
+                        }
+                    }
+                },
+                {
+                    // @ts-ignore
+                    type: 'line',
+                    xKey: xKey,
+                    yKey: 'netProfit',
+                    yName: highlightedData[0]?.filterLabel ? `Net Profit (${highlightedData[0].filterLabel})` : 'Net Profit (Filtered)',
+                    stroke: '#ED561B',
+                    strokeWidth: 4,
+                    strokeOpacity: 1,
+                    marker: {
+                        enabled: true,
+                        fill: '#ED561B',
+                        stroke: '#ED561B',
+                        strokeWidth: 2,
+                        size: 8,
+                    },
+                    data: highlightedData,
+                    listeners: {
+                        seriesNodeClick: (event: any) => {
+                            const { datum } = event;
+                            if (xKey === 'fiscalYear' && datum?.fiscalYear) {
+                                setCrossChartFilter(prev => ({ ...prev, Year: String(datum.fiscalYear) }));
+                            }
+                        }
+                    }
+                },
+            ] : [];
+
             options.line = {
                 ...CHART_CONFIG.COMMON,
                 ...CHART_CONFIG.LINE,
                 data: chartData.line,
                 tooltip: { mode: 'single' },
-                series: [
-                    {
-                        // @ts-ignore
-                        type: 'line',
-                        xKey: xKey,
-                        yKey: 'revenue',
-                        yName: 'Revenue',
-                        stroke: '#058DC7',
-                        strokeWidth: 3,
-                        marker: {
-                            enabled: true,
-                            fill: '#058DC7',
-                            stroke: '#058DC7',
-                            strokeWidth: 2,
-                            size: 6,
-                        },
-                        // tooltip: {
-                        //     renderer: ({ datum, yKey }: any) => ({
-                        //         content: `Revenue: ${formatCurrency(datum[yKey])}<br/>Period: ${datum[xKey]}`
-                        //     }),
-                        // },
-                        listeners: {
-                            seriesNodeClick: (event: any) => {
-                                const { datum } = event;
-                                const category = crossChartFilter ? datum[xKey]?.slice(0, 4) : datum[xKey];
-                                setContextMenu({
-                                    isOpen: true,
-                                    position: { x: event.event.clientX, y: event.event.clientY },
-                                    category: category,
-                                    value: datum.revenue,
-                                    chartType: 'line',
-                                    dataType: 'revenue'
-                                });
-                            }
-                        }
-                    },
-                    {
-                        // @ts-ignore
-                        type: 'line',
-                        xKey: xKey,
-                        yKey: 'grossMargin',
-                        yName: 'Gross Margin',
-                        stroke: '#50B432',
-                        strokeWidth: 3,
-                        marker: {
-                            enabled: true,
-                            fill: '#50B432',
-                            stroke: '#50B432',
-                            strokeWidth: 2,
-                            size: 6,
-                        },
-                        // tooltip: {
-                        //     renderer: ({ datum, yKey }: any) => ({
-                        //         content: `Gross Margin: ${formatCurrency(datum[yKey])}<br/>Period: ${datum[xKey]}`
-                        //     }),
-                        // },
-                        listeners: {
-                            seriesNodeClick: (event: any) => {
-                                const { datum } = event;
-                                const category = crossChartFilter ? datum[xKey]?.slice(0, 4) : datum[xKey];
-                                setContextMenu({
-                                    isOpen: true,
-                                    position: { x: event.event.clientX, y: event.event.clientY },
-                                    category: category,
-                                    value: datum.grossMargin,
-                                    chartType: 'line',
-                                    dataType: 'grossMargin'
-                                });
-                            }
-                        }
-                    },
-                    {
-                        // @ts-ignore
-                        type: 'line',
-                        xKey: xKey,
-                        yKey: 'netProfit',
-                        yName: 'Net Profit',
-                        stroke: '#ED561B',
-                        strokeWidth: 3,
-                        marker: {
-                            enabled: true,
-                            fill: '#ED561B',
-                            stroke: '#ED561B',
-                            strokeWidth: 2,
-                            size: 6,
-                        },
-                        // tooltip: {
-                        //     renderer: ({ datum, yKey }: any) => ({
-                        //         content: `Net Profit: ${formatCurrency(datum[yKey])}<br/>Period: ${datum[xKey]}`
-                        //     }),
-                        // },
-                        listeners: {
-                            seriesNodeClick: (event: any) => {
-                                const { datum } = event;
-                                const category = crossChartFilter ? datum[xKey]?.slice(0, 4) : datum[xKey];
-                                setContextMenu({
-                                    isOpen: true,
-                                    position: { x: event.event.clientX, y: event.event.clientY },
-                                    category: category,
-                                    value: datum.netProfit,
-                                    chartType: 'line',
-                                    dataType: 'netProfit'
-                                });
-                            }
-                        }
-                    },
-                ],
+                // @ts-ignore
+                series: [...baseSeries, ...highlightedSeries],
             };
         }
 
         // Bar Chart
         if (chartData.bar.length > 0 && drillDownState.type !== 'bar') {
+            // Separate highlighted and non-highlighted data
+            const regularBarData = chartData.bar.filter(d => !d.ishighlighted);
+            const highlightedBarData = chartData.bar.filter(d => d.ishighlighted);
+            const hasHighlightedBar = highlightedBarData.length > 0;
+
+            const baseBarSeries = [
+                {
+                    // @ts-ignore
+                    type: 'bar',
+                    direction: 'vertical',
+                    xKey: xKey,
+                    yKey: 'revenue',
+                    yName: 'Revenue',
+                    fill: hasHighlightedBar ? 'rgba(5, 141, 199, 0.3)' : '#058DC7',
+                    stroke: hasHighlightedBar ? 'rgba(5, 141, 199, 0.3)' : '#058DC7',
+                    strokeWidth: 1,
+                    fillOpacity: hasHighlightedBar ? 0.3 : 1,
+                    data: regularBarData,
+                    label: {
+                        enabled: false,
+                        formatter: ({ value }: any) => formatCurrency(value),
+                    },
+                    listeners: {
+                        seriesNodeClick: (event: any) => {
+                            const { datum } = event;
+                            if (xKey === 'fiscalYear' && datum?.fiscalYear) {
+                                setCrossChartFilter(prev => ({ ...prev, Year: String(datum.fiscalYear) }));
+                            }
+                        }
+                    }
+                },
+                {
+                    // @ts-ignore
+                    type: 'bar',
+                    direction: 'vertical',
+                    xKey: xKey,
+                    yKey: 'expenses',
+                    yName: 'Expenses',
+                    fill: hasHighlightedBar ? 'rgba(237, 86, 27, 0.3)' : '#ED561B',
+                    stroke: hasHighlightedBar ? 'rgba(237, 86, 27, 0.3)' : '#ED561B',
+                    strokeWidth: 1,
+                    fillOpacity: hasHighlightedBar ? 0.3 : 1,
+                    data: regularBarData,
+                    label: {
+                        enabled: false,
+                        formatter: ({ value }: any) => formatCurrency(value),
+                    },
+                    listeners: {
+                        seriesNodeClick: (event: any) => {
+                            const { datum } = event;
+                            if (xKey === 'fiscalYear' && datum?.fiscalYear) {
+                                setCrossChartFilter(prev => ({ ...prev, Year: String(datum.fiscalYear) }));
+                            }
+                        }
+                    }
+                },
+            ];
+
+            // Add highlighted series if they exist
+            const highlightedBarSeries = hasHighlightedBar ? [
+                {
+                    // @ts-ignore
+                    type: 'bar',
+                    direction: 'vertical',
+                    xKey: xKey,
+                    yKey: 'revenue',
+                    yName: highlightedBarData[0]?.filterLabel ? `Revenue (${highlightedBarData[0].filterLabel})` : 'Revenue (Filtered)',
+                    fill: '#058DC7',
+                    stroke: '#058DC7',
+                    strokeWidth: 1,
+                    fillOpacity: 1,
+                    data: highlightedBarData,
+                    label: {
+                        enabled: false,
+                        formatter: ({ value }: any) => formatCurrency(value),
+                    },
+                },
+                {
+                    // @ts-ignore
+                    type: 'bar',
+                    direction: 'vertical',
+                    xKey: xKey,
+                    yKey: 'expenses',
+                    yName: highlightedBarData[0]?.filterLabel ? `Expenses (${highlightedBarData[0].filterLabel})` : 'Expenses (Filtered)',
+                    fill: '#ED561B',
+                    stroke: '#ED561B',
+                    strokeWidth: 1,
+                    fillOpacity: 1,
+                    data: highlightedBarData,
+                    label: {
+                        enabled: false,
+                        formatter: ({ value }: any) => formatCurrency(value),
+                    },
+                },
+            ] : [];
+
             options.bar = {
                 ...CHART_CONFIG.COMMON,
                 ...CHART_CONFIG.BAR,
                 data: chartData.bar,
                 tooltip: { mode: 'single' },
-                series: [
-                    {
-                        // @ts-ignore
-                        type: 'bar',
-                        direction: 'vertical',
-                        xKey: xKey,
-                        yKey: 'revenue',
-                        yName: 'Revenue',
-                        fill: '#058DC7',
-                        stroke: '#058DC7',
-                        strokeWidth: 1,
-                        // tooltip: {
-                        //     renderer: ({ datum, yKey }: any) => ({
-                        //         content: `Revenue: ${formatCurrency(datum[yKey])}<br/>Period: ${datum[xKey]}`
-                        //     }),
-                        // },
-                        label: {
-                            enabled: false,
-                            formatter: ({ value }: any) => formatCurrency(value),
-                        },
-                        // listeners: {
-                        //     seriesNodeClick: (event: any) => {
-                        //         const { datum } = event;
-                        //         const category = crossChartFilter ? datum[xKey]?.slice(0, 4) : datum[xKey];
-                        //         handleDrillDown('bar', category, datum.revenue, 'revenue');
-                        //     }
-                        // }
-                    },
-                    {
-                        // @ts-ignore
-                        type: 'bar',
-                        direction: 'vertical',
-                        xKey: xKey,
-                        yKey: 'expenses',
-                        yName: 'Expenses',
-                        fill: '#ED561B',
-                        stroke: '#ED561B',
-                        strokeWidth: 1,
-                        // tooltip: {
-                        //     renderer: ({ datum, yKey }: any) => ({
-                        //         content: `Expenses: ${formatCurrency(datum[yKey])}<br/>Period: ${datum[xKey]}`
-                        //     }),
-                        // },
-                        label: {
-                            enabled: false,
-                            formatter: ({ value }: any) => formatCurrency(value),
-                        },
-                        // listeners: {
-                        //     seriesNodeClick: (event: any) => {
-                        //         const { datum } = event;
-                        //         const category = crossChartFilter ? datum[xKey]?.slice(0, 4) : datum[xKey];
-                        //         handleDrillDown('bar', category, datum.expenses, 'expenses');
-                        //     }
-                        // }
-                    },
-                ],
+                // @ts-ignore
+                series: [...baseBarSeries, ...highlightedBarSeries],
             };
         }
 
         // Pie Chart
         if (chartData.pie.length > 0 && drillDownState.type !== 'pie') {
+            const firstPie = chartData.pie[0] as any;
+            const pieCategoryKey = firstPie?.continent ? 'continent' : 'catfinancialview';
+            
+            // Check if any item is highlighted
+            const hasHighlightedPie = chartData.pie.some(d => d.ishighlighted);
+            
+            // Diverse color palette for pie chart - distinct colors to avoid confusion
+            const pieColors = [
+                '#1E88E5', // Blue
+                '#43A047', // Green
+                '#E53935', // Red
+                '#FDD835', // Yellow
+                '#8E24AA', // Purple
+                '#FB8C00', // Orange
+                '#00ACC1', // Cyan
+                '#C0CA33', // Lime
+                '#F06292', // Pink
+                '#5E35B1', // Deep Purple
+                '#FF6F00', // Dark Orange
+                '#00897B', // Teal
+            ];
+            
             options.pie = {
                 ...CHART_CONFIG.COMMON,
                 ...CHART_CONFIG.PIE,
@@ -616,45 +732,94 @@ const AGChartsEnterprise: React.FC = () => {
                     // @ts-ignore
                     type: 'pie',
                     angleKey: 'revenue',
-                    categoryKey: 'catfinancialview',
-                    fills: ['#058DC7', '#50B432', '#ED561B', '#DDDF00', '#24CBE5', '#64E572'],
-                    strokes: ['#058DC7', '#50B432', '#ED561B', '#DDDF00', '#24CBE5', '#64E572'],
+                    categoryKey: pieCategoryKey,
+                    fills: pieColors,
+                    strokes: pieColors,
                     strokeWidth: 2,
-                    // tooltip: { enabled: true },
-                    sectorLabelKey: 'catfinancialview',
-                    legendItemKey: 'catfinancialview',
-                    // disable inside labels
+                    sectorLabelKey: pieCategoryKey,
+                    legendItemKey: pieCategoryKey,
                     sectorLabel: { enabled: false },
-                    calloutLabelKey: "catfinancialview",
+                    calloutLabelKey: pieCategoryKey,
+                    calloutLabel: {
+                        enabled: true,
+                        fontSize: ({ datum }: any) => datum?.ishighlighted && hasHighlightedPie ? 14 : 12,
+                        fontWeight: ({ datum }: any) => datum?.ishighlighted && hasHighlightedPie ? 'bold' : 'normal',
+                        color: ({ datum }: any) => datum?.ishighlighted && hasHighlightedPie ? '#000000' : '#666666',
+                    },
+                    // Apply dimming effect using item style based on data
+                    itemStyler: ({ datum }: any) => {
+                        if (hasHighlightedPie && !datum?.ishighlighted) {
+                            return {
+                                fillOpacity: 0.25,
+                                strokeOpacity: 0.25,
+                                strokeWidth: 1,
+                            };
+                        }
+                        return {
+                            fillOpacity: 1,
+                            strokeOpacity: 1,
+                            strokeWidth: datum?.ishighlighted ? 4 : 2,
+                        };
+                    },
                     tooltip: {
                         renderer: (params: any) => {
+                            const isHighlighted = params.datum?.ishighlighted ? ' ⭐' : '';
+                            const fontWeight = params.datum?.ishighlighted ? 'font-bold text-lg' : 'font-semibold';
                             return `
-                                  <div class="p-2 bg-white border border-gray-200 rounded shadow">
-                                    <div class="flex items-center gap-1">
-                                      <div class="w-3 h-3" style="background-color:${params.fill}"></div>
-                                      <div class="font-semibold">${params.datum['catfinancialview']}</div>
+                                  <div class="p-3 bg-white border-2 ${params.datum?.ishighlighted ? 'border-yellow-400' : 'border-gray-200'} rounded shadow-lg">
+                                    <div class="flex items-center gap-2">
+                                      <div class="w-4 h-4 rounded" style="background-color:${params.fill}"></div>
+                                      <div class="${fontWeight}">${params.datum[pieCategoryKey]}${isHighlighted}</div>
                                     </div>
-                                    <div>Revenue: ${formatCurrency(params.datum['revenue'])}</div>
+                                    <div class="mt-1 ${params.datum?.ishighlighted ? 'font-semibold' : ''}">Revenue: ${formatCurrency(params.datum['revenue'])}</div>
                                   </div>`;
                         },
                     },
-                    // label: {
-                    //     enabled: true,
-                    //     formatter: ({ value }: any) => formatCurrency(value),
-                    // },
-
-                    // listeners: {
-                    //     seriesNodeClick: (event: any) => {
-                    //         const { datum } = event;
-                    //         handleDrillDown('pie', datum.catfinancialview, datum.revenue, 'revenue');
-                    //     }
-                    // }
+                    listeners: {
+                        seriesNodeClick: (event: any) => {
+                            const { datum } = event;
+                            if (pieCategoryKey === 'continent' && datum?.continent) {
+                                setCrossChartFilter(prev => ({ ...prev, selected_region: datum.continent, selected_country: undefined }));
+                            }
+                        }
+                    }
                 }],
             };
         }
 
         // Donut Chart
         if (chartData.donut.length > 0 && drillDownState.type !== 'donut') {
+            const firstDonut = chartData.donut[0] as any;
+            const donutCategoryKey = firstDonut?.country ? 'country' : 'cataccountingview';
+            
+            // Check if any item is highlighted (can be true or false, but not null)
+            const hasHighlightedDonut = chartData.donut.some(d => d.ishighlighted === true || d.ishighlighted === false);
+            
+            // Diverse color palette for donut chart - more colors to handle many countries
+            const donutColors = [
+                '#2196F3', // Blue
+                '#4CAF50', // Green  
+                '#FF5722', // Deep Orange
+                '#9C27B0', // Purple
+                '#FF9800', // Orange
+                '#00BCD4', // Cyan
+                '#CDDC39', // Lime
+                '#E91E63', // Pink
+                '#673AB7', // Deep Purple
+                '#009688', // Teal
+                '#FFC107', // Amber
+                '#3F51B5', // Indigo
+                '#8BC34A', // Light Green
+                '#FF6F00', // Dark Orange
+                '#D32F2F', // Dark Red
+                '#7B1FA2', // Dark Purple
+                '#0288D1', // Light Blue
+                '#388E3C', // Dark Green
+                '#F57C00', // Dark Orange 2
+                '#C2185B', // Dark Pink
+                '#512DA8', // Deep Purple 2
+            ];
+            
             options.donut = {
                 ...CHART_CONFIG.COMMON,
                 ...CHART_CONFIG.DONUT,
@@ -663,41 +828,62 @@ const AGChartsEnterprise: React.FC = () => {
                     // @ts-ignore
                     type: 'donut',
                     angleKey: 'revenue',
-                    categoryKey: 'cataccountingview',
+                    categoryKey: donutCategoryKey,
                     innerRadiusRatio: 0.5,
-                    fills: ['#DDDF00', '#24CBE5', '#64E572', '#FF9655', '#FFF263', '#6AF9C4'],
-                    strokes: ['#DDDF00', '#24CBE5', '#64E572', '#FF9655', '#FFF263', '#6AF9C4'],
+                    fills: donutColors,
+                    strokes: donutColors,
                     strokeWidth: 2,
-                    // tooltip: { enabled: true },
-                    sectorLabelKey: 'cataccountingview',
-                    legendItemKey: 'amount',
-                    calloutLabelKey: "cataccountingview",
-                    // disable inside labels
+                    sectorLabelKey: donutCategoryKey,
+                    legendItemKey: donutCategoryKey,
+                    calloutLabelKey: donutCategoryKey,
                     sectorLabel: { enabled: false },
+                    calloutLabel: {
+                        enabled: true,
+                        fontSize: ({ datum }: any) => datum?.ishighlighted === true && hasHighlightedDonut ? 13 : 11,
+                        fontWeight: ({ datum }: any) => datum?.ishighlighted === true && hasHighlightedDonut ? 'bold' : 'normal',
+                        color: ({ datum }: any) => datum?.ishighlighted === true && hasHighlightedDonut ? '#000000' : '#666666',
+                    },
+                    // Apply dimming effect using item style based on data
+                    itemStyler: ({ datum }: any) => {
+                        // If highlighting is active and this item is not highlighted (false or null)
+                        if (hasHighlightedDonut && datum?.ishighlighted !== true) {
+                            return {
+                                fillOpacity: 0.25,
+                                strokeOpacity: 0.25,
+                                strokeWidth: 1,
+                            };
+                        }
+                        return {
+                            fillOpacity: 1,
+                            strokeOpacity: 1,
+                            strokeWidth: datum?.ishighlighted === true ? 4 : 2,
+                        };
+                    },
                     tooltip: {
                         renderer: (params: any) => {
+                            const isHighlighted = params.datum?.ishighlighted === true ? ' ⭐' : '';
+                            const fontWeight = params.datum?.ishighlighted === true ? 'font-bold text-lg' : 'font-semibold';
+                            const continentInfo = params.datum?.continent ? `<div class="text-xs ${params.datum?.ishighlighted === true ? 'text-gray-700 font-medium' : 'text-gray-500'} mt-1">📍 ${params.datum.continent}</div>` : '';
                             return `
-                                <div class="p-2 bg-white border border-gray-200 rounded shadow">
-                                    <div class="flex items-center gap-1">
-                                    <div class="w-3 h-3" style="background-color:${params.fill}"></div>
-                                    <div class="font-semibold">${params.datum['cataccountingview']}</div>
+                                <div class="p-3 bg-white border-2 ${params.datum?.ishighlighted === true ? 'border-yellow-400' : 'border-gray-200'} rounded shadow-lg">
+                                    <div class="flex items-center gap-2">
+                                    <div class="w-4 h-4 rounded" style="background-color:${params.fill}"></div>
+                                    <div class="${fontWeight}">${params.datum[donutCategoryKey]}${isHighlighted}</div>
                                     </div>
-                                    <div>Revenue: ${formatCurrency(params.datum['revenue'])}</div>
+                                    ${continentInfo}
+                                    <div class="mt-1 ${params.datum?.ishighlighted === true ? 'font-semibold' : ''}">Revenue: ${formatCurrency(params.datum['revenue'])}</div>
                                 </div>`;
                         },
                     },
-                    // },
-                    // label: {
-                    //     enabled: true,
-                    //     formatter: ({ datum, angleKey, categoryKey }: any) =>
-                    //         `${datum[categoryKey]}: ${formatCurrency(datum[angleKey])}`,
-                    // },
-                    // listeners: {
-                    //     seriesNodeClick: (event: any) => {
-                    //         const { datum } = event;
-                    //         handleDrillDown('donut', datum.cataccountingview, datum.revenue, 'revenue');
-                    //     }
-                    // }
+                    listeners: {
+                        seriesNodeClick: (event: any) => {
+                            const { datum } = event;
+                            if (donutCategoryKey === 'country' && datum?.country) {
+                                // When selecting a country, clear the region filter
+                                setCrossChartFilter(prev => ({ ...prev, selected_country: datum.country, selected_region: undefined }));
+                            }
+                        }
+                    }
                 }],
             };
         }
@@ -708,14 +894,14 @@ const AGChartsEnterprise: React.FC = () => {
     const fetchChartDataByTestCase = async () => {
         try {
             if (testCase === "test-case-1") {
-                const res = await fetchAllChartData({ body: buildRequestBody(dimensions, 'all'), crossChartFilter: crossChartFilter }).unwrap();
+                const res = await fetchChartDataWithCrossChartFilter({ body: buildRequestBody(dimensions, 'all'), Year: crossChartFilter.Year, selected_region: crossChartFilter.selected_region, selected_country: crossChartFilter.selected_country }).unwrap();
                 if (!res?.success) throw new Error(res.message || "Error");
                 return res;
             } else {
-                const raw = await FetchTestCase2AllChartData({ body: buildRequestBody(dimensions, 'all'), crossChartFilter: crossChartFilter, productId: testCase2ProductId, excludeNullRevenue: false }).unwrap();
-                const transformed = transformTestCase2ToCommonFormat(raw);
-                if (!transformed?.success) throw new Error(transformed.message || "Error");
-                return transformed;
+                const raw = await fetchTestCase2ChartDataWithCrossChartFilter({ body: buildRequestBody(dimensions, 'all'), Year: crossChartFilter.Year, selected_region: crossChartFilter.selected_region, selected_country: crossChartFilter.selected_country, excludeNullRevenue: false, productId: testCase2ProductId }).unwrap();
+                // const transformed = transformTestCase2ToCommonFormat(raw);                
+                // if (!transformed?.success) throw new Error(transformed.message || "Error");
+                return raw;
             }
         } catch (error) {
             console.log(error, 'Error fetching chart data');
@@ -729,7 +915,7 @@ const AGChartsEnterprise: React.FC = () => {
 
         try {
             const result: any = await fetchChartDataByTestCase();
-
+            
             if (!result?.success) {
                 throw new Error(result?.message || 'Failed to fetch chart data');
             }
@@ -749,7 +935,7 @@ const AGChartsEnterprise: React.FC = () => {
         } finally {
             setIsLoading(false);
         }
-    }, [dimensions, crossChartFilter, testCase, fetchAllChartData, FetchTestCase2AllChartData]);
+    }, [dimensions, crossChartFilter, testCase, fetchChartDataWithCrossChartFilter, fetchTestCase2ChartDataWithCrossChartFilter]);
 
     // Export to PNG function
     const exportChartToPNG = useCallback((chartRef: React.RefObject<HTMLDivElement>, title: string) => {
@@ -864,27 +1050,9 @@ const AGChartsEnterprise: React.FC = () => {
     }, []);
 
     const handleResetCrossChartFilter = useCallback(() => {
-        setCrossChartFilter('');
+        setCrossChartFilter({});
     }, []);
 
-    // Context Menu handlers
-    const handleContextMenuClose = useCallback(() => {
-        setContextMenu(null);
-    }, []);
-
-    const handleContextMenuFilter = useCallback(() => {
-        if (contextMenu) {
-            setCrossChartFilter(contextMenu.category);
-            setContextMenu(null);
-        }
-    }, [contextMenu]);
-
-    const handleContextMenuDrillDown = useCallback(() => {
-        if (contextMenu) {
-            handleDrillDown(contextMenu.chartType, contextMenu.category, contextMenu.value, contextMenu.dataType);
-            setContextMenu(null);
-        }
-    }, [contextMenu, handleDrillDown]);
 
     // Share email handler
     const handleShareChart = async (
@@ -934,15 +1102,7 @@ const AGChartsEnterprise: React.FC = () => {
                 />
             </div>
 
-            <ChartContextMenu
-                isOpen={contextMenu?.isOpen || false}
-                position={contextMenu?.position || { x: 0, y: 0 }}
-                onClose={handleContextMenuClose}
-                onFilter={handleContextMenuFilter}
-                onDrillDown={handleContextMenuDrillDown}
-                category={contextMenu?.category || ''}
-                value={contextMenu?.value || ''}
-            />
+           
 
             {error && (<ErrorAlert message={error} onDismiss={handleDismissError} />)}
 
@@ -956,7 +1116,7 @@ const AGChartsEnterprise: React.FC = () => {
                     isLoading={isLoading}
                     isDrilled={drillDownState.type === 'line'}
                     resetDrillDown={handleResetDrillDown}
-                    isCrossChartFiltered={crossChartFilter}
+                    isCrossChartFiltered={Object.keys(crossChartFilter).length > 0 ? crossChartFilter : undefined}
                     resetCrossChartFilter={handleResetCrossChartFilter}
                     handleShareChart={handleShareChart}
                     onComparisonOpen={handleComparisonOpenDrawer}
@@ -972,7 +1132,7 @@ const AGChartsEnterprise: React.FC = () => {
                     isLoading={isLoading}
                     isDrilled={drillDownState.type === 'bar'}
                     resetDrillDown={handleResetDrillDown}
-                    isCrossChartFiltered={crossChartFilter}
+                    isCrossChartFiltered={Object.keys(crossChartFilter).length > 0 ? crossChartFilter : undefined}
                     resetCrossChartFilter={handleResetCrossChartFilter}
                     handleShareChart={handleShareChart}
                     onComparisonOpen={handleComparisonOpenDrawer}
@@ -987,7 +1147,7 @@ const AGChartsEnterprise: React.FC = () => {
                     isLoading={isLoading}
                     isDrilled={drillDownState.type === 'pie'}
                     resetDrillDown={handleResetDrillDown}
-                    isCrossChartFiltered={crossChartFilter}
+                    isCrossChartFiltered={Object.keys(crossChartFilter).length > 0 ? crossChartFilter : undefined}
                     resetCrossChartFilter={handleResetCrossChartFilter}
                     handleShareChart={handleShareChart}
                     onComparisonOpen={handleComparisonOpenDrawer}
@@ -1002,7 +1162,7 @@ const AGChartsEnterprise: React.FC = () => {
                     isLoading={isLoading}
                     isDrilled={drillDownState.type === 'donut'}
                     resetDrillDown={handleResetDrillDown}
-                    isCrossChartFiltered={crossChartFilter}
+                    isCrossChartFiltered={Object.keys(crossChartFilter).length > 0 ? crossChartFilter : undefined}
                     resetCrossChartFilter={handleResetCrossChartFilter}
                     handleShareChart={handleShareChart}
                     onComparisonOpen={handleComparisonOpenDrawer}

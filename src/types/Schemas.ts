@@ -76,25 +76,33 @@ export interface LineChartData {
   revenue: number;
   grossMargin: number;
   netProfit: number;
+  ishighlighted?: boolean;
+  filterLabel?: string;
 }
 
 export interface BarChartData {
   period?: string;
   fiscalYear :string;
-  country: string;
+  country?: string;
   revenue: number;
   expenses: number;
+  ishighlighted?: boolean;
+  filterLabel?: string;
 }
 
 export interface PieChartData {
-  catfinancialview: string;
+  catfinancialview?: string;
+  continent?: string;
   revenue: number;
+  ishighlighted?: boolean;
 }
 
 export interface DonutChartData {
-  cataccountingview: string;
-  country: string;
+  cataccountingview?: string;
+  country?: string;
+  continent?: string;
   revenue: number;
+  ishighlighted?: boolean;
 }
 
 export interface ChartResponse<T> {

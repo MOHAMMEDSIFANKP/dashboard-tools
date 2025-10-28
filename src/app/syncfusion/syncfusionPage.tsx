@@ -182,14 +182,14 @@ const SyncfusionCharts: React.FC = () => {
         const yPos = containerRect.top + args.y;
 
 
-        setContextMenu({
-            isOpen: true,
-            position: { x: xPos, y: yPos },
-            category: category,
-            value: value,
-            chartType: chartType,
-            dataType: dataType
-        });
+        // setContextMenu({
+        //     isOpen: true,
+        //     position: { x: xPos, y: yPos },
+        //     category: category,
+        //     value: value,
+        //     chartType: chartType,
+        //     dataType: dataType
+        // });
 
     };
 

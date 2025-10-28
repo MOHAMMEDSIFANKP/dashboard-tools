@@ -145,6 +145,14 @@ export const api = createApi({
         body,
       }),
     }),
+    // Fetch All Charts Data with cross chart filter
+     fetchChartDataWithCrossChartFilter: builder.mutation<ApiResponse, { tableName?: string; body: ChartRequestBody; Year?: string;selected_region?: string; selected_country?: string }>({
+      query: ({ tableName = databaseName, body, Year, selected_region, selected_country }) => ({
+        url: `dashboard/charts-with-cross-filter?table_name=${tableName}${Year ? `&year=${Year}` : ''}${selected_region ? `&selected_region=${selected_region}` : ''}${selected_country ? `&selected_country=${selected_country}` : ''}`,
+        method: 'POST',
+        body,
+      }),
+    }),
 
     // Drill Down
     fetchDrillDownData: builder.mutation<any, DrillDownParams>({
@@ -248,6 +256,7 @@ export const {
 
   // Chart mutations
   useFetchChartDataMutation,
+  useFetchChartDataWithCrossChartFilterMutation,
 
   // Drill down
   useFetchDrillDownDataMutation,

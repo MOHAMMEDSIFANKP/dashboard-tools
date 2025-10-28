@@ -10,17 +10,16 @@ import HighchartsOfflineExporting from 'highcharts/modules/offline-exporting';
 import { BarChartData, Dimensions, DonutChartData, LineChartData, PieChartData } from '@/types/Schemas';
 import { GroupModal } from '@/components/GroupManagement';
 import {
-    useFetchChartDataMutation,
     useFetchDrillDownDataMutation,
-    databaseName
+    databaseName,
+    useFetchChartDataWithCrossChartFilterMutation
 } from '@/lib/services/usersApi';
 import { DashboardActionButtonComponent } from '@/components/ui/action-button';
 import { ErrorAlert, LoadingAlert } from '@/components/ui/status-alerts';
 import HighchartsDrilldown from 'highcharts/modules/drilldown';
 import { buildRequestBody } from '@/lib/services/buildWhereClause';
-import { ChartContextMenu } from '@/components/charts/ChartContextMenu';
 import { ChartContainerView } from '@/components/charts/ChartContainerView';
-import { testCase2ProductId, useFetchTestCase2ChartDataMutation, useFetchTestCase2DrillDownDataMutation } from '@/lib/services/testCase2Api';
+import { testCase2ProductId, useFetchTestCase2ChartDataWithCrossChartFilterMutation, useFetchTestCase2DrillDownDataMutation } from '@/lib/services/testCase2Api';
 import { RootState } from '@/store/store';
 import { useSelector } from 'react-redux';
 import { transformTestCase2DrillDownData, transformTestCase2ToCommonFormat } from '@/lib/testCase2Transformer';
@@ -61,7 +60,7 @@ interface ChartContainerProps {
     isLoading?: boolean;
     isDrilled?: boolean;
     resetDrillDown?: () => void;
-    isCrossChartFiltered?: string;
+    isCrossChartFiltered?: { Year?: string; selected_region?: string; selected_country?: string };
     resetCrossChartFilter?: () => void;
     handleShareChart: (title: string, chartRef: React.RefObject<HTMLDivElement>) => void;
     onComparisonOpen: (chartType: string) => void;
@@ -196,7 +195,7 @@ const HighCharts: React.FC = () => {
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [isGroupModalOpen, setIsGroupModalOpen] = useState<boolean>(false);
     const [dimensions, setDimensions] = useState<Dimensions | null>(null);
-    const [crossChartFilter, setCrossChartFilter] = useState<string>('');
+    const [crossChartFilter, setCrossChartFilter] = useState<{ Year?: string; selected_region?: string; selected_country?: string }>({});
     const [drillDownState, setDrillDownState] = useState<{
         type: ChartType | null;
         data: any[];
@@ -226,20 +225,12 @@ const HighCharts: React.FC = () => {
     const testCase = useSelector((state: RootState) => state.dashboard.selectedTestCase);
 
     // Test Case 1 API Mutations
-    const [fetchAllChartData] = useFetchChartDataMutation()
+    const [fetchChartDataWithCrossChartFilter] = useFetchChartDataWithCrossChartFilterMutation();
     const [fetchDrillDownData] = useFetchDrillDownDataMutation();
 
     // Test Case 2 API Mutations
-    const [FetchTestCase2AllChartData] = useFetchTestCase2ChartDataMutation();
+    const [fetchTestCase2ChartDataWithCrossChartFilter] = useFetchTestCase2ChartDataWithCrossChartFilterMutation();
     const [fetchTestCase2DrillDownData] = useFetchTestCase2DrillDownDataMutation();
-    const [contextMenu, setContextMenu] = useState<{
-        isOpen: boolean;
-        position: { x: number; y: number };
-        category: string;
-        value: any;
-        chartType: string;
-        dataType: string;
-    } | null>(null);
 
     // Handle drill down using API
     const handleDrillDown = useCallback(async (chartType: string, category: string, value: any, dataType: string) => {
@@ -386,138 +377,257 @@ const HighCharts: React.FC = () => {
             options[drillDownState.type] = drillDownOption;
         }
 
-        // Determine x-axis key based on cross-chart filter
-        const xKey = crossChartFilter ? 'period' : 'fiscalYear';
+        // Determine x-axis key based on year filter in crossChartFilter
+        const xKey = crossChartFilter?.Year ? 'period' : 'fiscalYear';
 
         // Line Chart
         if (chartData.line.length > 0 && drillDownState.type !== 'line') {
+            // Separate highlighted and non-highlighted data
+            const regularLineData = chartData.line.filter(d => !d.ishighlighted);
+            const highlightedLineData = chartData.line.filter(d => d.ishighlighted);
+            const hasHighlightedLine = highlightedLineData.length > 0;
+            
+            const allCategories = chartData.line?.map((item) => item[xKey as keyof LineChartData] || item.fiscalYear);
+            
+            const baseSeries = [
+                {
+                    type: 'line',
+                    name: 'Revenue',
+                    data: regularLineData?.map((item) => item.revenue),
+                    color: hasHighlightedLine ? 'rgba(5, 141, 199, 0.3)' : '#058DC7',
+                    lineWidth: hasHighlightedLine ? 2 : 3,
+                    cursor: 'pointer',
+                    events: {
+                        click: function (event: any) {
+                            const point = event.point;
+                            if (xKey === 'fiscalYear') {
+                                const fiscalYear = String(point.category);
+                                setCrossChartFilter(prev => ({ ...prev, Year: fiscalYear }));
+                            }
+                        }
+                    }
+                },
+                {
+                    type: 'line',
+                    name: 'Gross Margin',
+                    data: regularLineData?.map((item) => item.grossMargin),
+                    color: hasHighlightedLine ? 'rgba(80, 180, 50, 0.3)' : '#50B432',
+                    lineWidth: hasHighlightedLine ? 2 : 3,
+                    cursor: 'pointer',
+                    events: {
+                        click: function (event: any) {
+                            const point = event.point;
+                            if (xKey === 'fiscalYear') {
+                                const fiscalYear = String(point.category);
+                                setCrossChartFilter(prev => ({ ...prev, Year: fiscalYear }));
+                            }
+                        }
+                    }
+                },
+                {
+                    type: 'line',
+                    name: 'Net Profit',
+                    data: regularLineData?.map((item) => item.netProfit),
+                    color: hasHighlightedLine ? 'rgba(237, 86, 27, 0.3)' : '#ED561B',
+                    lineWidth: hasHighlightedLine ? 2 : 3,
+                    cursor: 'pointer',
+                    events: {
+                        click: function (event: any) {
+                            const point = event.point;
+                            if (xKey === 'fiscalYear') {
+                                const fiscalYear = String(point.category);
+                                setCrossChartFilter(prev => ({ ...prev, Year: fiscalYear }));
+                            }
+                        }
+                    }
+                },
+            ];
+            
+            const highlightedSeries = hasHighlightedLine ? [
+                {
+                    type: 'line',
+                    name: highlightedLineData[0]?.filterLabel ? `Revenue (${highlightedLineData[0].filterLabel})` : 'Revenue (Filtered)',
+                    data: highlightedLineData?.map((item) => item.revenue),
+                    color: '#058DC7',
+                    lineWidth: 4,
+                    cursor: 'pointer',
+                    dashStyle: 'Dash',
+                    events: {
+                        click: function (event: any) {
+                            const point = event.point;
+                            if (xKey === 'fiscalYear') {
+                                const fiscalYear = String(point.category);
+                                setCrossChartFilter(prev => ({ ...prev, Year: fiscalYear }));
+                            }
+                        }
+                    }
+                },
+                {
+                    type: 'line',
+                    name: highlightedLineData[0]?.filterLabel ? `Gross Margin (${highlightedLineData[0].filterLabel})` : 'Gross Margin (Filtered)',
+                    data: highlightedLineData?.map((item) => item.grossMargin),
+                    color: '#50B432',
+                    lineWidth: 4,
+                    cursor: 'pointer',
+                    dashStyle: 'Dash',
+                    events: {
+                        click: function (event: any) {
+                            const point = event.point;
+                            if (xKey === 'fiscalYear') {
+                                const fiscalYear = String(point.category);
+                                setCrossChartFilter(prev => ({ ...prev, Year: fiscalYear }));
+                            }
+                        }
+                    }
+                },
+                {
+                    type: 'line',
+                    name: highlightedLineData[0]?.filterLabel ? `Net Profit (${highlightedLineData[0].filterLabel})` : 'Net Profit (Filtered)',
+                    data: highlightedLineData?.map((item) => item.netProfit),
+                    color: '#ED561B',
+                    lineWidth: 4,
+                    cursor: 'pointer',
+                    dashStyle: 'Dash',
+                    events: {
+                        click: function (event: any) {
+                            const point = event.point;
+                            if (xKey === 'fiscalYear') {
+                                const fiscalYear = String(point.category);
+                                setCrossChartFilter(prev => ({ ...prev, Year: fiscalYear }));
+                            }
+                        }
+                    }
+                },
+            ] : [];
+            
             options.line = {
                 ...CHART_CONFIG.COMMON,
                 ...CHART_CONFIG.LINE,
                 //@ts-ignore
                 xAxis: {
                     ...CHART_CONFIG.LINE.xAxis,
-                    categories: chartData.line?.map((item) => item[xKey as keyof LineChartData] || item.fiscalYear),
+                    categories: allCategories,
                 },
-                series: [
-                    {
-                        type: 'line',
-                        name: 'Revenue',
-                        data: chartData.line?.map((item) => item.revenue),
-                        cursor: 'pointer',
-                        events: {
-                            click: function (event: any) {
-                                const point = event.point;
-                                const category = point.category.slice(0, 4);
-                                const value = point.y;
-                                setContextMenu({
-                                    isOpen: true,
-                                    position: { x: event.x, y: event.y },
-                                    category: category,
-                                    value: value,
-                                    chartType: 'line',
-                                    dataType: 'revenue'
-                                });
-                            }
-                        }
-
-                    },
-                    {
-                        type: 'line',
-                        name: 'Gross Margin',
-                        data: chartData.line?.map((item) => item.grossMargin),
-                        cursor: 'pointer',
-                        events: {
-                            click: function (event: any) {
-                                const point = event.point;
-                                const category = point.category.slice(0, 4);
-                                const value = point.y;
-                                setContextMenu({
-                                    isOpen: true,
-                                    position: { x: event.x, y: event.y },
-                                    category: category,
-                                    value: value,
-                                    chartType: 'line',
-                                    dataType: 'grossMargin'
-                                });
-                            }
-                        }
-
-                    },
-                    {
-                        type: 'line',
-                        name: 'Net Profit',
-                        data: chartData.line?.map((item) => item.netProfit),
-                        cursor: 'pointer',
-                        events: {
-                            click: function (event: any) {
-                                const point = event.point;
-                                const category = point.category.slice(0, 4);
-                                const value = point.y;
-                                setContextMenu({
-                                    isOpen: true,
-                                    position: { x: event.x, y: event.y },
-                                    category: category,
-                                    value: value,
-                                    chartType: 'line',
-                                    dataType: 'netProfit'
-                                });
-                            }
-                        }
-                    },
-                ],
+                //@ts-ignore
+                series: [...baseSeries, ...highlightedSeries],
                 drilldown: {
-                    series: [
-
-                    ]
+                    series: []
                 }
             };
         }
 
         // Bar Chart
         if (chartData.bar.length > 0 && drillDownState.type !== 'bar') {
+            // Separate highlighted and non-highlighted data
+            const regularBarData = chartData.bar.filter(d => !d.ishighlighted);
+            const highlightedBarData = chartData.bar.filter(d => d.ishighlighted);
+            const hasHighlightedBar = highlightedBarData.length > 0;
+            
+            const allBarCategories = chartData.bar?.map((item) => String(item[xKey as keyof BarChartData] || ''));
+            
+            const baseBarSeries = [
+                {
+                    type: 'column',
+                    name: 'Revenue',
+                    data: regularBarData?.map((item) => item.revenue),
+                    color: hasHighlightedBar ? 'rgba(5, 141, 199, 0.3)' : '#058DC7',
+                    cursor: 'pointer',
+                    events: {
+                        click: function (event: any) {
+                            const point = event.point;
+                            if (xKey === 'fiscalYear') {
+                                const fiscalYear = String(point.category);
+                                setCrossChartFilter(prev => ({ ...prev, Year: fiscalYear }));
+                            }
+                        }
+                    }
+                },
+                {
+                    type: 'column',
+                    name: 'Expenses',
+                    data: regularBarData?.map((item) => item.expenses),
+                    color: hasHighlightedBar ? 'rgba(237, 86, 27, 0.3)' : '#ED561B',
+                    cursor: 'pointer',
+                    events: {
+                        click: function (event: any) {
+                            const point = event.point;
+                            if (xKey === 'fiscalYear') {
+                                const fiscalYear = String(point.category);
+                                setCrossChartFilter(prev => ({ ...prev, Year: fiscalYear }));
+                            }
+                        }
+                    }
+                },
+            ];
+            
+            const highlightedBarSeries = hasHighlightedBar ? [
+                {
+                    type: 'column',
+                    name: highlightedBarData[0]?.filterLabel ? `Revenue (${highlightedBarData[0].filterLabel})` : 'Revenue (Filtered)',
+                    data: highlightedBarData?.map((item) => item.revenue),
+                    color: '#058DC7',
+                    cursor: 'pointer',
+                    events: {
+                        click: function (event: any) {
+                            const point = event.point;
+                            if (xKey === 'fiscalYear') {
+                                const fiscalYear = String(point.category);
+                                setCrossChartFilter(prev => ({ ...prev, Year: fiscalYear }));
+                            }
+                        }
+                    }
+                },
+                {
+                    type: 'column',
+                    name: highlightedBarData[0]?.filterLabel ? `Expenses (${highlightedBarData[0].filterLabel})` : 'Expenses (Filtered)',
+                    data: highlightedBarData?.map((item) => item.expenses),
+                    color: '#ED561B',
+                    cursor: 'pointer',
+                    events: {
+                        click: function (event: any) {
+                            const point = event.point;
+                            if (xKey === 'fiscalYear') {
+                                const fiscalYear = String(point.category);
+                                setCrossChartFilter(prev => ({ ...prev, Year: fiscalYear }));
+                            }
+                        }
+                    }
+                },
+            ] : [];
+            
             options.bar = {
                 ...CHART_CONFIG.COMMON,
                 ...CHART_CONFIG.BAR,
                 xAxis: {
                     ...CHART_CONFIG.BAR.xAxis,
                     //@ts-ignore
-                    categories: chartData.bar?.map((item) => item[xKey as keyof LineChartData]),
+                    categories: allBarCategories,
                 },
-                series: [
-                    {
-                        type: 'column',
-                        name: 'Revenue',
-                        data: chartData.bar?.map((item) => item.revenue),
-                        // events: {
-                        //     click: function (event: any) {
-                        //         const point = event.point;
-                        //         const category = point.category.slice(0, 4);
-                        //         const value = point.y;
-                        //         handleDrillDown('bar', category, value, 'revenue');
-                        //     }
-                        // }
-                    },
-                    {
-                        type: 'column',
-                        name: 'Expenses',
-                        data: chartData.bar?.map((item) => item.expenses),
-                        // events: {
-                        //     click: function (event: any) {
-                        //         const point = event.point;
-                        //         const category = point.category.slice(0, 4);
-                        //         const value = point.y;
-                        //         handleDrillDown('bar', category, value, 'expenses');
-                        //     }
-                        // }
-                    },
-                ],
-
+                //@ts-ignore
+                series: [...baseBarSeries, ...highlightedBarSeries],
             };
         }
 
         // Pie Chart
         if (chartData.pie.length > 0 && drillDownState.type !== 'pie') {
+            const firstPie = chartData.pie[0] as any;
+            const pieCategoryKey = firstPie?.continent ? 'continent' : 'catfinancialview';
+            
+            // Check if any item is highlighted
+            const hasHighlightedPie = chartData.pie.some(item => item.ishighlighted);
+            
+            // Diverse color palette for pie chart
+            const pieColors = [
+                '#FF6384', // Pink/Red
+                '#36A2EB', // Blue
+                '#FFCE56', // Yellow
+                '#4BC0C0', // Teal
+                '#9966FF', // Purple
+                '#FF9F40', // Orange
+                '#FF6384', // Pink (repeat for more slices)
+                '#C9CBCF', // Grey
+            ];
+            
             options.pie = {
                 ...CHART_CONFIG.COMMON,
                 ...CHART_CONFIG.PIE,
@@ -525,18 +635,37 @@ const HighCharts: React.FC = () => {
                     {
                         type: 'pie',
                         name: 'Financial Metrics',
-                        data: chartData.pie.map(item => ({
-                            name: item?.catfinancialview,
-                            y: item.revenue,
-                        })),
-                        // events: {
-                        //     click: function (event: any) {
-                        //         const point = event.point;
-                        //         const category = point?.name;
-                        //         const value = point.y;
-                        //         handleDrillDown('pie', category, value, 'revenue');
-                        //     }
-                        // }
+                        colors: pieColors,
+                        data: chartData.pie.map(item => {
+                            const isHighlighted = item.ishighlighted;
+                            const shouldDim = hasHighlightedPie && !isHighlighted;
+                            
+                            return {
+                                name: (item as any)[pieCategoryKey] || item?.catfinancialview,
+                                y: item.revenue,
+                                opacity: shouldDim ? 0.25 : 1,
+                                sliced: isHighlighted,
+                                selected: isHighlighted,
+                                dataLabels: {
+                                    style: {
+                                        fontWeight: isHighlighted ? 'bold' : 'normal',
+                                        fontSize: isHighlighted ? '14px' : '12px',
+                                        color: isHighlighted ? '#000000' : '#666666'
+                                    }
+                                }
+                            };
+                        }),
+                        cursor: 'pointer',
+                        point: {
+                            events: {
+                                click: function (event: any) {
+                                    const point = this;
+                                    if (pieCategoryKey === 'continent' && point.name) {
+                                        setCrossChartFilter(prev => ({ ...prev, selected_region: point.name, selected_country: undefined }));
+                                    }
+                                }
+                            }
+                        }
                     },
                 ],
             };
@@ -544,6 +673,37 @@ const HighCharts: React.FC = () => {
 
         // Donut Chart
         if (chartData.donut.length > 0 && drillDownState.type !== 'donut') {
+            const firstDonut = chartData.donut[0] as any;
+            const donutCategoryKey = firstDonut?.country ? 'country' : 'cataccountingview';
+            
+            // Check if any item is highlighted
+            const hasHighlightedDonut = chartData.donut.some(item => item.ishighlighted);
+            
+            // Diverse color palette for donut chart - more colors to handle many countries
+            const donutColors = [
+                '#2196F3', // Blue
+                '#4CAF50', // Green  
+                '#FF5722', // Deep Orange
+                '#9C27B0', // Purple
+                '#FF9800', // Orange
+                '#00BCD4', // Cyan
+                '#CDDC39', // Lime
+                '#E91E63', // Pink
+                '#673AB7', // Deep Purple
+                '#009688', // Teal
+                '#FFC107', // Amber
+                '#3F51B5', // Indigo
+                '#8BC34A', // Light Green
+                '#FF6F00', // Dark Orange
+                '#D32F2F', // Dark Red
+                '#7B1FA2', // Dark Purple
+                '#0288D1', // Light Blue
+                '#388E3C', // Dark Green
+                '#F57C00', // Dark Orange 2
+                '#C2185B', // Dark Pink
+                '#512DA8', // Deep Purple 2
+            ];
+            
             options.donut = {
                 ...CHART_CONFIG.COMMON,
                 ...CHART_CONFIG.DONUT,
@@ -551,18 +711,38 @@ const HighCharts: React.FC = () => {
                     {
                         type: 'pie',
                         name: 'Revenue Distribution',
-                        data: chartData.donut.map(item => ({
-                            name: item.cataccountingview,
-                            y: item.revenue,
-                        })),
-                        // events: {
-                        //     click: function (event: any) {
-                        //         const point = event.point;
-                        //         const category = point?.name;
-                        //         const value = point.y;
-                        //         handleDrillDown('donut', category, value, 'revenue');
-                        //     }
-                        // }
+                        colors: donutColors,
+                        data: chartData.donut.map(item => {
+                            const isHighlighted = item.ishighlighted;
+                            const shouldDim = hasHighlightedDonut && !isHighlighted;
+                            
+                            return {
+                                name: (item as any)[donutCategoryKey] || item.cataccountingview,
+                                y: item.revenue,
+                                opacity: shouldDim ? 0.25 : 1,
+                                sliced: isHighlighted,
+                                selected: isHighlighted,
+                                dataLabels: {
+                                    style: {
+                                        fontWeight: isHighlighted ? 'bold' : 'normal',
+                                        fontSize: isHighlighted ? '14px' : '12px',
+                                        color: isHighlighted ? '#000000' : '#666666'
+                                    }
+                                }
+                            };
+                        }),
+                        cursor: 'pointer',
+                        point: {
+                            events: {
+                                click: function (event: any) {
+                                    const point = this;
+                                    if (donutCategoryKey === 'country' && point.name) {
+                                        // When selecting a country, clear the region filter
+                                        setCrossChartFilter(prev => ({ ...prev, selected_country: point.name, selected_region: undefined }));
+                                    }
+                                }
+                            }
+                        }
                     },
                 ],
             };
@@ -574,14 +754,14 @@ const HighCharts: React.FC = () => {
     const fetchChartDataByTestCase = async () => {
         try {
             if (testCase === "test-case-1") {
-                const res = await fetchAllChartData({ body: buildRequestBody(dimensions, 'all'), crossChartFilter: crossChartFilter }).unwrap();
+                const res = await fetchChartDataWithCrossChartFilter({ body: buildRequestBody(dimensions, 'all'), Year: crossChartFilter.Year, selected_region: crossChartFilter.selected_region, selected_country: crossChartFilter.selected_country }).unwrap();
                 if (!res?.success) throw new Error(res.message || "Error");
                 return res;
             } else {
-                const raw = await FetchTestCase2AllChartData({ body: buildRequestBody(dimensions, 'all'), crossChartFilter: crossChartFilter, productId: testCase2ProductId, excludeNullRevenue: false }).unwrap();
-                const transformed = transformTestCase2ToCommonFormat(raw);
-                if (!transformed?.success) throw new Error(transformed.message || "Error");
-                return transformed;
+                const raw = await fetchTestCase2ChartDataWithCrossChartFilter({ body: buildRequestBody(dimensions, 'all'), Year: crossChartFilter.Year, selected_region: crossChartFilter.selected_region, selected_country: crossChartFilter.selected_country, productId: testCase2ProductId, excludeNullRevenue: false }).unwrap();
+                // const transformed = transformTestCase2ToCommonFormat(raw);
+                // if (!transformed?.success) throw new Error(transformed.message || "Error");
+                return raw;
             }
         } catch (error) {
             console.log(error, 'Error fetching chart data');
@@ -617,7 +797,7 @@ const HighCharts: React.FC = () => {
         } finally {
             setIsLoading(false);
         }
-    }, [dimensions, crossChartFilter, testCase, fetchAllChartData, FetchTestCase2AllChartData]);
+    }, [dimensions, crossChartFilter, testCase, fetchChartDataWithCrossChartFilter, fetchTestCase2ChartDataWithCrossChartFilter]);
 
     // Fetch data when dimensions change
     useEffect(() => {
@@ -654,25 +834,8 @@ const HighCharts: React.FC = () => {
     }, []);
 
     const handleResetCrossChartFilter = useCallback(() => {
-        setCrossChartFilter('');
+        setCrossChartFilter({});
     }, []);
-
-    // Context Menu handlers
-    const handleContextMenuClose = useCallback(() => {
-        setContextMenu(null);
-    }, []);
-    const handleContextMenuFilter = useCallback(() => {
-        if (contextMenu) {
-            setCrossChartFilter(contextMenu.category);
-            setContextMenu(null);
-        }
-    }, [contextMenu]);
-    const handleContextMenuDrillDown = useCallback(() => {
-        if (contextMenu) {
-            handleDrillDown(contextMenu.chartType, contextMenu.category, contextMenu.value, contextMenu.dataType);
-            setContextMenu(null);
-        }
-    }, [contextMenu]);
 
     // Share email 
     const handleShareChart = async (
@@ -718,16 +881,6 @@ const HighCharts: React.FC = () => {
                 />
             </div>
 
-            <ChartContextMenu
-                isOpen={contextMenu?.isOpen || false}
-                position={contextMenu?.position || { x: 0, y: 0 }}
-                onClose={handleContextMenuClose}
-                onFilter={handleContextMenuFilter}
-                onDrillDown={handleContextMenuDrillDown}
-                category={contextMenu?.category || ''}
-                value={contextMenu?.value || ''}
-            />
-
             {error && (<ErrorAlert message={error} onDismiss={handleDismissError} />)}
 
             {isLoading && <LoadingAlert />}
@@ -740,7 +893,7 @@ const HighCharts: React.FC = () => {
                     isLoading={isLoading}
                     isDrilled={drillDownState.type === 'line'}
                     resetDrillDown={handleResetDrillDown}
-                    isCrossChartFiltered={crossChartFilter}
+                    isCrossChartFiltered={Object.keys(crossChartFilter).length > 0 ? crossChartFilter : undefined}
                     resetCrossChartFilter={handleResetCrossChartFilter}
                     handleShareChart={handleShareChart}
                     onComparisonOpen={handleComparisonOpenDrawer}
@@ -752,7 +905,8 @@ const HighCharts: React.FC = () => {
                     isLoading={isLoading}
                     isDrilled={drillDownState.type === 'bar'}
                     resetDrillDown={handleResetDrillDown}
-                    isCrossChartFiltered={crossChartFilter}
+                    isCrossChartFiltered={Object.keys(crossChartFilter).length > 0 ? crossChartFilter : undefined}
+                    resetCrossChartFilter={handleResetCrossChartFilter}
                     handleShareChart={handleShareChart}
                     onComparisonOpen={handleComparisonOpenDrawer}
                 />
@@ -763,7 +917,8 @@ const HighCharts: React.FC = () => {
                     isLoading={isLoading}
                     isDrilled={drillDownState.type === 'pie'}
                     resetDrillDown={handleResetDrillDown}
-                    isCrossChartFiltered={crossChartFilter}
+                    isCrossChartFiltered={Object.keys(crossChartFilter).length > 0 ? crossChartFilter : undefined}
+                    resetCrossChartFilter={handleResetCrossChartFilter}
                     handleShareChart={handleShareChart}
                     onComparisonOpen={handleComparisonOpenDrawer}
                 />
@@ -774,7 +929,8 @@ const HighCharts: React.FC = () => {
                     isLoading={isLoading}
                     isDrilled={drillDownState.type === 'donut'}
                     resetDrillDown={handleResetDrillDown}
-                    isCrossChartFiltered={crossChartFilter}
+                    isCrossChartFiltered={Object.keys(crossChartFilter).length > 0 ? crossChartFilter : undefined}
+                    resetCrossChartFilter={handleResetCrossChartFilter}
                     handleShareChart={handleShareChart}
                     onComparisonOpen={handleComparisonOpenDrawer}
                 />

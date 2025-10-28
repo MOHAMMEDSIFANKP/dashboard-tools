@@ -8,7 +8,7 @@ interface ChartContainerViewProps {
     isDrilled?: boolean;
     resetDrillDown?: () => void;
     isLoading: boolean;
-    isCrossChartFiltered?: string;
+    isCrossChartFiltered?: any;
     resetCrossChartFilter?: () => void;
     hasData?: boolean;
     exportToPNG?: () => void;
@@ -41,10 +41,29 @@ export const ChartContainerView: React.FC<ChartContainerViewProps> = ({
                             {title}
                         </h3>
                         {isCrossChartFiltered && (
-                            <span className="ml-2 px-2 py-1 bg-red-100 text-red-800 text-xs font-medium rounded-full flex items-center">
-                                <span className="w-2 h-2 bg-red-500 rounded-full mr-1"></span>
-                                Corss Chart Filter Active - {isCrossChartFiltered}
-                            </span>
+                            <div className="ml-3 flex flex-wrap gap-2">
+                                {isCrossChartFiltered.Year && (
+                                    <span className="px-3 py-1.5 bg-gradient-to-r from-blue-50 to-blue-100 text-blue-800 text-xs font-semibold rounded-lg border border-blue-200 flex items-center shadow-sm">
+                                        <span className="mr-1.5">📅</span>
+                                        <span className="font-normal mr-1">Year:</span>
+                                        <span className="font-bold">{isCrossChartFiltered.Year}</span>
+                                    </span>
+                                )}
+                                {isCrossChartFiltered.selected_region && (
+                                    <span className="px-3 py-1.5 bg-gradient-to-r from-purple-50 to-purple-100 text-purple-800 text-xs font-semibold rounded-lg border border-purple-200 flex items-center shadow-sm">
+                                        <span className="mr-1.5">🌍</span>
+                                        <span className="font-normal mr-1">Region:</span>
+                                        <span className="font-bold">{isCrossChartFiltered.selected_region}</span>
+                                    </span>
+                                )}
+                                {isCrossChartFiltered.selected_country && (
+                                    <span className="px-3 py-1.5 bg-gradient-to-r from-green-50 to-green-100 text-green-800 text-xs font-semibold rounded-lg border border-green-200 flex items-center shadow-sm">
+                                        <span className="mr-1.5">📍</span>
+                                        <span className="font-normal mr-1">Country:</span>
+                                        <span className="font-bold">{isCrossChartFiltered.selected_country}</span>
+                                    </span>
+                                )}
+                            </div>
                         )}
                     </div>
                 </div>
@@ -55,11 +74,12 @@ export const ChartContainerView: React.FC<ChartContainerViewProps> = ({
                         <button
                             onClick={resetCrossChartFilter}
                             className="text-nowrap cursor-pointer group/btn relative px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl shadow-lg hover:shadow-red-200 transform hover:scale-105 transition-all duration-300 ease-out font-medium text-sm overflow-hidden"
+                            title="Clear all active filters"
                         >
                             <div className="cursor-pointer absolute inset-0 bg-gradient-to-r from-red-400 to-red-500 opacity-0 group-hover/btn:opacity-100 transition-opacity duration-300"></div>
                             <div className="cursor-pointer relative flex items-center space-x-2">
                                 <X className="cursor-pointer w-4 h-4" />
-                                <span>Reset Filter</span>
+                                <span>Clear Filters</span>
                             </div>
                         </button>
                     )}

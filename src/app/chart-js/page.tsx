@@ -25,7 +25,7 @@ const dashboardInfoDatas = {
 
   availableFeatures: [
     { feature: "Drill Down", supported: false },
-    { feature: "Cross-Chart Filtering", supported: true },
+    { feature: "Cross-Chart Filtering", supported: false },
     { feature: "Interactive Charts", supported: true },
     { feature: "Legend Toggle", supported: true },
     { feature: "Export Options (PNG, CSV)", supported: true },

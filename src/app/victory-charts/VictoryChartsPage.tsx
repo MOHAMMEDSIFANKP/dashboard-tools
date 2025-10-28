@@ -678,16 +678,16 @@ const LineChart: React.FC<LineChartProps> = ({
       const category = datum[xAxis];
       const value = datum[type];
 
-      if (category && value != null) {
-        setContextMenu({
-          isOpen: true,
-          position: { x: event.clientX, y: event.clientY },
-          category: category,
-          value: value,
-          chartType: 'line',
-          dataType: type
-        });
-      }
+      // if (category && value != null) {
+      //   setContextMenu({
+      //     isOpen: true,
+      //     position: { x: event.clientX, y: event.clientY },
+      //     category: category,
+      //     value: value,
+      //     chartType: 'line',
+      //     dataType: type
+      //   });
+      // }
     }
   }, [isDrilled, isCrossChartFiltered, setContextMenu]);
 

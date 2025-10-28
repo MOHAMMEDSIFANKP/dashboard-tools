@@ -485,14 +485,14 @@ export default function ChartJsPage() {
 
       const nativeEvent = event.native || event;
 
-      setContextMenu({
-        isOpen: true,
-        position: { x: nativeEvent.clientX, y: nativeEvent.clientY },
-        category: fiscalYear,
-        value: value,
-        chartType: 'line',
-        dataType: dataType
-      });
+      // setContextMenu({
+      //   isOpen: true,
+      //   position: { x: nativeEvent.clientX, y: nativeEvent.clientY },
+      //   category: fiscalYear,
+      //   value: value,
+      //   chartType: 'line',
+      //   dataType: dataType
+      // });
 
     } catch (error) {
       console.error("Error in line chart click handler:", error);

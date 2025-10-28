@@ -112,6 +112,22 @@ export const testCase2Api = createApi({
         body,
       }),
     }),
+    
+    // Fetch All Charts Data with cross chart filter (Test Case 2)
+    fetchTestCase2ChartDataWithCrossChartFilter: builder.mutation<ApiResponse, {
+      productId?: string;
+      body: ChartRequestBody;
+      Year?: string;
+      selected_region?: string;
+      selected_country?: string;
+      excludeNullRevenue?: boolean;
+    }>({
+      query: ({ productId = testCase2ProductId, body, Year, selected_region, selected_country, excludeNullRevenue = false }) => ({
+        url: `dashboard/charts-with-cross-filter?product_id=${productId}${Year ? `&year=${Year}` : ''}${selected_region ? `&selected_region=${selected_region}` : ''}${selected_country ? `&selected_country=${selected_country}` : ''}${excludeNullRevenue ? `&exclude_null_revenue=${excludeNullRevenue}` : ''}`,
+        method: 'POST',
+        body,
+      }),
+    }),
     // 🆕 Fetch Dimensions (No Reference Tables)
     fetchTestCase2Dimensions: builder.query<
       any,
@@ -249,6 +265,7 @@ export const testCase2Api = createApi({
 
 export const {
   useFetchTestCase2ChartDataMutation,
+  useFetchTestCase2ChartDataWithCrossChartFilterMutation,
   useFetchTestCase2DimensionsQuery,
   useTestCase2saveGroupFilterMutation,
   useFetchTestCase2DrillDownDataMutation,
