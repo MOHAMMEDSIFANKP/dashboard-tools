@@ -180,6 +180,7 @@ export default function TanstackTable() {
 
   // State for filters and pagination
   const [search, setSearch] = useState<string>("");
+  const [debouncedSearch, setDebouncedSearch] = useState<string>("");
   const [filterCategory, setFilterCategory] = useState<string>("All");
 
   const { emailDrawer, handleOpenDrawer, handleCloseDrawer } = useEmailShareDrawer();
@@ -200,6 +201,15 @@ export default function TanstackTable() {
   // Editable cell state (demo only - no API)
   const [editingCell, setEditingCell] = useState<{ rowId: string; columnId: string; value: any } | null>(null);
 
+  // Debounce search input (wait 500ms after user stops typing)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [search]);
+
   // Prepare search parameters
   const searchParams = useMemo(() => {
     const columnFilters: Record<string, string | number> = {};
@@ -214,12 +224,12 @@ export default function TanstackTable() {
 
     return {
       tableName: databaseName,
-      search: search || undefined,
+      search: debouncedSearch || undefined,
       column_filters: Object.keys(columnFilters).length > 0 ? columnFilters : undefined,
       limit: pagination.pageSize,
       offset: pagination.pageIndex * pagination.pageSize,
     };
-  }, [search, filterCategory, pagination.pageIndex, pagination.pageSize, isTestCase1]);
+  }, [debouncedSearch, filterCategory, pagination.pageIndex, pagination.pageSize, isTestCase1]);
 
 
   // API queries
@@ -293,10 +303,10 @@ export default function TanstackTable() {
     return ["Non opérationnel", "Financier", "Exceptionnel"];
   }, []);
 
-  // Reset to first page when search changes
+  // Reset to first page when search or filter changes
   useEffect(() => {
     setPagination(prev => ({ ...prev, pageIndex: 0 }));
-  }, [search, filterCategory]);
+  }, [debouncedSearch, filterCategory]);
 
   // Format currency
   const formatCurrency = (value: number | null | undefined) => {
@@ -483,13 +493,13 @@ export default function TanstackTable() {
   }, [isTestCase1, isTestCase2, editingCell]);
 
 
-  // Calculate pagination info
+  // Calculate pagination info - use filtered_rows for accurate pagination after filtering
   // @ts-ignore
-  const totalPages = Math.ceil((isTestCase1 ? (searchData?.total_rows || 0) : (searchData?.pagination?.total_records || 0)) / pagination.pageSize);
+  const filteredRows = isTestCase1 ? (searchData?.filtered_rows || 0) : (searchData?.pagination?.filtered_records || 0);
   // @ts-ignore
   const totalRows = isTestCase1 ? (searchData?.total_rows || 0) : (searchData?.pagination?.total_records || 0);
   // @ts-ignore
-  const filteredRows = isTestCase1 ? (searchData?.filtered_rows || 0) : (searchData?.pagination?.filtered_records || 0);
+  const totalPages = Math.ceil(filteredRows / pagination.pageSize);
 
 
   // TanStack Table instance

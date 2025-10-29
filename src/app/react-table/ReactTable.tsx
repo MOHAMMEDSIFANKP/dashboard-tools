@@ -158,6 +158,7 @@ interface EditableCell {
 export default function ReactTable() {
   // State for filters and pagination
   const [search, setSearch] = useState<string>("");
+  const [debouncedSearch, setDebouncedSearch] = useState<string>("");
   const [filterCategory, setFilterCategory] = useState<string>("All");
   const [currentPage, setCurrentPage] = useState<number>(0);
   const [pageSize, setPageSize] = useState<number>(10);
@@ -173,6 +174,15 @@ export default function ReactTable() {
   const isTestCase1 = testCase === "test-case-1";
   const isTestCase2 = testCase === "test-case-2";
 
+  // Debounce search input (wait 500ms after user stops typing)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [search]);
+
   // Prepare search parameters
   const searchParams = useMemo(() => {
     const columnFilters: Record<string, string | number> = {};
@@ -187,12 +197,12 @@ export default function ReactTable() {
 
     return {
       tableName: databaseName,
-      search: search || undefined,
+      search: debouncedSearch || undefined,
       column_filters: Object.keys(columnFilters).length > 0 ? columnFilters : undefined,
       limit: pageSize,
       offset: currentPage * pageSize,
     };
-  }, [search, filterCategory, currentPage, pageSize]);
+  }, [debouncedSearch, filterCategory, currentPage, pageSize]);
 
   // API queries
   const {
@@ -383,11 +393,11 @@ export default function ReactTable() {
     setCurrentPage(0);
   };
 
-  // Reset to first page when search changes
+  // Reset to first page when search or filter changes
   useEffect(() => {
     setCurrentPage(0);
     setSelectedRows([]); // Clear selection on filter change
-  }, [search, filterCategory]);
+  }, [debouncedSearch, filterCategory]);
 
   // Clear selection when page changes
   useEffect(() => {
@@ -580,12 +590,13 @@ export default function ReactTable() {
     },
   ];
 
+  // Calculate pagination info - use filtered_rows for accurate pagination after filtering
   // @ts-ignore
-  const totalPages = Math.ceil(isTestCase1 ? (searchData?.total_rows || 0) : (searchData?.pagination?.total_records || 0) / pageSize);
+  const filteredRows = isTestCase1 ? (searchData?.filtered_rows || 0) : (searchData?.pagination?.filtered_records || 0);
   // @ts-ignore
   const totalRows = isTestCase1 ? (searchData?.total_rows || 0) : (searchData?.pagination?.total_records || 0);
   // @ts-ignore
-  const filteredRows = isTestCase1 ? (searchData?.filtered_rows || 0) : (searchData?.pagination?.filtered_records || 0);
+  const totalPages = Math.ceil(filteredRows / pageSize);
 
   const handleShareTable = async () => {
     try {

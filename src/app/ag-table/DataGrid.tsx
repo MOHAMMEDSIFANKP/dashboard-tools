@@ -71,6 +71,7 @@ const HierarchicalDataGrid = () => {
       });
     } else if (testCase === 'test-case-2') {
       fetchDataTestCase2({
+        productId: 'financial_data_1M',
         continent: drillDownState.continent,
         country: drillDownState.country,
         state: drillDownState.state,

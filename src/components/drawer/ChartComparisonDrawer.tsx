@@ -164,6 +164,16 @@ export const ComparisonDrawer: React.FC<ComparisonDrawerProps> = ({
 
         setComparisonData({ loading: true, error: null });
 
+        // Calculate data_type locally to avoid async state issues
+        let dataType = '';
+        if (chartLibrary === 'highcharts' || chartLibrary === 'ag-charts-enterprise') {
+            if (chartType === 'pie') {
+                dataType = 'region'; 
+            } else if (chartType === 'donut') {
+                dataType = 'country';
+            }
+        }
+
         try {
             let result;
 
@@ -174,6 +184,7 @@ export const ComparisonDrawer: React.FC<ComparisonDrawerProps> = ({
                     chartType,
                     year1: selectedYear1,
                     year2: selectedYear2,
+                    data_type: dataType,
                 }).unwrap();
             } else {
                 result = await triggerComparisonTC2({
@@ -181,6 +192,7 @@ export const ComparisonDrawer: React.FC<ComparisonDrawerProps> = ({
                     chartType,
                     year1: selectedYear1,
                     year2: selectedYear2,
+                    data_type: dataType,
                 }).unwrap();
             }
 

@@ -231,9 +231,10 @@ export const api = createApi({
       chartType: string;
       year1: number;
       year2: number;
+      data_type?: string;
     }>({
-      query: ({ tableName = 'sample_100k', chartType, year1, year2 }) => ({
-        url: `dashboard/charts/compare?table_name=${tableName}&chart_type=${chartType}&year1=${year1}&year2=${year2}`,
+      query: ({ tableName = 'sample_100k', chartType, year1, year2, data_type = '' }) => ({
+        url: `dashboard/charts/compare?table_name=${tableName}&chart_type=${chartType}&year1=${year1}&year2=${year2}${data_type ? `&data_type=${data_type}` : ''}`,
         method: 'POST',
       }),
     }),
