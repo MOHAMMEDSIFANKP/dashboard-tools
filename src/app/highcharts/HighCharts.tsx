@@ -140,7 +140,7 @@ const CHART_CONFIG = {
         plotOptions: {
             column: {
                 dataLabels: {
-                    enabled: true,
+                    enabled: false,
                     //@ts-ignore
                     formatter: function (this: Highcharts.PointLabelObject) {
                         return formatCurrency(this.y as number);
@@ -158,7 +158,7 @@ const CHART_CONFIG = {
                 allowPointSelect: true,
                 cursor: 'pointer',
                 dataLabels: {
-                    enabled: true,
+                    enabled: false,
                     //@ts-ignore
                     formatter: function (this: Highcharts.PointLabelObject) {
                         return `<b>${this.point.name}</b>: ${formatCurrency(this.y as number)} (${this.percentage?.toFixed(1)}%)`;
