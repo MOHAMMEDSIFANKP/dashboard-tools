@@ -405,7 +405,7 @@ const HierarchicalDataGrid = () => {
               <span className="font-semibold text-gray-900">{endRecord}</span> of{' '}
               <span className="font-semibold text-gray-900">{totalRecords.toLocaleString()}</span> records
             </div>
-            <div className="flex items-center gap-2">
+            {/*<div className="flex items-center gap-2">
               <span className="text-sm text-gray-600">Rows per page:</span>
               <select
                 value={searchParams.limit}
@@ -417,7 +417,7 @@ const HierarchicalDataGrid = () => {
                 <option value={50}>50</option>
                 <option value={100}>100</option>
               </select>
-            </div>
+            </div> */}
           </div>
         </div>
 
@@ -457,7 +457,7 @@ const HierarchicalDataGrid = () => {
         </div>
 
         {/* Pagination Controls */}
-        <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
+        {/* <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
           <div className="flex justify-between items-center">
             <div className="text-sm text-gray-600">
               Page {currentPage} of {totalPages}
@@ -478,7 +478,6 @@ const HierarchicalDataGrid = () => {
                 Previous
               </button>
 
-              {/* Page Numbers */}
               <div className="flex gap-1">
                 {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                   let pageNum;
@@ -523,7 +522,7 @@ const HierarchicalDataGrid = () => {
               </button>
             </div>
           </div>
-        </div>
+        </div> */}
       </div>
       <EmailShareDrawer
         isOpen={emailDrawer.isOpen}
