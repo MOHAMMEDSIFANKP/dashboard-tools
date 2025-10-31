@@ -56,8 +56,8 @@ export function ApiDocumentation() {
                     </div>
                     <div className='flex flex-col'>
                         <h3 className="text-xl font-semibold text-gray-900">General API Info</h3>
-                        <Link href="https://testcase.mohammedsifankp.online/docs" target='_blank' className="text-sm text-gray-600">Base URL (Test Case 1): <code>https://testcase.mohammedsifankp.online/docs/</code></Link>
-                        <Link href="https://testcase2.mohammedsifankp.online/docs" target='_blank' className="text-sm text-gray-600">Base URL (Test Case 2): <code>https://testcase2.mohammedsifankp.online/docs/</code></Link>
+                        <Link href="https://testcase.mohammedifankp.online/docs" target='_blank' className="text-sm text-gray-600">Base URL (Test Case 1): <code>https://testcase.mohammedifankp.online/docs/</code></Link>
+                        <Link href="https://testcase2.mohammedifankp.online/docs" target='_blank' className="text-sm text-gray-600">Base URL (Test Case 2): <code>https://testcase2.mohammedifankp.online/docs/</code></Link>
                     </div>
                 </div>
                 {/* <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

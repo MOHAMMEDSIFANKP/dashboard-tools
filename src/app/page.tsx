@@ -239,6 +239,7 @@ const DashboardHomepage = () => {
                                 </div>
                             </Card>
 
+                            <Link href={'https://testcase.mohammedifankp.online/docs'} target='_blank'>
                             <Card className="p-6 hover:shadow-xl transition-all duration-300 cursor-pointer group">
                                 <div className="flex items-center gap-3 mb-4">
                                     <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center group-hover:bg-green-200 transition-colors">
@@ -249,12 +250,14 @@ const DashboardHomepage = () => {
                                         <p className="text-sm text-gray-600">Financial metrics dashboard</p>
                                     </div>
                                 </div>
-                                <Link href={'https://testcase.mohammedsifankp.online/docs'} target='_blank' className="flex items-center justify-between">
+                                <div className="flex items-center justify-between">
                                     <span className="text-green-600 font-medium">View Documentation</span>
                                     <ArrowUpRight size={16} className="text-green-600" />
-                                </Link>
+                                </div>
                             </Card>
+                            </Link>
 
+                            <Link href={`https://testcase2.mohammedifankp.online/docs`} target='_blank' >
                             <Card className="p-6 hover:shadow-xl transition-all duration-300 cursor-pointer group">
                                 <div className="flex items-center gap-3 mb-4">
                                     <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center group-hover:bg-purple-200 transition-colors">
@@ -265,11 +268,12 @@ const DashboardHomepage = () => {
                                         <p className="text-sm text-gray-600">Financial metrics dashboard</p>
                                     </div>
                                 </div>
-                                <Link href={`https://testcase2.mohammedsifankp.online/docs`} target='_blank' className="flex items-center justify-between">
+                                <div className="flex items-center justify-between">
                                     <span className="text-purple-600 font-medium">View Dashboard</span>
                                     <ArrowUpRight size={16} className="text-purple-600" />
-                                </Link>
+                                </div>
                             </Card>
+                            </Link>
                         </div>
                     </div>
                 )}
