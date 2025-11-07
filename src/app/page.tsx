@@ -269,7 +269,7 @@ const DashboardHomepage = () => {
                                     </div>
                                 </div>
                                 <div className="flex items-center justify-between">
-                                    <span className="text-purple-600 font-medium">View Dashboard</span>
+                                    <span className="text-purple-600 font-medium">View Documentation</span>
                                     <ArrowUpRight size={16} className="text-purple-600" />
                                 </div>
                             </Card>
