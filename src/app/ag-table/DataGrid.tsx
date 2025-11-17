@@ -175,7 +175,8 @@ const HierarchicalDataGrid = () => {
             <span>{params.value}</span>
           </div>
         ),
-        onCellClicked: (params) => handleDrillDown('continent', params.value)
+        onCellClicked: (params) => handleDrillDown('continent', params.value),
+        
       };
     } else if (drillDownState.level === 'country') {
       dimensionColumn = {

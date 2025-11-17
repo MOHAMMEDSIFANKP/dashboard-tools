@@ -11,34 +11,37 @@ import EnhancedDashboard from '../dashboard/draggble-dashboard/page'
 import { useSyncedTab } from '@/hooks/useSyncedTab'
 
 const dashboardInfoDatas = {
-    apiEndpoints: [
-      { testCase: "test-case-1", method: "POST", apiName: "api/dashboard/all-charts?table_name=financial_data_1M", api: "https://testcase.mohammedsifankp.online/api/dashboard/all-charts?table_name=financial_data_1M", description: "Fetch all chart data for the dashboard" },
-      { testCase: "test-case-1", method: "POST", apiName: "api/dashboard/drill-down?table_name=financial_data_1M&chart_type=bar&category=201907&data_type=revenue&value=4299212962.550013", api: "https://testcase.mohammedsifankp.online/api/dashboard/drill-down?table_name=financial_data_1M&chart_type=bar&category=201907&data_type=revenue&value=4299212962.550013", description: "Fetch Drill Down datas" },
-      { testCase: "test-case-1", method: "GET", apiName: "api/dashboard/tables/financial_data_1M/dimensions", api: "https://testcase.mohammedsifankp.online/api/dashboard/tables/financial_data_1M/dimensions", description: "Fetch dimensions for the dashboard" },
-          { testCase: "test-case-1", method: "POST", apiName: "/api/dashboard/charts/compare?table_name={table}", api: "https://testcase.mohammedsifankp.online/api/dashboard/charts/compare?table_name=sample_100k&chart_type=line&year1=2015&year2=2016", description: "Fetch chart comparison data for the selected 2 years" },
+  apiEndpoints: [
+    { testCase: "test-case-1", method: "POST", apiName: "api/dashboard/all-charts?table_name=financial_data_1M", api: "https://testcase.mohammedsifankp.online/api/dashboard/all-charts?table_name=financial_data_1M", description: "Fetch all chart data for the dashboard" },
+    { testCase: "test-case-1", method: "POST", apiName: "api/dashboard/drill-down?table_name=financial_data_1M&chart_type=bar&category=201907&data_type=revenue&value=4299212962.550013", api: "https://testcase.mohammedsifankp.online/api/dashboard/drill-down?table_name=financial_data_1M&chart_type=bar&category=201907&data_type=revenue&value=4299212962.550013", description: "Fetch Drill Down datas" },
+    { testCase: "test-case-1", method: "GET", apiName: "api/dashboard/tables/financial_data_1M/dimensions", api: "https://testcase.mohammedsifankp.online/api/dashboard/tables/financial_data_1M/dimensions", description: "Fetch dimensions for the dashboard" },
+    { testCase: "test-case-1", method: "POST", apiName: "/api/dashboard/charts/compare?table_name={table}", api: "https://testcase.mohammedsifankp.online/api/dashboard/charts/compare?table_name=sample_100k&chart_type=line&year1=2015&year2=2016", description: "Fetch chart comparison data for the selected 2 years" },
 
-      { testCase: "test-case-2", method: "POST", apiName: "api/dashboard/all-charts?product_id=sample_100k_product_v1&exclude_null_revenue=false", api: "https://testcase2.mohammedsifankp.online/api/dashboard/all-charts?product_id=sample_100k_product_v1&exclude_null_revenue=false", description: "Fetch all chart data for the dashboard" },
-      { testCase: "test-case-2", method: "POST", apiName: "api/dashboard/drill-down?product_id=sample_100k_product_v1&chart_type=line&category=202010&data_type=revenue&drill_down_level=detailed&include_reference_context=true&exclude_null_revenue=false", api: "https://testcase2.mohammedsifankp.online/api/dashboard/drill-down?product_id=sample_100k_product_v1&chart_type=line&category=202010&data_type=revenue&drill_down_level=detailed&include_reference_context=true&exclude_null_revenue=false", description: "Fetch Drill Down datas" },
-      { testCase: "test-case-2", method: "GET", apiName: "api/dashboard/tables/sample_100k_product_v1/dimensions?include_reference_tables=true", api: "https://testcase2.mohammedsifankp.online/api/dashboard/tables/sample_100k_product_v1/dimensions?include_reference_tables=false", description: "Fetch dimensions for the dashboard" },
-       { testCase: "test-case-2", method: "POST", apiName: "/api/dashboard/charts/compare?product_id={Product id}", api: "https://testcase2.mohammedsifankp.online/api/dashboard/charts/compare?product_id=data_1m_product_v1&chart_type=line&year1=2015&year2=2016", description: "Fetch chart comparison data for the selected 2 years" },
-    ],
-    availableFeatures: [
-      { feature: "Drill Down", supported: false },
-      { feature: "Cross-Chart Filtering", supported: false },
-      { feature: "Interactive Charts", supported: true },
-      { feature: "Legend Toggle", supported: true },
-      { feature: "Export Options (PNG, CSV)", supported: true },
-      { feature: "Real-time Data Support (Need Manual setup)", supported: false },
-      { feature: "Custom Options", supported: true },
-      { feature: "TypeScript Support", supported: true },
-      { feature: "Open Source", supported: true },
-      { feature: "Drag and Drop. ", supported: true, link:"dashboard/draggble-dashboard" },
-    ],
-    dataRecords: {
-      "test-case-1": "1,000,000 Records",
-      "test-case-2": "10 M Records"
-    },
-  }
+    { testCase: "test-case-2", method: "POST", apiName: "api/dashboard/all-charts?product_id=sample_100k_product_v1&exclude_null_revenue=false", api: "https://testcase2.mohammedsifankp.online/api/dashboard/all-charts?product_id=sample_100k_product_v1&exclude_null_revenue=false", description: "Fetch all chart data for the dashboard" },
+    { testCase: "test-case-2", method: "POST", apiName: "api/dashboard/drill-down?product_id=sample_100k_product_v1&chart_type=line&category=202010&data_type=revenue&drill_down_level=detailed&include_reference_context=true&exclude_null_revenue=false", api: "https://testcase2.mohammedsifankp.online/api/dashboard/drill-down?product_id=sample_100k_product_v1&chart_type=line&category=202010&data_type=revenue&drill_down_level=detailed&include_reference_context=true&exclude_null_revenue=false", description: "Fetch Drill Down datas" },
+    { testCase: "test-case-2", method: "GET", apiName: "api/dashboard/tables/sample_100k_product_v1/dimensions?include_reference_tables=true", api: "https://testcase2.mohammedsifankp.online/api/dashboard/tables/sample_100k_product_v1/dimensions?include_reference_tables=false", description: "Fetch dimensions for the dashboard" },
+    { testCase: "test-case-2", method: "POST", apiName: "/api/dashboard/charts/compare?product_id={Product id}", api: "https://testcase2.mohammedsifankp.online/api/dashboard/charts/compare?product_id=data_1m_product_v1&chart_type=line&year1=2015&year2=2016", description: "Fetch chart comparison data for the selected 2 years" },
+  ],
+  availableFeatures: [
+    { feature: "Drill Down", supported: false },
+    { feature: "Cross-Chart Filtering", supported: false },
+    { feature: "Interactive Charts", supported: true },
+    { feature: "Legend Toggle", supported: true },
+    { feature: "Export Options (PNG, CSV)", supported: true },
+    { feature: "Real-time Data Support (Need Manual setup)", supported: false },
+    { feature: "Custom Options", supported: true },
+    { feature: "TypeScript Support", supported: true },
+    { feature: "Open Source", supported: true },
+    { feature: "Drag and Drop. ", supported: true, link: "dashboard/draggble-dashboard" },
+    { feature: "Email Share", supported: true },
+    { feature: "Chart Comparison", supported: true },
+    { feature: "Group Management", supported: true },
+  ],
+  dataRecords: {
+    "test-case-1": "1,000,000 Records",
+    "test-case-2": "10 M Records"
+  },
+}
 
 function Page() {
   const dispatch = useDispatch();
@@ -51,7 +54,7 @@ function Page() {
   useEffect(() => {
     handleLibraryChange('plotly');
   }, []);
-  
+
   return (
     <>
       <TabsContainer selectedTab={selectedTab} setSelectedTab={setSelectedTab} />
@@ -64,7 +67,7 @@ function Page() {
           dataRecords={dashboardInfoDatas.dataRecords}
         />
       )}
-        {selectedTab === 'drag-and-drop' && (
+      {selectedTab === 'drag-and-drop' && (
         <EnhancedDashboard />
       )}
 

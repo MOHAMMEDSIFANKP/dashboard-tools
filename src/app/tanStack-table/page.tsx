@@ -8,7 +8,7 @@ import { useSyncedTab } from '@/hooks/useSyncedTab'
 
 import './tanstack.css'
 function Page() {
-    const [selectedTab, setSelectedTab] = useSyncedTab('tabs:tanstack')
+  const [selectedTab, setSelectedTab] = useSyncedTab('tabs:tanstack')
 
   const dashboardInfoDatas = {
     apiEndpoints: [
@@ -22,13 +22,15 @@ function Page() {
       { feature: "Filter", supported: true },
       { feature: "Sorting", supported: true },
       { feature: "Pagination", supported: true },
-      { feature: "Editable Cells (Need Custom logic)", supported: false },
+      { feature: "Editable Cells (Need Custom logic)", supported: true },
       { feature: "Row Selection", supported: true },
       { feature: "Column Reordering", supported: true },
       { feature: "Updatble (Yes, with custom logic) ", supported: true },
       { feature: "Page Size Customization", supported: true },
       { feature: "UI Customization", supported: true },
       { feature: "Open Source", supported: true },
+      { feature: "Email Share", supported: true },
+      { feature: "Pivot Mode (🚫 Not support)", supported: false },
     ],
     dataRecords: {
       "test-case-1": "1,000,000 Records",
