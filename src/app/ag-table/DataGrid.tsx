@@ -176,7 +176,7 @@ const HierarchicalDataGrid = () => {
           </div>
         ),
         onCellClicked: (params) => handleDrillDown('continent', params.value),
-        
+
       };
     } else if (drillDownState.level === 'country') {
       dimensionColumn = {
@@ -220,6 +220,7 @@ const HierarchicalDataGrid = () => {
         field: `${testCase === 'test-case-1' ? 'revenue' : 'revenue_amount_usd'}`,
         headerName: 'Revenue',
         filter: false,
+        editable: true,
         width: 150,
         valueFormatter: (params) => formatCurrency(params.value),
         cellClass: 'font-semibold'
@@ -228,6 +229,7 @@ const HierarchicalDataGrid = () => {
         field: `${testCase === 'test-case-1' ? 'otherincome' : 'other_income_amount_usd'}`,
         headerName: 'Other Income',
         filter: false,
+        editable: true,
         width: 150,
         valueFormatter: (params) => formatCurrency(params.value)
       },
@@ -235,6 +237,7 @@ const HierarchicalDataGrid = () => {
         field: `${testCase === 'test-case-1' ? 'grossmargin' : 'gross_margin_amount_usd'}`,
         headerName: 'Gross Margin',
         filter: false,
+        editable: true,
         width: 150,
         valueFormatter: (params) => formatCurrency(params.value)
       },
@@ -242,6 +245,7 @@ const HierarchicalDataGrid = () => {
         field: `${testCase === 'test-case-1' ? 'operatingexpenses' : 'operating_expense_amount_usd'}`,
         headerName: 'Operating Expenses',
         filter: false,
+        editable: true,
         width: 180,
         valueFormatter: (params) => formatCurrency(params.value)
       },
@@ -249,6 +253,7 @@ const HierarchicalDataGrid = () => {
         field: `${testCase === 'test-case-1' ? 'operatingprofit' : 'operating_profit_amount_usd'}`,
         headerName: 'Operating Profit',
         filter: false,
+        editable: true,
         width: 160,
         valueFormatter: (params) => formatCurrency(params.value),
         cellClass: 'font-semibold'
@@ -257,6 +262,7 @@ const HierarchicalDataGrid = () => {
         field: `${testCase === 'test-case-1' ? 'financialresult' : 'financial_result_amount_usd'}`,
         headerName: 'Financial Result',
         filter: false,
+        editable: true,
         width: 160,
         valueFormatter: (params) => formatCurrency(params.value)
       },
@@ -264,6 +270,7 @@ const HierarchicalDataGrid = () => {
         field: `${testCase === 'test-case-1' ? 'earningsbeforetax' : 'earnings_before_tax_amount_usd'}`,
         headerName: 'Earnings Before Tax',
         filter: false,
+        editable: true,
         width: 180,
         valueFormatter: (params) => formatCurrency(params.value)
       },
@@ -271,6 +278,7 @@ const HierarchicalDataGrid = () => {
         field: `${testCase === 'test-case-1' ? 'nonrecurringresult' : 'non_recurring_result_amount_usd'}`,
         headerName: 'Non-Recurring',
         filter: false,
+        editable: true,
         width: 150,
         valueFormatter: (params) => formatCurrency(params.value)
       },
@@ -278,6 +286,7 @@ const HierarchicalDataGrid = () => {
         field: `${testCase === 'test-case-1' ? 'netprofit' : 'net_profit_amount_usd'}`,
         headerName: 'Net Profit',
         filter: false,
+        editable: true,
         width: 150,
         valueFormatter: (params) => formatCurrency(params.value),
         cellClass: 'font-bold text-green-600'
@@ -444,7 +453,7 @@ const HierarchicalDataGrid = () => {
             <div className="ag-theme-alpine rounded-lg overflow-hidden border border-gray-200" >
               <AgGridReact
                 ref={gridRef}
-                rowData={data}
+                rowData={data?.map((r: any) => ({ ...r })) || []}
                 columnDefs={getColumnDefs()}
                 defaultColDef={defaultColDef}
                 animateRows={true}
@@ -452,6 +461,11 @@ const HierarchicalDataGrid = () => {
                 pagination={false}
                 onFilterChanged={onFilterChanged}
                 domLayout="autoHeight"
+                stopEditingWhenCellsLoseFocus={true}
+                onRowValueChanged={(params) => {
+                  alert("Row updated: " + JSON.stringify(params.data));
+                }}
+
               />
             </div>
           )}
