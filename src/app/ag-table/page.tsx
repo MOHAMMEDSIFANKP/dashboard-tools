@@ -50,7 +50,7 @@ function Page() {
       { feature: "UI Customization", supported: true },
       { feature: "Open Source", supported: true },
       { feature: "Email Share", supported: true },
-      { feature: "Pivot Mode", supported: false },
+      { feature: "Pivot Mode (only supported in paid version)", supported: false },
     ],
     dataRecords: {
       "test-case-1": "1,000,000 Records",
